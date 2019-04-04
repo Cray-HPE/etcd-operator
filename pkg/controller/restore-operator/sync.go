@@ -213,7 +213,7 @@ func (r *Restore) prepareSeed(er *api.EtcdRestore) (err error) {
 func (r *Restore) createSeedMember(ec *api.EtcdCluster, svcAddr, namespace string, clusterName string, owner metav1.OwnerReference) error {
 	m := &etcdutil.Member{
 		Name:         k8sutil.UniqueMemberName(clusterName),
-		Namespace:    ec.Namespace,
+		Namespace:    namespace,
 		SecurePeer:   ec.Spec.TLS.IsSecurePeer(),
 		SecureClient: ec.Spec.TLS.IsSecureClient(),
 	}
@@ -221,7 +221,7 @@ func (r *Restore) createSeedMember(ec *api.EtcdCluster, svcAddr, namespace strin
 		m.ClusterDomain = ec.Spec.Pod.ClusterDomain
 	}
 	ms := etcdutil.NewMemberSet(m)
-	backupURL := backupapi.BackupURLForRestore("http", svcAddr, clusterName)
+	backupURL := backupapi.BackupURLForRestore("http", svcAddr, clusterName, namespace)
 	ec.SetDefaults()
 	pod := k8sutil.NewSeedMemberPod(clusterName, ms, m, ec.Spec, owner, backupURL)
 	_, err := r.kubecli.Core().Pods(ec.Namespace).Create(pod)
