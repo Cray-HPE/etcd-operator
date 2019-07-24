@@ -247,7 +247,7 @@ func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.S
 }
 
 // AddEtcdVolumeToPod abstract the process of appending volume spec to pod spec
-func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim) {
+func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim, tmpfs bool) {
 	vol := v1.Volume{Name: etcdVolumeName}
 	if pvc != nil {
 		vol.VolumeSource = v1.VolumeSource{
@@ -258,6 +258,9 @@ func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim) {
 		pod.Spec.RestartPolicy = v1.RestartPolicyAlways
 	} else {
 		vol.VolumeSource = v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}
+		if tmpfs {
+			vol.VolumeSource.EmptyDir.Medium = v1.StorageMediumMemory
+		}
 	}
 	pod.Spec.Volumes = append(pod.Spec.Volumes, vol)
 }
@@ -277,7 +280,7 @@ func NewSeedMemberPod(clusterName string, ms etcdutil.MemberSet, m *etcdutil.Mem
 	token := uuid.New()
 	pod := newEtcdPod(m, ms.PeerURLPairs(), clusterName, "new", token, cs)
 	// TODO: PVC datadir support for restore process
-	AddEtcdVolumeToPod(pod, nil)
+	AddEtcdVolumeToPod(pod, nil, cs.Pod.Tmpfs)
 	if backupURL != nil {
 		addRecoveryToPod(pod, token, m, cs, backupURL)
 	}
