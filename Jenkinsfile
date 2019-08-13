@@ -10,4 +10,5 @@ dockerBuildPipeline {
         description = "Forked Etcd Operator"
         useEntryPointForTest = "false"
         product = "shasta-standard,shasta-premium"
+        slackNotification = ["casm-cloud-alerts", "slack-token", false, false, true, true]
 }

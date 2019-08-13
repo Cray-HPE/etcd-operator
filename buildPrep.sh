@@ -2,15 +2,27 @@
 
 set -e
 
+export PATH=$PATH:/usr/local/go/bin
+export PATH=$PATH:/root/go/bin
+rm -rf /usr/local/go
+rm -f go1.11.5.linux-amd64.tar*
+: "${GOPATH:=$HOME/go}"
+
+if which git ; then
+  echo "git is installed."
+else
+  echo "git wasn't installed, trying to install"
+  yum install -y git
+fi
+
+
 if which go ; then
   echo "Go is installed."
 else
-  echo "Go wasn't installed, try to erase to clean up previous failed runs"
-  yum erase -y golang-bin
+  echo "Go wasn't installed, trying to install"
+  wget https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
+  tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
 fi
-yum install -y go golang-bin
-
-: "${GOPATH:=$HOME/go}"
 
 GO_VERSION="1.11.5"
 INSTALLED_GO_VERSION=$(go version | awk '{print $3}')
@@ -28,5 +40,24 @@ mkdir -p $GOPATH/bin
 mkdir -p $GOPATH/src
 mkdir -p $GOPATH/pkg
 
+rm -f $GOPATH/bin/dep
+rm -rf $GOPATH/pkg/dep
+rm -rf $GOPATH/src/github.com/coreos/etcd-operator
 
-hack/build/build
+if which dep; then
+  echo "dep is installed."
+else
+  echo "dep wasn't installed, trying to install"
+  curl https://raw.githubusercontent.com/golang/dep/master/install.sh | DEP_RELEASE_TAG=v0.5.0 sh
+fi
+
+ORIGINAL_DIR=$PWD
+mkdir -p $GOPATH/src/github.com/coreos/etcd-operator
+cp -r . $GOPATH/src/github.com/coreos/etcd-operator
+cd $GOPATH/src/github.com/coreos/etcd-operator
+
+$GOPATH/src/github.com/coreos/etcd-operator/hack/update_vendor.sh
+$GOPATH/src/github.com/coreos/etcd-operator/hack/build/operator/build
+$GOPATH/src/github.com/coreos/etcd-operator/hack/build/backup-operator/build
+$GOPATH/src/github.com/coreos/etcd-operator/hack/build/restore-operator/build
+cp -r $GOPATH/src/github.com/coreos/etcd-operator/_output $ORIGINAL_DIR
