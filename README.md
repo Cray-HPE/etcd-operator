@@ -1,3 +1,5 @@
+# THIS IS A TRACKED REPO! (https://github.com/coreos/etcd-operator)
+
 # etcd operator
 unit/integration:
 [![Build Status](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-unit-master/badge/icon)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-unit-master/lastBuild/)
