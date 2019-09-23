@@ -9,5 +9,4 @@ dockerBuildPipeline {
         name = "etcd-operator"
         description = "Forked Etcd Operator"
         useEntryPointForTest = "false"
-        slackNotification = ["casm-cloud-alerts", "slack-token", false, false, true, true]
 }
