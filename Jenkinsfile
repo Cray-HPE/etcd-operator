@@ -9,4 +9,5 @@ dockerBuildPipeline {
         name = "etcd-operator"
         description = "Forked Etcd Operator"
         useEntryPointForTest = "false"
+        product = "shasta-standard,shasta-premium"
 }
