@@ -1,4 +1,4 @@
-name: Go build
+name: Go testing
 on:
   push:
   schedule:
@@ -24,5 +24,5 @@ jobs:
         go get -v -t -d ./...
         export PATH=$PATH:/home/runner/go/bin
 
-    - name: Build
-      run: go build -v cmd/operator/main.go
+    - name: Test
+      run: go test github.com/coreos/etcd-operator/pkg/...
