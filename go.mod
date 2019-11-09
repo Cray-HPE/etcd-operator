@@ -5,7 +5,7 @@ go 1.13
 require (
 	cloud.google.com/go v0.47.0
 	github.com/Azure/azure-sdk-for-go v11.3.0-beta+incompatible
-	github.com/Azure/go-autorest v11.1.1+incompatible
+	github.com/Azure/go-autorest v11.9.0+incompatible
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v0.0.0-20190125095113-2b29687e15f2
 	github.com/aws/aws-sdk-go v1.13.8
