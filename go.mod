@@ -41,7 +41,7 @@ require (
 	github.com/prometheus/common v0.2.0 // indirect
 	github.com/prometheus/procfs v0.0.0-20190225181712-6ed1f7e10411 // indirect
 	github.com/satori/uuid v1.2.0 // indirect
-	github.com/sirupsen/logrus v1.2.0
+	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/pflag v1.0.3 // indirect
 	go.opencensus.io v0.19.0 // indirect
 	golang.org/x/crypto v0.0.0-20190227175134-215aa809caaf // indirect
