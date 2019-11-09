@@ -39,7 +39,7 @@ func TestOneMemberRecovery(t *testing.T) {
 		}
 	}()
 
-	names, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, testEtcd)
+	names, err := e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, f.RetryAttempts, testEtcd)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestOneMemberRecovery(t *testing.T) {
 	if err := e2eutil.KillMembers(f.KubeClient, f.Namespace, names[2]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, 6, testEtcd); err != nil {
+	if _, err := e2eutil.WaitUntilPodSizeReached(t, f.KubeClient, 3, f.RetryAttempts, testEtcd); err != nil {
 		t.Fatalf("failed to resize to 3 members etcd cluster: %v", err)
 	}
 }

@@ -1,0 +1,115 @@
+name: Testing E2E
+on:
+  push:
+  schedule:
+    - cron: '0 1 * * *'
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+
+      - name: Docker login
+        run: docker login docker.pkg.github.com -u marlinc -p "${GITHUB_PACKAGE_REGISTRY_TOKEN}"
+        env:
+          GITHUB_PACKAGE_REGISTRY_TOKEN: ${{ secrets.GITHUB_PACKAGE_REGISTRY_TOKEN }}
+
+      - name: Prepare e2e image
+        run: |
+          go get -v -t -d ./...
+          go mod vendor
+          hack/build/e2e/docker_push
+        env:
+          TEST_IMAGE: docker.pkg.github.com/cbws/etcd-operator/etcd-operator-e2e:${{github.sha}}
+
+      - name: Prepare operator image
+        run: |
+          hack/build/operator/build
+          hack/build/backup-operator/build
+          hack/build/restore-operator/build
+          IMAGE=${OPERATOR_IMAGE} hack/build/docker_push
+        env:
+          OPERATOR_IMAGE: docker.pkg.github.com/cbws/etcd-operator/operator:${{github.sha}}
+  test-e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    needs: prepare
+    steps:
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+
+      - name: KinD (Kubernetes in Docker) Action
+        uses: engineerd/setup-kind@v0.1.0
+
+      - name: Test
+        run: |
+          docker login docker.pkg.github.com -u marlinc -p "${GITHUB_PACKAGE_REGISTRY_TOKEN}"
+          docker pull $TEST_IMAGE
+          docker pull $OPERATOR_IMAGE
+          export KUBECONFIG="$(kind get kubeconfig-path)"
+          kind load docker-image $TEST_IMAGE
+          kind load docker-image $OPERATOR_IMAGE
+          hack/ci/run_e2e
+          cat _output/logs/*
+        env:
+          GITHUB_PACKAGE_REGISTRY_TOKEN: ${{ secrets.GITHUB_PACKAGE_REGISTRY_TOKEN }}
+          OPERATOR_IMAGE: docker.pkg.github.com/cbws/etcd-operator/operator:${{github.sha}}
+          TEST_AWS_SECRET: na
+          TEST_S3_BUCKET: na
+          TEST_NAMESPACE: default
+          BUILD_IMAGE: false
+          BUILD_E2E: false
+          TEST_IMAGE: docker.pkg.github.com/cbws/etcd-operator/etcd-operator-e2e:${{github.sha}}
+          PASSES: e2e
+#  test-e2eslow:
+#    name: E2E slow
+#    runs-on: ubuntu-latest
+#    needs: prepare
+#    steps:
+#      - name: Set up Go 1.13
+#        uses: actions/setup-go@v1
+#        with:
+#          go-version: 1.13
+#        id: go
+#
+#      - name: Check out code into the Go module directory
+#        uses: actions/checkout@v1
+#
+#      - name: KinD (Kubernetes in Docker) Action
+#        uses: engineerd/setup-kind@v0.1.0
+#
+#      - name: Test
+#        run: |
+#          docker login docker.pkg.github.com -u marlinc -p "${GITHUB_PACKAGE_REGISTRY_TOKEN}"
+#          docker pull $TEST_IMAGE
+#          docker pull $OPERATOR_IMAGE
+#          export KUBECONFIG="$(kind get kubeconfig-path)"
+#          kind load docker-image $TEST_IMAGE
+#          kind load docker-image $OPERATOR_IMAGE
+#          kubectl create secret docker-registry --docker-server=docker.pkg.github.com --docker-username=marlinc --docker-password=${GITHUB_PACKAGE_REGISTRY_TOKEN} github
+#          kubectl patch serviceaccount default -p '{"imagePullSecrets": [{"name": "github"}]}'
+#          hack/ci/run_e2e
+#        env:
+#          GITHUB_PACKAGE_REGISTRY_TOKEN: ${{ secrets.GITHUB_PACKAGE_REGISTRY_TOKEN }}
+#          OPERATOR_IMAGE: docker.pkg.github.com/cbws/etcd-operator/operator:${{github.sha}}
+#          TEST_AWS_SECRET: na
+#          TEST_S3_BUCKET: na
+#          TEST_NAMESPACE: default
+#          BUILD_IMAGE: false
+#          BUILD_E2E: false
+#          TEST_IMAGE: docker.pkg.github.com/cbws/etcd-operator/etcd-operator-e2e:${{github.sha}}
+#          PASSES: e2eslow

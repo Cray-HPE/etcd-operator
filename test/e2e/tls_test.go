@@ -40,7 +40,7 @@ func TestTLS(t *testing.T) {
 	memberClientTLSSecret := "etcd-server-tls" + suffix
 	operatorClientTLSSecret := "etcd-client-tls" + suffix
 
-	err := e2eutil.PrepareTLS(clusterName, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
+	err := e2eutil.PrepareTLS(clusterName, f.Namespace, f.KubeClusterDomain, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestTLS(t *testing.T) {
 		}
 	}()
 
-	_, err = e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, 6, c)
+	_, err = e2eutil.WaitUntilSizeReached(t, f.CRClient, 3, f.RetryAttempts, c)
 	if err != nil {
 		t.Fatalf("failed to create 3 members etcd cluster: %v", err)
 	}

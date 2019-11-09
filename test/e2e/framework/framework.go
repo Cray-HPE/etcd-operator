@@ -48,17 +48,21 @@ const (
 )
 
 type Framework struct {
-	opImage    string
-	KubeClient kubernetes.Interface
-	CRClient   versioned.Interface
-	Namespace  string
+	opImage           string
+	KubeClient        kubernetes.Interface
+	KubeClusterDomain string
+	CRClient          versioned.Interface
+	Namespace         string
+	RetryAttempts     int
 }
 
 // Setup setups a test framework and points "Global" to it.
 func setup() error {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
+	kubeClusterDomain := flag.String("kube-cluster-domain", "cluster.local", "kube cluster domain")
 	opImage := flag.String("operator-image", "", "operator image, e.g. gcr.io/coreos-k8s-scale-testing/etcd-operator")
 	ns := flag.String("namespace", "default", "e2e test namespace")
+	retryAttemtps := flag.Int("retry-attempts", 6, "e2e cluster create retries (10 seconds per retry)")
 	flag.Parse()
 
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -71,10 +75,12 @@ func setup() error {
 	}
 
 	Global = &Framework{
-		KubeClient: cli,
-		CRClient:   client.MustNew(config),
-		Namespace:  *ns,
-		opImage:    *opImage,
+		KubeClient:        cli,
+		KubeClusterDomain: *kubeClusterDomain,
+		CRClient:          client.MustNew(config),
+		Namespace:         *ns,
+		opImage:           *opImage,
+		RetryAttempts:     *retryAttemtps,
 	}
 
 	// Skip the etcd-operator deployment setup if the operator image was not specified
@@ -125,7 +131,7 @@ func (f *Framework) SetupEtcdOperator() error {
 			Containers: []v1.Container{{
 				Name:            "etcd-operator",
 				Image:           f.opImage,
-				ImagePullPolicy: v1.PullAlways,
+				ImagePullPolicy: v1.PullIfNotPresent,
 				Command:         []string{"/usr/local/bin/etcd-operator"},
 				Env: []v1.EnvVar{
 					{
@@ -151,7 +157,7 @@ func (f *Framework) SetupEtcdOperator() error {
 			}, {
 				Name:            etcdBackupOperatorName,
 				Image:           f.opImage,
-				ImagePullPolicy: v1.PullAlways,
+				ImagePullPolicy: v1.PullIfNotPresent,
 				Command:         []string{"/usr/local/bin/etcd-backup-operator"},
 				Env: []v1.EnvVar{
 					{
@@ -166,7 +172,7 @@ func (f *Framework) SetupEtcdOperator() error {
 			}, {
 				Name:            etcdRestoreOperatorName,
 				Image:           f.opImage,
-				ImagePullPolicy: v1.PullAlways,
+				ImagePullPolicy: v1.PullIfNotPresent,
 				Command:         []string{"/usr/local/bin/etcd-restore-operator"},
 				Env: []v1.EnvVar{
 					{

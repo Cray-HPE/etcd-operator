@@ -57,7 +57,7 @@ func TestBackupAndRestore(t *testing.T) {
 	memberPeerTLSSecret := "etcd-peer-tls-" + suffix
 	memberClientTLSSecret := "etcd-server-tls-" + suffix
 	operatorClientTLSSecret := "etcd-client-tls-" + suffix
-	err := e2eutil.PrepareTLS(clusterName, f.Namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
+	err := e2eutil.PrepareTLS(clusterName, f.Namespace, f.KubeClusterDomain, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret)
 	if err != nil {
 		t.Fatal(err)
 	}

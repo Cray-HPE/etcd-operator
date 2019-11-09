@@ -7,11 +7,13 @@ spec:
   containers:
   - name: <POD_NAME>
     image: <TEST_IMAGE>
-    imagePullPolicy: Always
+    imagePullPolicy: IfNotPresent
     command: ["hack/test"]
     resources:
       requests:
-        cpu: 2
+        cpu: 250m
+      limits:
+        cpu: 1
     env:
       - name: TEST_NAMESPACE
         valueFrom:

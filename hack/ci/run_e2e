@@ -36,7 +36,6 @@ fi
 BUILD_E2E=${BUILD_E2E:-true}
 if [[ ${BUILD_E2E} == "true" ]]; then
   TEST_IMAGE=${TEST_IMAGE:-"gcr.io/coreos-k8s-scale-testing/etcd-operator-e2e:${GIT_VERSION}"}
-  gcloud docker -a
   TEST_IMAGE=${TEST_IMAGE} hack/build/e2e/docker_push
 fi
 

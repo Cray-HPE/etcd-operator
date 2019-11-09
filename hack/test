@@ -36,7 +36,7 @@ function e2e_pass {
 	build_flags=("-i") # cache package compilation data for faster repeated builds
 	for i in {1..2}; do
 		go test -failfast -parallel=4 "./test/e2e/" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
-			--kubeconfig=$KUBECONFIG --operator-image=$OPERATOR_IMAGE --namespace=${TEST_NAMESPACE}
+			--kubeconfig=$KUBECONFIG --operator-image=$OPERATOR_IMAGE --namespace=${TEST_NAMESPACE} --retry-attempts 24
 		build_flags=("")
 	done
 }
@@ -46,7 +46,7 @@ function e2eslow_pass {
 	build_flags=("-i") # cache package compilation data for faster repeated builds
 	for i in {1..2}; do
 		go test -failfast "./test/e2e/e2eslow" ${build_flags[@]} -run "$E2E_TEST_SELECTOR" -timeout 30m --race \
-			--kubeconfig=$KUBECONFIG --operator-image=$OPERATOR_IMAGE --namespace=${TEST_NAMESPACE}
+			--kubeconfig=$KUBECONFIG --operator-image=$OPERATOR_IMAGE --namespace=${TEST_NAMESPACE} --retry-attempts 24
 		build_flags=("")
 	done
 }
@@ -56,6 +56,7 @@ function upgrade_pass {
 	UPGRADE_TEST_SELECTOR=${UPGRADE_TEST_SELECTOR:-.*}
 	go test -failfast ./test/e2e/upgradetest/ -run "$UPGRADE_TEST_SELECTOR" --race -timeout 30m \
 		--kubeconfig=$KUBECONFIG --kube-ns=$TEST_NAMESPACE \
+		--retry-attempts 24 \
 		--old-image=$UPGRADE_FROM \
 		--new-image=$UPGRADE_TO
 }

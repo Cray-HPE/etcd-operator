@@ -39,4 +39,4 @@ rules:
   resources:
   - secrets
   verbs:
-  - get
+  - "*"

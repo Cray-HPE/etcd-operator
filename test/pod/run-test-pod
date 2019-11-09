@@ -24,7 +24,6 @@ else
     exit 1
 fi
 
-
 kubectl -n ${TEST_NAMESPACE} create -f ${TEST_POD_SPEC}
 
 PHASE_RUNNING="Running"
@@ -33,7 +32,7 @@ RETRY_INTERVAL=5
 
 # Wait until pod is running or timeout
 echo "Waiting for test-pod to start runnning"
-TIMEOUT=90
+TIMEOUT=180
 ELAPSED=0
 POD_PHASE=""
 until [ "${POD_PHASE}" == "${PHASE_RUNNING}" ]
@@ -57,11 +56,7 @@ DOCKER_REPO_ROOT="/go/src/github.com/coreos/etcd-operator"
 mkdir -p _output/logs/
 cp $KUBECONFIG ./kubeconfig
 
-docker run --rm \
-    -v "$PWD":"$DOCKER_REPO_ROOT" \
-    -w "$DOCKER_REPO_ROOT" \
-    gcr.io/coreos-k8s-scale-testing/logcollector \
-    logcollector --kubeconfig=${DOCKER_REPO_ROOT}/kubeconfig --e2e-podname=${POD_NAME} \
+go run test/logcollector/main.go --kubeconfig=$KUBECONFIG --e2e-podname=${POD_NAME} \
     --namespace=${TEST_NAMESPACE} --logs-dir="_output/logs/"
 
 # Check for pod success or failure

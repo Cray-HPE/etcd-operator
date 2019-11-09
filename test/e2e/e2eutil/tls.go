@@ -28,8 +28,8 @@ import (
 )
 
 // PrepareTLS creates all the required tls certs for a given clusterName.
-func PrepareTLS(clusterName, namespace, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret string) error {
-	err := PreparePeerTLSSecret(clusterName, namespace, memberPeerTLSSecret)
+func PrepareTLS(clusterName, namespace, kubeClusterDomain, memberPeerTLSSecret, memberClientTLSSecret, operatorClientTLSSecret string) error {
+	err := PreparePeerTLSSecret(clusterName, namespace, kubeClusterDomain, memberPeerTLSSecret)
 	if err != nil {
 		return fmt.Errorf("failed to prepare peer TLS secret: %v", err)
 	}
@@ -45,7 +45,7 @@ func PrepareTLS(clusterName, namespace, memberPeerTLSSecret, memberClientTLSSecr
 	return nil
 }
 
-func PreparePeerTLSSecret(clusterName, ns, secretName string) error {
+func PreparePeerTLSSecret(clusterName, ns, kubeClusterDomain, secretName string) error {
 	dir, err := ioutil.TempDir("", "etcd-operator-tls-")
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func PreparePeerTLSSecret(clusterName, ns, secretName string) error {
 		fmt.Sprintf("*.%s.%s.svc", clusterName, ns),
 		// Due to issue https://github.com/coreos/etcd/issues/8797,
 		// we need to provide FQDN in certs at the moment.
-		fmt.Sprintf("*.%s.%s.svc.cluster.local", clusterName, ns),
+		fmt.Sprintf("*.%s.%s.svc.%s", clusterName, ns, kubeClusterDomain),
 	}
 
 	err = prepareTLSCerts(certPath, keyPath, caPath, hosts)
