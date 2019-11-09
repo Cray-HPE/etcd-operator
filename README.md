@@ -1,12 +1,13 @@
 # THIS IS A TRACKED REPO! (https://github.com/coreos/etcd-operator)
 
 # etcd operator
+
 unit/integration:
-[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-unit-master/badge/icon)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-unit-master/lastBuild/)
-e2e (Kubernetes stable):
-[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
-e2e (upgrade):
-[![Build Status](https://jenkins-etcd.prod.coreos.systems/buildStatus/icon?job=etcd-operator-upgrade)](https://jenkins-etcd.prod.coreos.systems/job/etcd-operator-upgrade/)
+[![Builg Status](https://github.com/cbws/etcd-operator/workflows/Testing/badge.svg)](https://github.com/cbws/etcd-operator/actions?query=workflow%3ATesting)
+#e2e (Kubernetes stable):
+#[![Build Status](https://jenkins-etcd-public.prod.coreos.systems/buildStatus/icon?job=etcd-operator-master)](https://jenkins-etcd-public.prod.coreos.systems/job/etcd-operator-master/)
+#e2e (upgrade):
+#[![Build Status](https://jenkins-etcd.prod.coreos.systems/buildStatus/icon?job=etcd-operator-upgrade)](https://jenkins-etcd.prod.coreos.systems/job/etcd-operator-upgrade/)
 
 ### Project status: beta
 
