@@ -25,19 +25,20 @@ jobs:
         go get -v -t -d ./...
         export PATH=$PATH:/home/runner/go/bin
 
-    - name: Build
-      run: go build -v -a -installsuffix cgo -o app cmd/operator/main.go
-      env:
-        CGO_ENABLED: 0
-        GOOS: linux
+    - name: Build operators
+      run: |
+        hack/build/operator/build
+        hack/build/backup-operator/build
+        hack/build/restore-operator/build
 
-    - name: Build the Docker container image
-      run: docker build -t docker.pkg.github.com/cbws/etcd-operator/operator:latest .
+    - name: Build image
+      run: docker build -t docker.pkg.github.com/cbws/etcd-operator/operator:latest -f hack/build/Dockerfile .
 
-    - name: Push the image to GPR
+    - name: Push image to GPR
       if: github.ref == 'refs/heads/master'
       run: |
         docker login docker.pkg.github.com -u marlinc -p "${GITHUB_PACKAGE_REGISTRY_TOKEN}"
-        docker push docker.pkg.github.com/cbws/etcd-operator/operator:latest
+        hack/build/docker_push
       env:
         GITHUB_PACKAGE_REGISTRY_TOKEN: ${{ secrets.GITHUB_PACKAGE_REGISTRY_TOKEN }}
+        IMAGE: docker.pkg.github.com/cbws/etcd-operator/operator:latest
