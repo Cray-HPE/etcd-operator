@@ -379,7 +379,11 @@ func (c *Cluster) createPod(members etcdutil.MemberSet, m *etcdutil.Member, stat
 		}
 		k8sutil.AddEtcdVolumeToPod(pod, pvc, false)
 	} else {
-		k8sutil.AddEtcdVolumeToPod(pod, nil, c.cluster.Spec.Pod.Tmpfs)
+		tmpfs := false
+		if podPolicy := c.cluster.Spec.Pod; podPolicy != nil {
+			tmpfs = podPolicy.Tmpfs
+		}
+		k8sutil.AddEtcdVolumeToPod(pod, nil, tmpfs)
 	}
 	_, err := c.config.KubeCli.CoreV1().Pods(c.cluster.Namespace).Create(pod)
 	return err
