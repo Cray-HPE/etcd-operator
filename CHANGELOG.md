@@ -10,12 +10,21 @@
 
 ### Fixed
 
-- Don't expose unready nodes via client service. [#2063](https://github.com/coreos/etcd-operator/pull/2063)
-- Azure blob storage: use correct list prefix [#2071](https://github.com/coreos/etcd-operator/pull/2071)
-
 ### Deprecated
 
 ### Security
+
+## [Release 0.10.0]
+
+### Added
+* Alibaba Cloud Object Storage Service (OSS) backend - coreos#2065 (@stormgbs)
+* Cluster wide restore - coreos#2074 (@kapouille)
+* Cluster wide backup - coreos#2072 (@kapouille)
+* Support specifying cluster domain for clientURLs - coreos#2028 (@mikkeloscar )
+* Add tmpfs support - coreos#2103 (@chriscoester)
+
+### Fixed
+* Don't expose unready pods via client service - coreos#2063 (@ckoehn)
 
 ## [Release 0.9.4]
 
