@@ -16,7 +16,6 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
@@ -30,7 +29,7 @@ import (
 )
 
 // ErrLostQuorum indicates that the etcd cluster lost its quorum.
-var ErrLostQuorum = errors.New("lost quorum")
+var ErrLostQuorum = newFatalError("lost quorum")
 
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.

@@ -41,6 +41,7 @@ import (
 var (
 	reconcileInterval         = 8 * time.Second
 	podTerminationGracePeriod = int64(5)
+	errAllPodsDead = newFatalError("all etcd pods are dead.")
 )
 
 type clusterEventType string
@@ -246,8 +247,8 @@ func (c *Cluster) run() {
 				continue
 			}
 			if len(running) == 0 {
-				// TODO: how to handle this case?
-				c.logger.Warningf("all etcd pods are dead.")
+				// All pods are dead, cluster cannot recover so return error
+				rerr = errAllPodsDead
 				break
 			}
 
