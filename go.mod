@@ -50,7 +50,7 @@ require (
 	golang.org/x/sys v0.0.0-20190226215855-775f8194d0f9 // indirect
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
 	golang.org/x/tools v0.0.0-20190227180812-8dcc6e70cdef // indirect
-	google.golang.org/api v0.13.0
+	google.golang.org/api v0.14.0
 	google.golang.org/genproto v0.0.0-20190227213309-4f5b463f9597 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20190226173710-145d52631d00
