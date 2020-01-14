@@ -15,10 +15,11 @@
 package k8sutil
 
 import (
-	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
-
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/client-go/kubernetes"
+	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 )
 
 type TLSData struct {
@@ -33,6 +34,15 @@ func GetTLSDataFromSecret(kubecli kubernetes.Interface, ns, se string) (*TLSData
 	if err != nil {
 		return nil, err
 	}
+
+	if secret.Type == v1.SecretTypeTLS {
+		return &TLSData{
+			CertData: secret.Data["tls.crt"],
+			KeyData:  secret.Data["tls.key"],
+			CAData:   secret.Data["ca.crt"],
+		}, nil
+	}
+
 	return &TLSData{
 		CertData: secret.Data[etcdutil.CliCertFile],
 		KeyData:  secret.Data[etcdutil.CliKeyFile],
