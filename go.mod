@@ -3,7 +3,7 @@ module github.com/coreos/etcd-operator
 go 1.13
 
 require (
-	cloud.google.com/go v0.51.0
+	cloud.google.com/go v0.52.0
 	github.com/Azure/azure-sdk-for-go v11.3.0-beta+incompatible
 	github.com/Azure/go-autorest v11.9.0+incompatible
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
