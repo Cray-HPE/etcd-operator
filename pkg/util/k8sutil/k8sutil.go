@@ -253,9 +253,9 @@ func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim, tmpfs bool) 
 		vol.VolumeSource = v1.VolumeSource{
 			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: pvc.Name},
 		}
-		// Fork to solve https://github.com/coreos/etcd-operator/pull/2097
-		// When PVC is used, make the pod auto recover in case of failure
-		pod.Spec.RestartPolicy = v1.RestartPolicyAlways
+               // Addresses case C from https://github.com/coreos/etcd-operator/blob/master/doc/design/persistent_volumes_etcd_data.md
+               // When PVC is used, make the pod auto recover in case of failure
+               pod.Spec.RestartPolicy = v1.RestartPolicyAlways
 	} else {
 		vol.VolumeSource = v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}
 		if tmpfs {
