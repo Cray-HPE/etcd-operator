@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,35 @@
 //
 // This package is DEPRECATED. Use package cloud.google.com/go/texttospeech/apiv1 instead.
 //
-// See https://cloud.google.com/text-to-speech/
+// For product documentation, see: https://cloud.google.com/text-to-speech/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/texttospeech/v1beta1"
 //   ...
-//   texttospeechService, err := texttospeech.New(oauthHttpClient)
+//   ctx := context.Background()
+//   texttospeechService, err := texttospeech.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   texttospeechService, err := texttospeech.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   texttospeechService, err := texttospeech.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package texttospeech // import "google.golang.org/api/texttospeech/v1beta1"
 
 import (
@@ -29,8 +51,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -58,6 +82,32 @@ const (
 	CloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -105,8 +155,7 @@ type VoicesService struct {
 
 // AudioConfig: Description of audio data to be synthesized.
 type AudioConfig struct {
-	// AudioEncoding: Required. The format of the requested audio byte
-	// stream.
+	// AudioEncoding: Required. The format of the audio byte stream.
 	//
 	// Possible values:
 	//   "AUDIO_ENCODING_UNSPECIFIED" - Not specified. Will return result
@@ -114,7 +163,7 @@ type AudioConfig struct {
 	//   "LINEAR16" - Uncompressed 16-bit signed little-endian samples
 	// (Linear PCM).
 	// Audio content returned as LINEAR16 also contains a WAV header.
-	//   "MP3" - MP3 audio.
+	//   "MP3" - MP3 audio at 32kbps.
 	//   "OGG_OPUS" - Opus encoded audio wrapped in an ogg container. The
 	// result will be a
 	// file which can be played natively on Android, and in browsers (at
@@ -124,63 +173,64 @@ type AudioConfig struct {
 	// than MP3 while using approximately the same bitrate.
 	AudioEncoding string `json:"audioEncoding,omitempty"`
 
-	// EffectsProfileId: An identifier which selects 'audio effects'
-	// profiles that are applied on
-	// (post synthesized) text to speech.
-	// Effects are applied on top of each other in the order they are
-	// given.
+	// EffectsProfileId: Optional. Input only. An identifier which selects
+	// 'audio effects' profiles
+	// that are applied on (post synthesized) text to speech. Effects are
+	// applied
+	// on top of each other in the order they are given.
 	// See
-	//
-	// [audio-profiles](https:
-	// //cloud.google.com/text-to-speech/
-	// docs/audio-profiles)
-	// for current supported profile ids.
+	// [audio
+	// profiles](https://cloud.google.com/text-to-speech/docs/audi
+	// o-profiles) for
+	// current supported profile ids.
 	EffectsProfileId []string `json:"effectsProfileId,omitempty"`
 
-	// Pitch: Optional speaking pitch, in the range [-20.0, 20.0]. 20 means
-	// increase 20
-	// semitones from the original pitch. -20 means decrease 20 semitones
-	// from the
-	// original pitch.
+	// Pitch: Optional. Input only. Speaking pitch, in the range [-20.0,
+	// 20.0]. 20 means
+	// increase 20 semitones from the original pitch. -20 means decrease
+	// 20
+	// semitones from the original pitch.
 	Pitch float64 `json:"pitch,omitempty"`
 
-	// SampleRateHertz: The synthesis sample rate (in hertz) for this audio.
-	// Optional.  If this is
-	// different from the voice's natural sample rate, then the synthesizer
-	// will
-	// honor this request by converting to the desired sample rate (which
-	// might
-	// result in worse audio quality), unless the specified sample rate is
-	// not
-	// supported for the encoding chosen, in which case it will fail the
-	// request
-	// and return google.rpc.Code.INVALID_ARGUMENT.
+	// SampleRateHertz: Optional. The synthesis sample rate (in hertz) for
+	// this audio. When this is
+	// specified in SynthesizeSpeechRequest, if this is different from the
+	// voice's
+	// natural sample rate, then the synthesizer will honor this request
+	// by
+	// converting to the desired sample rate (which might result in worse
+	// audio
+	// quality), unless the specified sample rate is not supported for
+	// the
+	// encoding chosen, in which case it will fail the request and
+	// return
+	// google.rpc.Code.INVALID_ARGUMENT.
 	SampleRateHertz int64 `json:"sampleRateHertz,omitempty"`
 
-	// SpeakingRate: Optional speaking rate/speed, in the range [0.25, 4.0].
-	// 1.0 is the normal
-	// native speed supported by the specific voice. 2.0 is twice as fast,
-	// and
-	// 0.5 is half as fast. If unset(0.0), defaults to the native 1.0 speed.
-	// Any
-	// other values < 0.25 or > 4.0 will return an error.
+	// SpeakingRate: Optional. Input only. Speaking rate/speed, in the range
+	// [0.25, 4.0]. 1.0 is
+	// the normal native speed supported by the specific voice. 2.0 is twice
+	// as
+	// fast, and 0.5 is half as fast. If unset(0.0), defaults to the native
+	// 1.0
+	// speed. Any other values < 0.25 or > 4.0 will return an error.
 	SpeakingRate float64 `json:"speakingRate,omitempty"`
 
-	// VolumeGainDb: Optional volume gain (in dB) of the normal native
-	// volume supported by the
-	// specific voice, in the range [-96.0, 16.0]. If unset, or set to a
-	// value of
-	// 0.0 (dB), will play at normal native signal amplitude. A value of
-	// -6.0 (dB)
-	// will play at approximately half the amplitude of the normal native
-	// signal
-	// amplitude. A value of +6.0 (dB) will play at approximately twice
+	// VolumeGainDb: Optional. Input only. Volume gain (in dB) of the normal
+	// native volume
+	// supported by the specific voice, in the range [-96.0, 16.0]. If
+	// unset, or
+	// set to a value of 0.0 (dB), will play at normal native signal
+	// amplitude. A
+	// value of -6.0 (dB) will play at approximately half the amplitude of
 	// the
-	// amplitude of the normal native signal amplitude. Strongly recommend
-	// not to
-	// exceed +10 (dB) as there's usually no effective increase in loudness
-	// for
-	// any value greater than that.
+	// normal native signal amplitude. A value of +6.0 (dB) will play
+	// at
+	// approximately twice the amplitude of the normal native signal
+	// amplitude.
+	// Strongly recommend not to exceed +10 (dB) as there's usually no
+	// effective
+	// increase in loudness for any value greater than that.
 	VolumeGainDb float64 `json:"volumeGainDb,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "AudioEncoding") to
@@ -341,7 +391,9 @@ func (s *SynthesizeSpeechRequest) MarshalJSON() ([]byte, error) {
 type SynthesizeSpeechResponse struct {
 	// AudioContent: The audio data bytes encoded as specified in the
 	// request, including the
-	// header (For LINEAR16 audio, we include the WAV header). Note: as
+	// header for encodings that are wrapped in containers (e.g. MP3,
+	// OGG_OPUS).
+	// For LINEAR16 audio, we include the WAV header. Note: as
 	// with all bytes fields, protobuffers use a pure binary
 	// representation,
 	// whereas JSON representations use base64.
@@ -433,13 +485,12 @@ func (s *Voice) MarshalJSON() ([]byte, error) {
 // VoiceSelectionParams: Description of which voice to use for a
 // synthesis request.
 type VoiceSelectionParams struct {
-	// LanguageCode: The language (and optionally also the region) of the
-	// voice expressed as
+	// LanguageCode: Required. The language (and potentially also the
+	// region) of the voice expressed as
 	// a
 	// [BCP-47](https://www.rfc-editor.org/rfc/bcp/bcp47.txt) language tag,
 	// e.g.
-	// "en-US". Required. This should not include a script tag (e.g.
-	// use
+	// "en-US". This should not include a script tag (e.g. use
 	// "cmn-cn" rather than "cmn-Hant-cn"), because the script will be
 	// inferred
 	// from the input provided in the SynthesisInput.  The TTS service
@@ -455,13 +506,13 @@ type VoiceSelectionParams struct {
 	// Bokmal) instead of "no" (Norwegian)".
 	LanguageCode string `json:"languageCode,omitempty"`
 
-	// Name: The name of the voice. Optional; if not set, the service will
-	// choose a
+	// Name: The name of the voice. If not set, the service will choose
+	// a
 	// voice based on the other parameters such as language_code and gender.
 	Name string `json:"name,omitempty"`
 
-	// SsmlGender: The preferred gender of the voice. Optional; if not set,
-	// the service will
+	// SsmlGender: The preferred gender of the voice. If not set, the
+	// service will
 	// choose a voice based on the other parameters such as language_code
 	// and
 	// name. Note that this is only a preference, not requirement; if
@@ -555,6 +606,7 @@ func (c *TextSynthesizeCall) Header() http.Header {
 
 func (c *TextSynthesizeCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -651,9 +703,8 @@ func (r *VoicesService) List() *VoicesListCall {
 	return c
 }
 
-// LanguageCode sets the optional parameter "languageCode": Optional
-// (but
-// recommended)
+// LanguageCode sets the optional parameter "languageCode":
+// Recommended.
 // [BCP-47](https://www.rfc-editor.org/rfc/bcp/bcp47.txt) language tag.
 // If
 // specified, the ListVoices call will only return voices that can be
@@ -709,6 +760,7 @@ func (c *VoicesListCall) Header() http.Header {
 
 func (c *VoicesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -774,7 +826,7 @@ func (c *VoicesListCall) Do(opts ...googleapi.CallOption) (*ListVoicesResponse, 
 	//   "parameterOrder": [],
 	//   "parameters": {
 	//     "languageCode": {
-	//       "description": "Optional (but recommended)\n[BCP-47](https://www.rfc-editor.org/rfc/bcp/bcp47.txt) language tag. If\nspecified, the ListVoices call will only return voices that can be used to\nsynthesize this language_code. E.g. when specifying \"en-NZ\", you will get\nsupported \"en-*\" voices; when specifying \"no\", you will get supported\n\"no-*\" (Norwegian) and \"nb-*\" (Norwegian Bokmal) voices; specifying \"zh\"\nwill also get supported \"cmn-*\" voices; specifying \"zh-hk\" will also get\nsupported \"yue-*\" voices.",
+	//       "description": "Optional. Recommended.\n[BCP-47](https://www.rfc-editor.org/rfc/bcp/bcp47.txt) language tag. If\nspecified, the ListVoices call will only return voices that can be used to\nsynthesize this language_code. E.g. when specifying \"en-NZ\", you will get\nsupported \"en-*\" voices; when specifying \"no\", you will get supported\n\"no-*\" (Norwegian) and \"nb-*\" (Norwegian Bokmal) voices; specifying \"zh\"\nwill also get supported \"cmn-*\" voices; specifying \"zh-hk\" will also get\nsupported \"yue-*\" voices.",
 	//       "location": "query",
 	//       "type": "string"
 	//     }

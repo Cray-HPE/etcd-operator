@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package androiddeviceprovisioning provides access to the Android Device Provisioning Partner API.
 //
-// See https://developers.google.com/zero-touch/
+// For product documentation, see: https://developers.google.com/zero-touch/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/androiddeviceprovisioning/v1"
 //   ...
-//   androiddeviceprovisioningService, err := androiddeviceprovisioning.New(oauthHttpClient)
+//   ctx := context.Background()
+//   androiddeviceprovisioningService, err := androiddeviceprovisioning.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   androiddeviceprovisioningService, err := androiddeviceprovisioning.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   androiddeviceprovisioningService, err := androiddeviceprovisioning.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package androiddeviceprovisioning // import "google.golang.org/api/androiddeviceprovisioning/v1"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -50,6 +74,27 @@ const apiName = "androiddeviceprovisioning"
 const apiVersion = "v1"
 const basePath = "https://androiddeviceprovisioning.googleapis.com/"
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -310,7 +355,7 @@ func (s *ClaimDevicesRequest) MarshalJSON() ([]byte, error) {
 // Company: A reseller, vendor, or customer in the zero-touch reseller
 // and customer APIs.
 type Company struct {
-	// AdminEmails: Input only. Optional. Email address of customer's users
+	// AdminEmails: Optional. Input only. Email address of customer's users
 	// in the admin role.
 	// Each email address must be associated with a Google Account.
 	AdminEmails []string `json:"adminEmails,omitempty"`
@@ -856,6 +901,16 @@ type DeviceClaim struct {
 	//   "SECTION_TYPE_SIM_LOCK" - SIM-lock section type.
 	//   "SECTION_TYPE_ZERO_TOUCH" - Zero-touch enrollment section type.
 	SectionType string `json:"sectionType,omitempty"`
+
+	// VacationModeExpireTime: The timestamp when the device will exit
+	// ‘vacation mode’. This value is
+	// present iff the device is in 'vacation mode'.
+	VacationModeExpireTime string `json:"vacationModeExpireTime,omitempty"`
+
+	// VacationModeStartTime: The timestamp when the device was put into
+	// ‘vacation mode’. This value is
+	// present iff the device is in 'vacation mode'.
+	VacationModeStartTime string `json:"vacationModeStartTime,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "OwnerCompanyId") to
 	// unconditionally include in API requests. By default, fields with
@@ -1504,7 +1559,8 @@ type Operation struct {
 	// service that
 	// originally returns it. If you use the default HTTP mapping,
 	// the
-	// `name` should have the format of `operations/some/unique/name`.
+	// `name` should be a resource name ending with
+	// `operations/{unique_id}`.
 	Name string `json:"name,omitempty"`
 
 	// Response: This field will contain a
@@ -1643,6 +1699,14 @@ type PartnerUnclaim struct {
 	//   "SECTION_TYPE_ZERO_TOUCH" - Zero-touch enrollment section type.
 	SectionType string `json:"sectionType,omitempty"`
 
+	// VacationModeDays: The duration of the vacation unlock starting from
+	// when the request is
+	// processed. (1 day is treated as 24 hours)
+	VacationModeDays int64 `json:"vacationModeDays,omitempty"`
+
+	// VacationModeExpireTime: The expiration time of the vacation unlock.
+	VacationModeExpireTime string `json:"vacationModeExpireTime,omitempty"`
+
 	// ForceSendFields is a list of field names (e.g. "DeviceId") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
@@ -1723,84 +1787,17 @@ func (s *PerDeviceStatusInBatch) MarshalJSON() ([]byte, error) {
 }
 
 // Status: The `Status` type defines a logical error model that is
-// suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -1858,6 +1855,14 @@ type UnclaimDeviceRequest struct {
 	//   "SECTION_TYPE_SIM_LOCK" - SIM-lock section type.
 	//   "SECTION_TYPE_ZERO_TOUCH" - Zero-touch enrollment section type.
 	SectionType string `json:"sectionType,omitempty"`
+
+	// VacationModeDays: The duration of the vacation unlock starting from
+	// when the request is
+	// processed. (1 day is treated as 24 hours)
+	VacationModeDays int64 `json:"vacationModeDays,omitempty"`
+
+	// VacationModeExpireTime: The expiration time of the vacation unlock.
+	VacationModeExpireTime string `json:"vacationModeExpireTime,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "DeviceId") to
 	// unconditionally include in API requests. By default, fields with
@@ -2071,6 +2076,7 @@ func (c *CustomersListCall) Header() http.Header {
 
 func (c *CustomersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2224,6 +2230,7 @@ func (c *CustomersConfigurationsCreateCall) Header() http.Header {
 
 func (c *CustomersConfigurationsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2360,6 +2367,7 @@ func (c *CustomersConfigurationsDeleteCall) Header() http.Header {
 
 func (c *CustomersConfigurationsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2497,6 +2505,7 @@ func (c *CustomersConfigurationsGetCall) Header() http.Header {
 
 func (c *CustomersConfigurationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2637,6 +2646,7 @@ func (c *CustomersConfigurationsListCall) Header() http.Header {
 
 func (c *CustomersConfigurationsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2781,6 +2791,7 @@ func (c *CustomersConfigurationsPatchCall) Header() http.Header {
 
 func (c *CustomersConfigurationsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2927,6 +2938,7 @@ func (c *CustomersDevicesApplyConfigurationCall) Header() http.Header {
 
 func (c *CustomersDevicesApplyConfigurationCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3072,6 +3084,7 @@ func (c *CustomersDevicesGetCall) Header() http.Header {
 
 func (c *CustomersDevicesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3227,6 +3240,7 @@ func (c *CustomersDevicesListCall) Header() http.Header {
 
 func (c *CustomersDevicesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3390,6 +3404,7 @@ func (c *CustomersDevicesRemoveConfigurationCall) Header() http.Header {
 
 func (c *CustomersDevicesRemoveConfigurationCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3532,6 +3547,7 @@ func (c *CustomersDevicesUnclaimCall) Header() http.Header {
 
 func (c *CustomersDevicesUnclaimCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3679,6 +3695,7 @@ func (c *CustomersDpcsListCall) Header() http.Header {
 
 func (c *CustomersDpcsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3823,6 +3840,7 @@ func (c *OperationsGetCall) Header() http.Header {
 
 func (c *OperationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3962,6 +3980,7 @@ func (c *PartnersCustomersCreateCall) Header() http.Header {
 
 func (c *PartnersCustomersCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4126,6 +4145,7 @@ func (c *PartnersCustomersListCall) Header() http.Header {
 
 func (c *PartnersCustomersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4293,6 +4313,7 @@ func (c *PartnersDevicesClaimCall) Header() http.Header {
 
 func (c *PartnersDevicesClaimCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4434,6 +4455,7 @@ func (c *PartnersDevicesClaimAsyncCall) Header() http.Header {
 
 func (c *PartnersDevicesClaimAsyncCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4572,6 +4594,7 @@ func (c *PartnersDevicesFindByIdentifierCall) Header() http.Header {
 
 func (c *PartnersDevicesFindByIdentifierCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4737,6 +4760,7 @@ func (c *PartnersDevicesFindByOwnerCall) Header() http.Header {
 
 func (c *PartnersDevicesFindByOwnerCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4904,6 +4928,7 @@ func (c *PartnersDevicesGetCall) Header() http.Header {
 
 func (c *PartnersDevicesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5037,6 +5062,7 @@ func (c *PartnersDevicesMetadataCall) Header() http.Header {
 
 func (c *PartnersDevicesMetadataCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5186,6 +5212,7 @@ func (c *PartnersDevicesUnclaimCall) Header() http.Header {
 
 func (c *PartnersDevicesUnclaimCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5328,6 +5355,7 @@ func (c *PartnersDevicesUnclaimAsyncCall) Header() http.Header {
 
 func (c *PartnersDevicesUnclaimAsyncCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5471,6 +5499,7 @@ func (c *PartnersDevicesUpdateMetadataAsyncCall) Header() http.Header {
 
 func (c *PartnersDevicesUpdateMetadataAsyncCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5631,6 +5660,7 @@ func (c *PartnersVendorsListCall) Header() http.Header {
 
 func (c *PartnersVendorsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5817,6 +5847,7 @@ func (c *PartnersVendorsCustomersListCall) Header() http.Header {
 
 func (c *PartnersVendorsCustomersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

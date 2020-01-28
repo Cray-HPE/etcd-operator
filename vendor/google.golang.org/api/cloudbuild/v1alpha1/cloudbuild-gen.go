@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package cloudbuild provides access to the Cloud Build API.
 //
-// See https://cloud.google.com/cloud-build/docs/
+// For product documentation, see: https://cloud.google.com/cloud-build/docs/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/cloudbuild/v1alpha1"
 //   ...
-//   cloudbuildService, err := cloudbuild.New(oauthHttpClient)
+//   ctx := context.Background()
+//   cloudbuildService, err := cloudbuild.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   cloudbuildService, err := cloudbuild.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   cloudbuildService, err := cloudbuild.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package cloudbuild // import "google.golang.org/api/cloudbuild/v1alpha1"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -56,6 +80,32 @@ const (
 	CloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -905,7 +955,7 @@ func (s *ListWorkerPoolsResponse) MarshalJSON() ([]byte, error) {
 // Network: Network describes the GCP network used to create workers in.
 type Network struct {
 	// Network: Network on which the workers are created.
-	// “default” network is used if empty.
+	// "default" network is used if empty.
 	Network string `json:"network,omitempty"`
 
 	// ProjectId: Project id containing the defined network and subnetwork.
@@ -919,9 +969,8 @@ type Network struct {
 	// with no VPC, this will be the same as project_id.
 	ProjectId string `json:"projectId,omitempty"`
 
-	// Subnetwork: Subnetwork on which the workers are
-	// created.
-	// “default” subnetwork is used if empty.
+	// Subnetwork: Subnetwork on which the workers are created.
+	// "default" subnetwork is used if empty.
 	Subnetwork string `json:"subnetwork,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Network") to
@@ -950,7 +999,11 @@ func (s *Network) MarshalJSON() ([]byte, error) {
 // RepoSource: Location of the source in a Google Cloud Source
 // Repository.
 type RepoSource struct {
-	// BranchName: Name of the branch to build.
+	// BranchName: Regex matching branches to build.
+	//
+	// The syntax of the regular expressions accepted is the syntax accepted
+	// by
+	// RE2 and described at https://github.com/google/re2/wiki/Syntax
 	BranchName string `json:"branchName,omitempty"`
 
 	// CommitSha: Explicit commit SHA to build.
@@ -969,12 +1022,18 @@ type RepoSource struct {
 	// project ID requesting the build is assumed.
 	ProjectId string `json:"projectId,omitempty"`
 
-	// RepoName: Name of the Cloud Source Repository. If omitted, the name
-	// "default" is
-	// assumed.
+	// RepoName: Required. Name of the Cloud Source Repository.
 	RepoName string `json:"repoName,omitempty"`
 
-	// TagName: Name of the tag to build.
+	// Substitutions: Substitutions to use in a triggered build.
+	// Should only be used with RunBuildTrigger
+	Substitutions map[string]string `json:"substitutions,omitempty"`
+
+	// TagName: Regex matching tags to build.
+	//
+	// The syntax of the regular expressions accepted is the syntax accepted
+	// by
+	// RE2 and described at https://github.com/google/re2/wiki/Syntax
 	TagName string `json:"tagName,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "BranchName") to
@@ -1005,6 +1064,9 @@ type Results struct {
 	// ArtifactManifest: Path to the artifact manifest. Only populated when
 	// artifacts are uploaded.
 	ArtifactManifest string `json:"artifactManifest,omitempty"`
+
+	// ArtifactTiming: Time to push all non-container artifacts.
+	ArtifactTiming *TimeSpan `json:"artifactTiming,omitempty"`
 
 	// BuildStepImages: List of build step digests, in the order
 	// corresponding to build step
@@ -1135,9 +1197,9 @@ func (s *Source) MarshalJSON() ([]byte, error) {
 type SourceProvenance struct {
 	// FileHashes: Output only. Hash(es) of the build source, which can be
 	// used to verify that
-	// the originalsource integrity was maintained in the build. Note
+	// the original source integrity was maintained in the build. Note
 	// that
-	// `FileHashes` willonly be populated if `BuildOptions` has requested
+	// `FileHashes` will only be populated if `BuildOptions` has requested
 	// a
 	// `SourceProvenanceHash`.
 	//
@@ -1399,12 +1461,12 @@ type WorkerPool struct {
 	// Name: User-defined name of the `WorkerPool`.
 	Name string `json:"name,omitempty"`
 
-	// ProjectId: The project ID of the GCP project in which the
+	// ProjectId: The project ID of the GCP project for which the
 	// `WorkerPool` is created.
 	ProjectId string `json:"projectId,omitempty"`
 
-	// Regions: List of regions to create the `WorkerPool`. Regions can’t
-	// be empty.
+	// Regions: List of regions to create the `WorkerPool`. Regions can't be
+	// empty.
 	// If Cloud Build adds a new GCP region in the future, the
 	// existing
 	// `WorkerPool` will not be enabled in the new region automatically;
@@ -1414,10 +1476,10 @@ type WorkerPool struct {
 	//
 	// Possible values:
 	//   "REGION_UNSPECIFIED" - no region
-	//   "US_CENTRAL1" - us-central1 region
-	//   "US_WEST1" - us-west1 region
-	//   "US_EAST1" - us-east1 region
-	//   "US_EAST4" - us-east4 region
+	//   "us-central1" - us-central1 region
+	//   "us-west1" - us-west1 region
+	//   "us-east1" - us-east1 region
+	//   "us-east4" - us-east4 region
 	Regions []string `json:"regions,omitempty"`
 
 	// ServiceAccountEmail: Output only. The service account used to manage
@@ -1527,6 +1589,7 @@ func (c *ProjectsWorkerPoolsCreateCall) Header() http.Header {
 
 func (c *ProjectsWorkerPoolsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191205")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1631,7 +1694,7 @@ type ProjectsWorkerPoolsDeleteCall struct {
 }
 
 // Delete: Deletes a `WorkerPool` by its project ID and WorkerPool
-// ID.
+// name.
 //
 // This API is experimental.
 func (r *ProjectsWorkerPoolsService) Delete(name string) *ProjectsWorkerPoolsDeleteCall {
@@ -1667,6 +1730,7 @@ func (c *ProjectsWorkerPoolsDeleteCall) Header() http.Header {
 
 func (c *ProjectsWorkerPoolsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191205")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1725,7 +1789,7 @@ func (c *ProjectsWorkerPoolsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes a `WorkerPool` by its project ID and WorkerPool ID.\n\nThis API is experimental.",
+	//   "description": "Deletes a `WorkerPool` by its project ID and WorkerPool name.\n\nThis API is experimental.",
 	//   "flatPath": "v1alpha1/projects/{projectsId}/workerPools/{workerPoolsId}",
 	//   "httpMethod": "DELETE",
 	//   "id": "cloudbuild.projects.workerPools.delete",
@@ -1809,6 +1873,7 @@ func (c *ProjectsWorkerPoolsGetCall) Header() http.Header {
 
 func (c *ProjectsWorkerPoolsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191205")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1954,6 +2019,7 @@ func (c *ProjectsWorkerPoolsListCall) Header() http.Header {
 
 func (c *ProjectsWorkerPoolsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191205")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2063,6 +2129,13 @@ func (r *ProjectsWorkerPoolsService) Patch(name string, workerpool *WorkerPool) 
 	return c
 }
 
+// UpdateMask sets the optional parameter "updateMask": A mask
+// specifying which fields in `WorkerPool` should be updated.
+func (c *ProjectsWorkerPoolsPatchCall) UpdateMask(updateMask string) *ProjectsWorkerPoolsPatchCall {
+	c.urlParams_.Set("updateMask", updateMask)
+	return c
+}
+
 // Fields allows partial responses to be retrieved. See
 // https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
 // for more information.
@@ -2090,6 +2163,7 @@ func (c *ProjectsWorkerPoolsPatchCall) Header() http.Header {
 
 func (c *ProjectsWorkerPoolsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191205")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2166,6 +2240,12 @@ func (c *ProjectsWorkerPoolsPatchCall) Do(opts ...googleapi.CallOption) (*Worker
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/workerPools/[^/]+$",
 	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "updateMask": {
+	//       "description": "A mask specifying which fields in `WorkerPool` should be updated.",
+	//       "format": "google-fieldmask",
+	//       "location": "query",
 	//       "type": "string"
 	//     }
 	//   },

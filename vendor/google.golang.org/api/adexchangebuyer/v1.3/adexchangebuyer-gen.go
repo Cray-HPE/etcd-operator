@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package adexchangebuyer provides access to the Ad Exchange Buyer API.
 //
-// See https://developers.google.com/ad-exchange/buyer-rest
+// For product documentation, see: https://developers.google.com/ad-exchange/buyer-rest
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/adexchangebuyer/v1.3"
 //   ...
-//   adexchangebuyerService, err := adexchangebuyer.New(oauthHttpClient)
+//   ctx := context.Background()
+//   adexchangebuyerService, err := adexchangebuyer.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   adexchangebuyerService, err := adexchangebuyer.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   adexchangebuyerService, err := adexchangebuyer.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package adexchangebuyer // import "google.golang.org/api/adexchangebuyer/v1.3"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -56,6 +80,32 @@ const (
 	AdexchangeBuyerScope = "https://www.googleapis.com/auth/adexchange.buyer"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/adexchange.buyer",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -440,6 +490,8 @@ type Creative struct {
 	// AccountId: Account id.
 	AccountId int64 `json:"accountId,omitempty"`
 
+	AdTechnologyProviders *CreativeAdTechnologyProviders `json:"adTechnologyProviders,omitempty"`
+
 	// AdvertiserId: Detected advertiser id, if any. Read-only. This field
 	// should not be set in requests.
 	AdvertiserId googleapi.Int64s `json:"advertiserId,omitempty"`
@@ -552,6 +604,54 @@ type Creative struct {
 
 func (s *Creative) MarshalJSON() ([]byte, error) {
 	type NoMethod Creative
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type CreativeAdTechnologyProviders struct {
+	// DetectedProviderIds: The detected ad technology provider IDs for this
+	// creative. See
+	// https://storage.googleapis.com/adx-rtb-dictionaries/providers.csv for
+	// mapping of provider ID to provided name, a privacy policy URL, and a
+	// list of domains which can be attributed to the provider. If this
+	// creative contains provider IDs that are outside of those listed in
+	// the
+	// `BidRequest.adslot.consented_providers_settings.consented_providers`
+	// field on the  Authorized Buyers Real-Time Bidding protocol or the
+	// `BidRequest.user.ext.consented_providers_settings.consented_providers`
+	//  field on the OpenRTB protocol, a bid submitted for a European
+	// Economic Area (EEA) user with this creative is not compliant with the
+	// GDPR policies as mentioned in the "Third-party Ad Technology Vendors"
+	// section of Authorized Buyers Program Guidelines.
+	DetectedProviderIds googleapi.Int64s `json:"detectedProviderIds,omitempty"`
+
+	// HasUnidentifiedProvider: Whether the creative contains an
+	// unidentified ad technology provider. If true, a bid submitted for a
+	// European Economic Area (EEA) user with this creative is not compliant
+	// with the GDPR policies as mentioned in the "Third-party Ad Technology
+	// Vendors" section of Authorized Buyers Program Guidelines.
+	HasUnidentifiedProvider bool `json:"hasUnidentifiedProvider,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "DetectedProviderIds")
+	// to unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "DetectedProviderIds") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *CreativeAdTechnologyProviders) MarshalJSON() ([]byte, error) {
+	type NoMethod CreativeAdTechnologyProviders
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -720,10 +820,6 @@ type CreativeNativeAd struct {
 	// StarRating: The app rating in the app store. Must be in the range
 	// [0-5].
 	StarRating float64 `json:"starRating,omitempty"`
-
-	// Store: The URL to the app store to purchase/download the promoted
-	// app.
-	Store string `json:"store,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Advertiser") to
 	// unconditionally include in API requests. By default, fields with
@@ -1270,6 +1366,13 @@ type PretargetingConfig struct {
 	// Languages: Request containing any of these language codes will match.
 	Languages []string `json:"languages,omitempty"`
 
+	// MaximumQps: The maximum QPS allocated to this pretargeting
+	// configuration, used for pretargeting-level QPS limits. By default,
+	// this is not set, which indicates that there is no QPS limit at the
+	// configuration level (a global or account-level limit may still be
+	// imposed).
+	MaximumQps int64 `json:"maximumQps,omitempty,string"`
+
 	// MobileCarriers: Requests containing any of these mobile carrier ids
 	// will match. Values are from mobile-carriers.csv in the downloadable
 	// files section.
@@ -1520,6 +1623,7 @@ func (c *AccountsGetCall) Header() http.Header {
 
 func (c *AccountsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1660,6 +1764,7 @@ func (c *AccountsListCall) Header() http.Header {
 
 func (c *AccountsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1779,6 +1884,7 @@ func (c *AccountsPatchCall) Header() http.Header {
 
 func (c *AccountsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1917,6 +2023,7 @@ func (c *AccountsUpdateCall) Header() http.Header {
 
 func (c *AccountsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2065,6 +2172,7 @@ func (c *BillingInfoGetCall) Header() http.Header {
 
 func (c *BillingInfoGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2206,6 +2314,7 @@ func (c *BillingInfoListCall) Header() http.Header {
 
 func (c *BillingInfoListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2336,6 +2445,7 @@ func (c *BudgetGetCall) Header() http.Header {
 
 func (c *BudgetGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2482,6 +2592,7 @@ func (c *BudgetPatchCall) Header() http.Header {
 
 func (c *BudgetPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2633,6 +2744,7 @@ func (c *BudgetUpdateCall) Header() http.Header {
 
 func (c *BudgetUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2792,6 +2904,7 @@ func (c *CreativesGetCall) Header() http.Header {
 
 func (c *CreativesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2931,6 +3044,7 @@ func (c *CreativesInsertCall) Header() http.Header {
 
 func (c *CreativesInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3110,6 +3224,7 @@ func (c *CreativesListCall) Header() http.Header {
 
 func (c *CreativesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3301,6 +3416,7 @@ func (c *DirectDealsGetCall) Header() http.Header {
 
 func (c *DirectDealsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3441,6 +3557,7 @@ func (c *DirectDealsListCall) Header() http.Header {
 
 func (c *DirectDealsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3586,6 +3703,7 @@ func (c *PerformanceReportListCall) Header() http.Header {
 
 func (c *PerformanceReportListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3743,6 +3861,7 @@ func (c *PretargetingConfigDeleteCall) Header() http.Header {
 
 func (c *PretargetingConfigDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3865,6 +3984,7 @@ func (c *PretargetingConfigGetCall) Header() http.Header {
 
 func (c *PretargetingConfigGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4007,6 +4127,7 @@ func (c *PretargetingConfigInsertCall) Header() http.Header {
 
 func (c *PretargetingConfigInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4155,6 +4276,7 @@ func (c *PretargetingConfigListCall) Header() http.Header {
 
 func (c *PretargetingConfigListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4291,6 +4413,7 @@ func (c *PretargetingConfigPatchCall) Header() http.Header {
 
 func (c *PretargetingConfigPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4440,6 +4563,7 @@ func (c *PretargetingConfigUpdateCall) Header() http.Header {
 
 func (c *PretargetingConfigUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

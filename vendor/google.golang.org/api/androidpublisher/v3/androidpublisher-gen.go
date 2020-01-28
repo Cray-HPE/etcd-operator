@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package androidpublisher provides access to the Google Play Developer API.
 //
-// See https://developers.google.com/android-publisher
+// For product documentation, see: https://developers.google.com/android-publisher
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/androidpublisher/v3"
 //   ...
-//   androidpublisherService, err := androidpublisher.New(oauthHttpClient)
+//   ctx := context.Background()
+//   androidpublisherService, err := androidpublisher.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   androidpublisherService, err := androidpublisher.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   androidpublisherService, err := androidpublisher.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package androidpublisher // import "google.golang.org/api/androidpublisher/v3"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -56,6 +80,32 @@ const (
 	AndroidpublisherScope = "https://www.googleapis.com/auth/androidpublisher"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/androidpublisher",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -63,6 +113,7 @@ func New(client *http.Client) (*Service, error) {
 	s := &Service{client: client, BasePath: basePath}
 	s.Edits = NewEditsService(s)
 	s.Inappproducts = NewInappproductsService(s)
+	s.Internalappsharingartifacts = NewInternalappsharingartifactsService(s)
 	s.Orders = NewOrdersService(s)
 	s.Purchases = NewPurchasesService(s)
 	s.Reviews = NewReviewsService(s)
@@ -77,6 +128,8 @@ type Service struct {
 	Edits *EditsService
 
 	Inappproducts *InappproductsService
+
+	Internalappsharingartifacts *InternalappsharingartifactsService
 
 	Orders *OrdersService
 
@@ -215,6 +268,15 @@ func NewInappproductsService(s *Service) *InappproductsService {
 }
 
 type InappproductsService struct {
+	s *Service
+}
+
+func NewInternalappsharingartifactsService(s *Service) *InternalappsharingartifactsService {
+	rs := &InternalappsharingartifactsService{s: s}
+	return rs
+}
+
+type InternalappsharingartifactsService struct {
 	s *Service
 }
 
@@ -630,6 +692,62 @@ func (s *Comment) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+type Control struct {
+	ModRanges []*ModRange `json:"modRanges,omitempty"`
+
+	VersionCodes googleapi.Int64s `json:"versionCodes,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ModRanges") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ModRanges") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Control) MarshalJSON() ([]byte, error) {
+	type NoMethod Control
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type CountryTargeting struct {
+	Countries []string `json:"countries,omitempty"`
+
+	IncludeRestOfWorld bool `json:"includeRestOfWorld,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Countries") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Countries") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *CountryTargeting) MarshalJSON() ([]byte, error) {
+	type NoMethod CountryTargeting
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // DeobfuscationFile: Represents a deobfuscation file.
 type DeobfuscationFile struct {
 	// SymbolType: The type of the deobfuscation file.
@@ -966,6 +1084,9 @@ type Image struct {
 	// Sha1: A sha1 hash of the image that was uploaded.
 	Sha1 string `json:"sha1,omitempty"`
 
+	// Sha256: A sha256 hash of the image that was uploaded.
+	Sha256 string `json:"sha256,omitempty"`
+
 	// Url: A URL that will serve a preview of the image.
 	Url string `json:"url,omitempty"`
 
@@ -1225,6 +1346,103 @@ func (s *InappproductsListResponse) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// InternalAppSharingArtifact: An artifact resource which gets created
+// when uploading an APK or Android App Bundle through internal app
+// sharing.
+type InternalAppSharingArtifact struct {
+	// CertificateFingerprint: The SHA256 fingerprint of the certificate
+	// used to signed the generated artifact.
+	CertificateFingerprint string `json:"certificateFingerprint,omitempty"`
+
+	// DownloadUrl: The download URL generated for the uploaded artifact.
+	// Users that are authorized to download can follow the link to the Play
+	// Store app to install it.
+	DownloadUrl string `json:"downloadUrl,omitempty"`
+
+	// Sha256: The SHA-256 hash of the artifact represented as a lowercase
+	// hexadecimal number, matching the output of the sha256sum command.
+	Sha256 string `json:"sha256,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "CertificateFingerprint") to unconditionally include in API requests.
+	// By default, fields with empty values are omitted from API requests.
+	// However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CertificateFingerprint")
+	// to include in API requests with the JSON null value. By default,
+	// fields with empty values are omitted from API requests. However, any
+	// field with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *InternalAppSharingArtifact) MarshalJSON() ([]byte, error) {
+	type NoMethod InternalAppSharingArtifact
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// IntroductoryPriceInfo: Contains the introductory price information
+// for a subscription.
+type IntroductoryPriceInfo struct {
+	// IntroductoryPriceAmountMicros: Introductory price of the
+	// subscription, not including tax. The currency is the same as
+	// price_currency_code. Price is expressed in micro-units, where
+	// 1,000,000 micro-units represents one unit of the currency. For
+	// example, if the subscription price is €1.99, price_amount_micros is
+	// 1990000.
+	IntroductoryPriceAmountMicros int64 `json:"introductoryPriceAmountMicros,omitempty,string"`
+
+	// IntroductoryPriceCurrencyCode: ISO 4217 currency code for the
+	// introductory subscription price. For example, if the price is
+	// specified in British pounds sterling, price_currency_code is "GBP".
+	IntroductoryPriceCurrencyCode string `json:"introductoryPriceCurrencyCode,omitempty"`
+
+	// IntroductoryPriceCycles: The number of billing period to offer
+	// introductory pricing.
+	IntroductoryPriceCycles int64 `json:"introductoryPriceCycles,omitempty"`
+
+	// IntroductoryPricePeriod: Introductory price period, specified in ISO
+	// 8601 format. Common values are (but not limited to) "P1W" (one week),
+	// "P1M" (one month), "P3M" (three months), "P6M" (six months), and
+	// "P1Y" (one year).
+	IntroductoryPricePeriod string `json:"introductoryPricePeriod,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "IntroductoryPriceAmountMicros") to unconditionally include in API
+	// requests. By default, fields with empty values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g.
+	// "IntroductoryPriceAmountMicros") to include in API requests with the
+	// JSON null value. By default, fields with empty values are omitted
+	// from API requests. However, any field with an empty value appearing
+	// in NullFields will be sent to the server as null. It is an error if a
+	// field in this list has a non-empty value. This may be used to include
+	// null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *IntroductoryPriceInfo) MarshalJSON() ([]byte, error) {
+	type NoMethod IntroductoryPriceInfo
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 type Listing struct {
 	// FullDescription: Full description of the app; this may be up to 4000
 	// characters in length.
@@ -1336,6 +1554,34 @@ func (s *LocalizedText) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+type ModRange struct {
+	End int64 `json:"end,omitempty,string"`
+
+	Start int64 `json:"start,omitempty,string"`
+
+	// ForceSendFields is a list of field names (e.g. "End") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "End") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ModRange) MarshalJSON() ([]byte, error) {
+	type NoMethod ModRange
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 type MonthDay struct {
 	// Day: Day of a month, value in [1, 31] range. Valid range depends on
 	// the specified month.
@@ -1431,6 +1677,12 @@ func (s *Price) MarshalJSON() ([]byte, error) {
 // ProductPurchase: A ProductPurchase resource indicates the status of a
 // user's inapp product purchase.
 type ProductPurchase struct {
+	// AcknowledgementState: The acknowledgement state of the inapp product.
+	// Possible values are:
+	// - Yet to be acknowledged
+	// - Acknowledged
+	AcknowledgementState int64 `json:"acknowledgementState,omitempty"`
+
 	// ConsumptionState: The consumption state of the inapp product.
 	// Possible values are:
 	// - Yet to be consumed
@@ -1449,36 +1701,46 @@ type ProductPurchase struct {
 	// product.
 	OrderId string `json:"orderId,omitempty"`
 
+	// ProductId: The inapp product SKU.
+	ProductId string `json:"productId,omitempty"`
+
 	// PurchaseState: The purchase state of the order. Possible values are:
 	//
 	// - Purchased
 	// - Canceled
+	// - Pending
 	PurchaseState int64 `json:"purchaseState,omitempty"`
 
 	// PurchaseTimeMillis: The time the product was purchased, in
 	// milliseconds since the epoch (Jan 1, 1970).
 	PurchaseTimeMillis int64 `json:"purchaseTimeMillis,omitempty,string"`
 
+	// PurchaseToken: The purchase token generated to identify this
+	// purchase.
+	PurchaseToken string `json:"purchaseToken,omitempty"`
+
 	// PurchaseType: The type of purchase of the inapp product. This field
 	// is only set if this purchase was not made using the standard in-app
 	// billing flow. Possible values are:
 	// - Test (i.e. purchased from a license testing account)
 	// - Promo (i.e. purchased using a promo code)
+	// - Rewarded (i.e. from watching a video ad instead of paying)
 	PurchaseType *int64 `json:"purchaseType,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
 	// server.
 	googleapi.ServerResponse `json:"-"`
 
-	// ForceSendFields is a list of field names (e.g. "ConsumptionState") to
-	// unconditionally include in API requests. By default, fields with
-	// empty values are omitted from API requests. However, any non-pointer,
-	// non-interface field appearing in ForceSendFields will be sent to the
-	// server regardless of whether the field is empty or not. This may be
-	// used to include empty fields in Patch requests.
+	// ForceSendFields is a list of field names (e.g.
+	// "AcknowledgementState") to unconditionally include in API requests.
+	// By default, fields with empty values are omitted from API requests.
+	// However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "ConsumptionState") to
+	// NullFields is a list of field names (e.g. "AcknowledgementState") to
 	// include in API requests with the JSON null value. By default, fields
 	// with empty values are omitted from API requests. However, any field
 	// with an empty value appearing in NullFields will be sent to the
@@ -1490,6 +1752,34 @@ type ProductPurchase struct {
 
 func (s *ProductPurchase) MarshalJSON() ([]byte, error) {
 	type NoMethod ProductPurchase
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type ProductPurchasesAcknowledgeRequest struct {
+	// DeveloperPayload: Payload to attach to the purchase.
+	DeveloperPayload string `json:"developerPayload,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "DeveloperPayload") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "DeveloperPayload") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ProductPurchasesAcknowledgeRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod ProductPurchasesAcknowledgeRequest
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -1687,6 +1977,36 @@ func (s *ReviewsReplyResponse) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+type Sampling struct {
+	ModRanges []*ModRange `json:"modRanges,omitempty"`
+
+	Modulus int64 `json:"modulus,omitempty,string"`
+
+	Salt int64 `json:"salt,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ModRanges") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ModRanges") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Sampling) MarshalJSON() ([]byte, error) {
+	type NoMethod Sampling
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 type Season struct {
 	// End: Inclusive end date of the recurrence period.
 	End *MonthDay `json:"end,omitempty"`
@@ -1850,6 +2170,12 @@ func (s *SubscriptionPriceChange) MarshalJSON() ([]byte, error) {
 // SubscriptionPurchase: A SubscriptionPurchase resource indicates the
 // status of a user's subscription purchase.
 type SubscriptionPurchase struct {
+	// AcknowledgementState: The acknowledgement state of the subscription
+	// product. Possible values are:
+	// - Yet to be acknowledged
+	// - Acknowledged
+	AcknowledgementState int64 `json:"acknowledgementState,omitempty"`
+
 	// AutoRenewing: Whether the subscription will automatically be renewed
 	// when it reaches its current expiry time.
 	AutoRenewing bool `json:"autoRenewing,omitempty"`
@@ -1900,6 +2226,14 @@ type SubscriptionPurchase struct {
 	// Google'.
 	GivenName string `json:"givenName,omitempty"`
 
+	// IntroductoryPriceInfo: Introductory price information of the
+	// subscription. This is only present when the subscription was
+	// purchased with an introductory price.
+	//
+	// This field does not indicate the subscription is currently in
+	// introductory price period.
+	IntroductoryPriceInfo *IntroductoryPriceInfo `json:"introductoryPriceInfo,omitempty"`
+
 	// Kind: This kind represents a subscriptionPurchase object in the
 	// androidpublisher service.
 	Kind string `json:"kind,omitempty"`
@@ -1949,8 +2283,8 @@ type SubscriptionPurchase struct {
 	// price_currency_code is "GBP".
 	PriceCurrencyCode string `json:"priceCurrencyCode,omitempty"`
 
-	// ProfileId: The profile id of the user when the subscription was
-	// purchased. Only present for purchases made with 'Subscribe with
+	// ProfileId: The Google profile id of the user when the subscription
+	// was purchased. Only present for purchases made with 'Subscribe with
 	// Google'.
 	ProfileId string `json:"profileId,omitempty"`
 
@@ -1978,7 +2312,36 @@ type SubscriptionPurchase struct {
 	// server.
 	googleapi.ServerResponse `json:"-"`
 
-	// ForceSendFields is a list of field names (e.g. "AutoRenewing") to
+	// ForceSendFields is a list of field names (e.g.
+	// "AcknowledgementState") to unconditionally include in API requests.
+	// By default, fields with empty values are omitted from API requests.
+	// However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "AcknowledgementState") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *SubscriptionPurchase) MarshalJSON() ([]byte, error) {
+	type NoMethod SubscriptionPurchase
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type SubscriptionPurchasesAcknowledgeRequest struct {
+	// DeveloperPayload: Payload to attach to the purchase.
+	DeveloperPayload string `json:"developerPayload,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "DeveloperPayload") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
 	// non-interface field appearing in ForceSendFields will be sent to the
@@ -1986,17 +2349,18 @@ type SubscriptionPurchase struct {
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "AutoRenewing") to include
-	// in API requests with the JSON null value. By default, fields with
-	// empty values are omitted from API requests. However, any field with
-	// an empty value appearing in NullFields will be sent to the server as
-	// null. It is an error if a field in this list has a non-empty value.
-	// This may be used to include null fields in Patch requests.
+	// NullFields is a list of field names (e.g. "DeveloperPayload") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
 	NullFields []string `json:"-"`
 }
 
-func (s *SubscriptionPurchase) MarshalJSON() ([]byte, error) {
-	type NoMethod SubscriptionPurchase
+func (s *SubscriptionPurchasesAcknowledgeRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod SubscriptionPurchasesAcknowledgeRequest
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -2063,9 +2427,9 @@ func (s *SubscriptionPurchasesDeferResponse) MarshalJSON() ([]byte, error) {
 }
 
 type Testers struct {
+	// GoogleGroups: A list of all Google Groups, as email addresses, that
+	// define testers for this track.
 	GoogleGroups []string `json:"googleGroups,omitempty"`
-
-	GooglePlusCommunities []string `json:"googlePlusCommunities,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
 	// server.
@@ -2186,6 +2550,10 @@ func (s *Track) MarshalJSON() ([]byte, error) {
 }
 
 type TrackRelease struct {
+	Controls []*Control `json:"controls,omitempty"`
+
+	CountryTargeting *CountryTargeting `json:"countryTargeting,omitempty"`
+
 	// Name: The release name, used to identify this release in the Play
 	// Console UI. Not required to be unique. This is optional, if not set
 	// it will be generated from the version_name in the APKs.
@@ -2194,6 +2562,8 @@ type TrackRelease struct {
 	// ReleaseNotes: The description of what is new in the app in this
 	// release.
 	ReleaseNotes []*LocalizedText `json:"releaseNotes,omitempty"`
+
+	Sampling *Sampling `json:"sampling,omitempty"`
 
 	// Status: The desired status of this release.
 	Status string `json:"status,omitempty"`
@@ -2209,7 +2579,7 @@ type TrackRelease struct {
 	// active, including those you wish to retain from previous releases.
 	VersionCodes googleapi.Int64s `json:"versionCodes,omitempty"`
 
-	// ForceSendFields is a list of field names (e.g. "Name") to
+	// ForceSendFields is a list of field names (e.g. "Controls") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
 	// non-interface field appearing in ForceSendFields will be sent to the
@@ -2217,8 +2587,8 @@ type TrackRelease struct {
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "Name") to include in API
-	// requests with the JSON null value. By default, fields with empty
+	// NullFields is a list of field names (e.g. "Controls") to include in
+	// API requests with the JSON null value. By default, fields with empty
 	// values are omitted from API requests. However, any field with an
 	// empty value appearing in NullFields will be sent to the server as
 	// null. It is an error if a field in this list has a non-empty value.
@@ -2362,13 +2732,37 @@ type VoidedPurchase struct {
 	// androidpublisher service.
 	Kind string `json:"kind,omitempty"`
 
+	// OrderId: The order id which uniquely identifies a one-time purchase,
+	// subscription purchase, or subscription renewal.
+	OrderId string `json:"orderId,omitempty"`
+
 	// PurchaseTimeMillis: The time at which the purchase was made, in
 	// milliseconds since the epoch (Jan 1, 1970).
 	PurchaseTimeMillis int64 `json:"purchaseTimeMillis,omitempty,string"`
 
-	// PurchaseToken: The token that was generated when a purchase was made.
-	// This uniquely identifies a purchase.
+	// PurchaseToken: The token which uniquely identifies a one-time
+	// purchase or subscription. To uniquely identify subscription renewals
+	// use order_id (available starting from version 3 of the API).
 	PurchaseToken string `json:"purchaseToken,omitempty"`
+
+	// VoidedReason: The reason why the purchase was voided, possible values
+	// are:
+	// - Other
+	// - Remorse
+	// - Not_received
+	// - Defective
+	// - Accidental_purchase
+	// - Fraud
+	// - Friendly_fraud
+	// - Chargeback
+	VoidedReason int64 `json:"voidedReason,omitempty"`
+
+	// VoidedSource: The initiator of voided purchase, possible values are:
+	//
+	// - User
+	// - Developer
+	// - Google
+	VoidedSource int64 `json:"voidedSource,omitempty"`
 
 	// VoidedTimeMillis: The time at which the purchase was
 	// canceled/refunded/charged-back, in milliseconds since the epoch (Jan
@@ -2479,6 +2873,7 @@ func (c *EditsCommitCall) Header() http.Header {
 
 func (c *EditsCommitCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2618,6 +3013,7 @@ func (c *EditsDeleteCall) Header() http.Header {
 
 func (c *EditsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2740,6 +3136,7 @@ func (c *EditsGetCall) Header() http.Header {
 
 func (c *EditsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2881,6 +3278,7 @@ func (c *EditsInsertCall) Header() http.Header {
 
 func (c *EditsInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3019,6 +3417,7 @@ func (c *EditsValidateCall) Header() http.Header {
 
 func (c *EditsValidateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3162,6 +3561,7 @@ func (c *EditsApksAddexternallyhostedCall) Header() http.Header {
 
 func (c *EditsApksAddexternallyhostedCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3318,6 +3718,7 @@ func (c *EditsApksListCall) Header() http.Header {
 
 func (c *EditsApksListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3497,6 +3898,7 @@ func (c *EditsApksUploadCall) Header() http.Header {
 
 func (c *EditsApksUploadCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3506,7 +3908,7 @@ func (c *EditsApksUploadCall) doRequest(alt string) (*http.Response, error) {
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "{packageName}/edits/{editId}/apks")
 	if c.mediaInfo_ != nil {
-		urls = strings.Replace(urls, "https://www.googleapis.com/", "https://www.googleapis.com/upload/", 1)
+		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/androidpublisher/v3/applications/{packageName}/edits/{editId}/apks")
 		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
 	}
 	if body == nil {
@@ -3521,7 +3923,7 @@ func (c *EditsApksUploadCall) doRequest(alt string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header = reqHeaders
-	gensupport.SetGetBody(req, getBody)
+	req.GetBody = getBody
 	googleapi.Expand(req.URL, map[string]string{
 		"packageName": c.packageNameid,
 		"editId":      c.editId,
@@ -3690,6 +4092,7 @@ func (c *EditsBundlesListCall) Header() http.Header {
 
 func (c *EditsBundlesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3883,6 +4286,7 @@ func (c *EditsBundlesUploadCall) Header() http.Header {
 
 func (c *EditsBundlesUploadCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3892,7 +4296,7 @@ func (c *EditsBundlesUploadCall) doRequest(alt string) (*http.Response, error) {
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "{packageName}/edits/{editId}/bundles")
 	if c.mediaInfo_ != nil {
-		urls = strings.Replace(urls, "https://www.googleapis.com/", "https://www.googleapis.com/upload/", 1)
+		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/androidpublisher/v3/applications/{packageName}/edits/{editId}/bundles")
 		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
 	}
 	if body == nil {
@@ -3907,7 +4311,7 @@ func (c *EditsBundlesUploadCall) doRequest(alt string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header = reqHeaders
-	gensupport.SetGetBody(req, getBody)
+	req.GetBody = getBody
 	googleapi.Expand(req.URL, map[string]string{
 		"packageName": c.packageNameid,
 		"editId":      c.editId,
@@ -4115,6 +4519,7 @@ func (c *EditsDeobfuscationfilesUploadCall) Header() http.Header {
 
 func (c *EditsDeobfuscationfilesUploadCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4124,7 +4529,7 @@ func (c *EditsDeobfuscationfilesUploadCall) doRequest(alt string) (*http.Respons
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "{packageName}/edits/{editId}/apks/{apkVersionCode}/deobfuscationFiles/{deobfuscationFileType}")
 	if c.mediaInfo_ != nil {
-		urls = strings.Replace(urls, "https://www.googleapis.com/", "https://www.googleapis.com/upload/", 1)
+		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/androidpublisher/v3/applications/{packageName}/edits/{editId}/apks/{apkVersionCode}/deobfuscationFiles/{deobfuscationFileType}")
 		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
 	}
 	if body == nil {
@@ -4139,7 +4544,7 @@ func (c *EditsDeobfuscationfilesUploadCall) doRequest(alt string) (*http.Respons
 		return nil, err
 	}
 	req.Header = reqHeaders
-	gensupport.SetGetBody(req, getBody)
+	req.GetBody = getBody
 	googleapi.Expand(req.URL, map[string]string{
 		"packageName":           c.packageNameid,
 		"editId":                c.editId,
@@ -4331,6 +4736,7 @@ func (c *EditsDetailsGetCall) Header() http.Header {
 
 func (c *EditsDetailsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4474,6 +4880,7 @@ func (c *EditsDetailsPatchCall) Header() http.Header {
 
 func (c *EditsDetailsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4621,6 +5028,7 @@ func (c *EditsDetailsUpdateCall) Header() http.Header {
 
 func (c *EditsDetailsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4781,6 +5189,7 @@ func (c *EditsExpansionfilesGetCall) Header() http.Header {
 
 func (c *EditsExpansionfilesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4953,6 +5362,7 @@ func (c *EditsExpansionfilesPatchCall) Header() http.Header {
 
 func (c *EditsExpansionfilesPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5130,6 +5540,7 @@ func (c *EditsExpansionfilesUpdateCall) Header() http.Header {
 
 func (c *EditsExpansionfilesUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5344,6 +5755,7 @@ func (c *EditsExpansionfilesUploadCall) Header() http.Header {
 
 func (c *EditsExpansionfilesUploadCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5353,7 +5765,7 @@ func (c *EditsExpansionfilesUploadCall) doRequest(alt string) (*http.Response, e
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "{packageName}/edits/{editId}/apks/{apkVersionCode}/expansionFiles/{expansionFileType}")
 	if c.mediaInfo_ != nil {
-		urls = strings.Replace(urls, "https://www.googleapis.com/", "https://www.googleapis.com/upload/", 1)
+		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/androidpublisher/v3/applications/{packageName}/edits/{editId}/apks/{apkVersionCode}/expansionFiles/{expansionFileType}")
 		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
 	}
 	if body == nil {
@@ -5368,7 +5780,7 @@ func (c *EditsExpansionfilesUploadCall) doRequest(alt string) (*http.Response, e
 		return nil, err
 	}
 	req.Header = reqHeaders
-	gensupport.SetGetBody(req, getBody)
+	req.GetBody = getBody
 	googleapi.Expand(req.URL, map[string]string{
 		"packageName":       c.packageNameid,
 		"editId":            c.editId,
@@ -5556,6 +5968,7 @@ func (c *EditsImagesDeleteCall) Header() http.Header {
 
 func (c *EditsImagesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5715,6 +6128,7 @@ func (c *EditsImagesDeleteallCall) Header() http.Header {
 
 func (c *EditsImagesDeleteallCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5904,6 +6318,7 @@ func (c *EditsImagesListCall) Header() http.Header {
 
 func (c *EditsImagesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6126,6 +6541,7 @@ func (c *EditsImagesUploadCall) Header() http.Header {
 
 func (c *EditsImagesUploadCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6135,7 +6551,7 @@ func (c *EditsImagesUploadCall) doRequest(alt string) (*http.Response, error) {
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "{packageName}/edits/{editId}/listings/{language}/{imageType}")
 	if c.mediaInfo_ != nil {
-		urls = strings.Replace(urls, "https://www.googleapis.com/", "https://www.googleapis.com/upload/", 1)
+		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/androidpublisher/v3/applications/{packageName}/edits/{editId}/listings/{language}/{imageType}")
 		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
 	}
 	if body == nil {
@@ -6150,7 +6566,7 @@ func (c *EditsImagesUploadCall) doRequest(alt string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header = reqHeaders
-	gensupport.SetGetBody(req, getBody)
+	req.GetBody = getBody
 	googleapi.Expand(req.URL, map[string]string{
 		"packageName": c.packageNameid,
 		"editId":      c.editId,
@@ -6347,6 +6763,7 @@ func (c *EditsListingsDeleteCall) Header() http.Header {
 
 func (c *EditsListingsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6464,6 +6881,7 @@ func (c *EditsListingsDeleteallCall) Header() http.Header {
 
 func (c *EditsListingsDeleteallCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6586,6 +7004,7 @@ func (c *EditsListingsGetCall) Header() http.Header {
 
 func (c *EditsListingsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6746,6 +7165,7 @@ func (c *EditsListingsListCall) Header() http.Header {
 
 func (c *EditsListingsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6891,6 +7311,7 @@ func (c *EditsListingsPatchCall) Header() http.Header {
 
 func (c *EditsListingsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7048,6 +7469,7 @@ func (c *EditsListingsUpdateCall) Header() http.Header {
 
 func (c *EditsListingsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7214,6 +7636,7 @@ func (c *EditsTestersGetCall) Header() http.Header {
 
 func (c *EditsTestersGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7298,9 +7721,8 @@ func (c *EditsTestersGetCall) Do(opts ...googleapi.CallOption) (*Testers, error)
 	//       "type": "string"
 	//     },
 	//     "track": {
-	//       "description": "The track to read or modify. Acceptable values are: \"alpha\", \"beta\", \"production\", \"rollout\" or \"internal\".",
+	//       "description": "The track to read or modify.",
 	//       "location": "path",
-	//       "pattern": "(alpha|beta|production|rollout|internal)",
 	//       "required": true,
 	//       "type": "string"
 	//     }
@@ -7366,6 +7788,7 @@ func (c *EditsTestersPatchCall) Header() http.Header {
 
 func (c *EditsTestersPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7452,9 +7875,8 @@ func (c *EditsTestersPatchCall) Do(opts ...googleapi.CallOption) (*Testers, erro
 	//       "type": "string"
 	//     },
 	//     "track": {
-	//       "description": "The track to read or modify. Acceptable values are: \"alpha\", \"beta\", \"production\", \"rollout\" or \"internal\".",
+	//       "description": "The track to read or modify.",
 	//       "location": "path",
-	//       "pattern": "(alpha|beta|production|rollout|internal)",
 	//       "required": true,
 	//       "type": "string"
 	//     }
@@ -7523,6 +7945,7 @@ func (c *EditsTestersUpdateCall) Header() http.Header {
 
 func (c *EditsTestersUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7609,9 +8032,8 @@ func (c *EditsTestersUpdateCall) Do(opts ...googleapi.CallOption) (*Testers, err
 	//       "type": "string"
 	//     },
 	//     "track": {
-	//       "description": "The track to read or modify. Acceptable values are: \"alpha\", \"beta\", \"production\", \"rollout\" or \"internal\".",
+	//       "description": "The track to read or modify.",
 	//       "location": "path",
-	//       "pattern": "(alpha|beta|production|rollout|internal)",
 	//       "required": true,
 	//       "type": "string"
 	//     }
@@ -7690,6 +8112,7 @@ func (c *EditsTracksGetCall) Header() http.Header {
 
 func (c *EditsTracksGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7849,6 +8272,7 @@ func (c *EditsTracksListCall) Header() http.Header {
 
 func (c *EditsTracksListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7957,9 +8381,7 @@ type EditsTracksPatchCall struct {
 }
 
 // Patch: Updates the track configuration for the specified track type.
-// When halted, the rollout track cannot be updated without adding new
-// APKs, and adding new APKs will cause it to resume. This method
-// supports patch semantics.
+// This method supports patch semantics.
 func (r *EditsTracksService) Patch(packageNameid string, editId string, track string, track2 *Track) *EditsTracksPatchCall {
 	c := &EditsTracksPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.packageNameid = packageNameid
@@ -7996,6 +8418,7 @@ func (c *EditsTracksPatchCall) Header() http.Header {
 
 func (c *EditsTracksPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8061,7 +8484,7 @@ func (c *EditsTracksPatchCall) Do(opts ...googleapi.CallOption) (*Track, error) 
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates the track configuration for the specified track type. When halted, the rollout track cannot be updated without adding new APKs, and adding new APKs will cause it to resume. This method supports patch semantics.",
+	//   "description": "Updates the track configuration for the specified track type. This method supports patch semantics.",
 	//   "httpMethod": "PATCH",
 	//   "id": "androidpublisher.edits.tracks.patch",
 	//   "parameterOrder": [
@@ -8117,8 +8540,6 @@ type EditsTracksUpdateCall struct {
 }
 
 // Update: Updates the track configuration for the specified track type.
-// When halted, the rollout track cannot be updated without adding new
-// APKs, and adding new APKs will cause it to resume.
 func (r *EditsTracksService) Update(packageNameid string, editId string, track string, track2 *Track) *EditsTracksUpdateCall {
 	c := &EditsTracksUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.packageNameid = packageNameid
@@ -8155,6 +8576,7 @@ func (c *EditsTracksUpdateCall) Header() http.Header {
 
 func (c *EditsTracksUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8220,7 +8642,7 @@ func (c *EditsTracksUpdateCall) Do(opts ...googleapi.CallOption) (*Track, error)
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates the track configuration for the specified track type. When halted, the rollout track cannot be updated without adding new APKs, and adding new APKs will cause it to resume.",
+	//   "description": "Updates the track configuration for the specified track type.",
 	//   "httpMethod": "PUT",
 	//   "id": "androidpublisher.edits.tracks.update",
 	//   "parameterOrder": [
@@ -8308,6 +8730,7 @@ func (c *InappproductsDeleteCall) Header() http.Header {
 
 func (c *InappproductsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8428,6 +8851,7 @@ func (c *InappproductsGetCall) Header() http.Header {
 
 func (c *InappproductsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8577,6 +9001,7 @@ func (c *InappproductsInsertCall) Header() http.Header {
 
 func (c *InappproductsInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8747,6 +9172,7 @@ func (c *InappproductsListCall) Header() http.Header {
 
 func (c *InappproductsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8906,6 +9332,7 @@ func (c *InappproductsPatchCall) Header() http.Header {
 
 func (c *InappproductsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9068,6 +9495,7 @@ func (c *InappproductsUpdateCall) Header() http.Header {
 
 func (c *InappproductsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9172,6 +9600,443 @@ func (c *InappproductsUpdateCall) Do(opts ...googleapi.CallOption) (*InAppProduc
 
 }
 
+// method id "androidpublisher.internalappsharingartifacts.uploadapk":
+
+type InternalappsharingartifactsUploadapkCall struct {
+	s             *Service
+	packageNameid string
+	urlParams_    gensupport.URLParams
+	mediaInfo_    *gensupport.MediaInfo
+	ctx_          context.Context
+	header_       http.Header
+}
+
+// Uploadapk: Uploads an APK to internal app sharing. If you are using
+// the Google API client libraries, please increase the timeout of the
+// http request before calling this endpoint (a timeout of 2 minutes is
+// recommended). See:
+// https://developers.google.com/api-client-library/java/google-api-java-client/errors for an example in
+// java.
+func (r *InternalappsharingartifactsService) Uploadapk(packageNameid string) *InternalappsharingartifactsUploadapkCall {
+	c := &InternalappsharingartifactsUploadapkCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.packageNameid = packageNameid
+	return c
+}
+
+// Media specifies the media to upload in one or more chunks. The chunk
+// size may be controlled by supplying a MediaOption generated by
+// googleapi.ChunkSize. The chunk size defaults to
+// googleapi.DefaultUploadChunkSize.The Content-Type header used in the
+// upload request will be determined by sniffing the contents of r,
+// unless a MediaOption generated by googleapi.ContentType is
+// supplied.
+// At most one of Media and ResumableMedia may be set.
+func (c *InternalappsharingartifactsUploadapkCall) Media(r io.Reader, options ...googleapi.MediaOption) *InternalappsharingartifactsUploadapkCall {
+	c.mediaInfo_ = gensupport.NewInfoFromMedia(r, options)
+	return c
+}
+
+// ResumableMedia specifies the media to upload in chunks and can be
+// canceled with ctx.
+//
+// Deprecated: use Media instead.
+//
+// At most one of Media and ResumableMedia may be set. mediaType
+// identifies the MIME media type of the upload, such as "image/png". If
+// mediaType is "", it will be auto-detected. The provided ctx will
+// supersede any context previously provided to the Context method.
+func (c *InternalappsharingartifactsUploadapkCall) ResumableMedia(ctx context.Context, r io.ReaderAt, size int64, mediaType string) *InternalappsharingartifactsUploadapkCall {
+	c.ctx_ = ctx
+	c.mediaInfo_ = gensupport.NewInfoFromResumableMedia(r, size, mediaType)
+	return c
+}
+
+// ProgressUpdater provides a callback function that will be called
+// after every chunk. It should be a low-latency function in order to
+// not slow down the upload operation. This should only be called when
+// using ResumableMedia (as opposed to Media).
+func (c *InternalappsharingartifactsUploadapkCall) ProgressUpdater(pu googleapi.ProgressUpdater) *InternalappsharingartifactsUploadapkCall {
+	c.mediaInfo_.SetProgressUpdater(pu)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *InternalappsharingartifactsUploadapkCall) Fields(s ...googleapi.Field) *InternalappsharingartifactsUploadapkCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+// This context will supersede any context previously provided to the
+// ResumableMedia method.
+func (c *InternalappsharingartifactsUploadapkCall) Context(ctx context.Context) *InternalappsharingartifactsUploadapkCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *InternalappsharingartifactsUploadapkCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *InternalappsharingartifactsUploadapkCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "internalappsharing/{packageName}/artifacts/apk")
+	if c.mediaInfo_ != nil {
+		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/androidpublisher/v3/applications/internalappsharing/{packageName}/artifacts/apk")
+		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
+	}
+	if body == nil {
+		body = new(bytes.Buffer)
+		reqHeaders.Set("Content-Type", "application/json")
+	}
+	body, getBody, cleanup := c.mediaInfo_.UploadRequest(reqHeaders, body)
+	defer cleanup()
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	req.GetBody = getBody
+	googleapi.Expand(req.URL, map[string]string{
+		"packageName": c.packageNameid,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "androidpublisher.internalappsharingartifacts.uploadapk" call.
+// Exactly one of *InternalAppSharingArtifact or error will be non-nil.
+// Any non-2xx status code is an error. Response headers are in either
+// *InternalAppSharingArtifact.ServerResponse.Header or (if a response
+// was returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *InternalappsharingartifactsUploadapkCall) Do(opts ...googleapi.CallOption) (*InternalAppSharingArtifact, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	rx := c.mediaInfo_.ResumableUpload(res.Header.Get("Location"))
+	if rx != nil {
+		rx.Client = c.s.client
+		rx.UserAgent = c.s.userAgent()
+		ctx := c.ctx_
+		if ctx == nil {
+			ctx = context.TODO()
+		}
+		res, err = rx.Upload(ctx)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+		if err := googleapi.CheckResponse(res); err != nil {
+			return nil, err
+		}
+	}
+	ret := &InternalAppSharingArtifact{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Uploads an APK to internal app sharing. If you are using the Google API client libraries, please increase the timeout of the http request before calling this endpoint (a timeout of 2 minutes is recommended). See: https://developers.google.com/api-client-library/java/google-api-java-client/errors for an example in java.",
+	//   "httpMethod": "POST",
+	//   "id": "androidpublisher.internalappsharingartifacts.uploadapk",
+	//   "mediaUpload": {
+	//     "accept": [
+	//       "application/octet-stream",
+	//       "application/vnd.android.package-archive"
+	//     ],
+	//     "maxSize": "1GB",
+	//     "protocols": {
+	//       "resumable": {
+	//         "multipart": true,
+	//         "path": "/resumable/upload/androidpublisher/v3/applications/internalappsharing/{packageName}/artifacts/apk"
+	//       },
+	//       "simple": {
+	//         "multipart": true,
+	//         "path": "/upload/androidpublisher/v3/applications/internalappsharing/{packageName}/artifacts/apk"
+	//       }
+	//     }
+	//   },
+	//   "parameterOrder": [
+	//     "packageName"
+	//   ],
+	//   "parameters": {
+	//     "packageName": {
+	//       "description": "Unique identifier for the Android app; for example, \"com.spiffygame\".",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "internalappsharing/{packageName}/artifacts/apk",
+	//   "response": {
+	//     "$ref": "InternalAppSharingArtifact"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/androidpublisher"
+	//   ],
+	//   "supportsMediaUpload": true
+	// }
+
+}
+
+// method id "androidpublisher.internalappsharingartifacts.uploadbundle":
+
+type InternalappsharingartifactsUploadbundleCall struct {
+	s             *Service
+	packageNameid string
+	urlParams_    gensupport.URLParams
+	mediaInfo_    *gensupport.MediaInfo
+	ctx_          context.Context
+	header_       http.Header
+}
+
+// Uploadbundle: Uploads an app bundle to internal app sharing. If you
+// are using the Google API client libraries, please increase the
+// timeout of the http request before calling this endpoint (a timeout
+// of 2 minutes is recommended). See:
+// https://developers.google.com/api-client-library/java/google-api-java-client/errors for an example in
+// java.
+func (r *InternalappsharingartifactsService) Uploadbundle(packageNameid string) *InternalappsharingartifactsUploadbundleCall {
+	c := &InternalappsharingartifactsUploadbundleCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.packageNameid = packageNameid
+	return c
+}
+
+// Media specifies the media to upload in one or more chunks. The chunk
+// size may be controlled by supplying a MediaOption generated by
+// googleapi.ChunkSize. The chunk size defaults to
+// googleapi.DefaultUploadChunkSize.The Content-Type header used in the
+// upload request will be determined by sniffing the contents of r,
+// unless a MediaOption generated by googleapi.ContentType is
+// supplied.
+// At most one of Media and ResumableMedia may be set.
+func (c *InternalappsharingartifactsUploadbundleCall) Media(r io.Reader, options ...googleapi.MediaOption) *InternalappsharingartifactsUploadbundleCall {
+	c.mediaInfo_ = gensupport.NewInfoFromMedia(r, options)
+	return c
+}
+
+// ResumableMedia specifies the media to upload in chunks and can be
+// canceled with ctx.
+//
+// Deprecated: use Media instead.
+//
+// At most one of Media and ResumableMedia may be set. mediaType
+// identifies the MIME media type of the upload, such as "image/png". If
+// mediaType is "", it will be auto-detected. The provided ctx will
+// supersede any context previously provided to the Context method.
+func (c *InternalappsharingartifactsUploadbundleCall) ResumableMedia(ctx context.Context, r io.ReaderAt, size int64, mediaType string) *InternalappsharingartifactsUploadbundleCall {
+	c.ctx_ = ctx
+	c.mediaInfo_ = gensupport.NewInfoFromResumableMedia(r, size, mediaType)
+	return c
+}
+
+// ProgressUpdater provides a callback function that will be called
+// after every chunk. It should be a low-latency function in order to
+// not slow down the upload operation. This should only be called when
+// using ResumableMedia (as opposed to Media).
+func (c *InternalappsharingartifactsUploadbundleCall) ProgressUpdater(pu googleapi.ProgressUpdater) *InternalappsharingartifactsUploadbundleCall {
+	c.mediaInfo_.SetProgressUpdater(pu)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *InternalappsharingartifactsUploadbundleCall) Fields(s ...googleapi.Field) *InternalappsharingartifactsUploadbundleCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+// This context will supersede any context previously provided to the
+// ResumableMedia method.
+func (c *InternalappsharingartifactsUploadbundleCall) Context(ctx context.Context) *InternalappsharingartifactsUploadbundleCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *InternalappsharingartifactsUploadbundleCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *InternalappsharingartifactsUploadbundleCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "internalappsharing/{packageName}/artifacts/bundle")
+	if c.mediaInfo_ != nil {
+		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/androidpublisher/v3/applications/internalappsharing/{packageName}/artifacts/bundle")
+		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
+	}
+	if body == nil {
+		body = new(bytes.Buffer)
+		reqHeaders.Set("Content-Type", "application/json")
+	}
+	body, getBody, cleanup := c.mediaInfo_.UploadRequest(reqHeaders, body)
+	defer cleanup()
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	req.GetBody = getBody
+	googleapi.Expand(req.URL, map[string]string{
+		"packageName": c.packageNameid,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "androidpublisher.internalappsharingartifacts.uploadbundle" call.
+// Exactly one of *InternalAppSharingArtifact or error will be non-nil.
+// Any non-2xx status code is an error. Response headers are in either
+// *InternalAppSharingArtifact.ServerResponse.Header or (if a response
+// was returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *InternalappsharingartifactsUploadbundleCall) Do(opts ...googleapi.CallOption) (*InternalAppSharingArtifact, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	rx := c.mediaInfo_.ResumableUpload(res.Header.Get("Location"))
+	if rx != nil {
+		rx.Client = c.s.client
+		rx.UserAgent = c.s.userAgent()
+		ctx := c.ctx_
+		if ctx == nil {
+			ctx = context.TODO()
+		}
+		res, err = rx.Upload(ctx)
+		if err != nil {
+			return nil, err
+		}
+		defer res.Body.Close()
+		if err := googleapi.CheckResponse(res); err != nil {
+			return nil, err
+		}
+	}
+	ret := &InternalAppSharingArtifact{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Uploads an app bundle to internal app sharing. If you are using the Google API client libraries, please increase the timeout of the http request before calling this endpoint (a timeout of 2 minutes is recommended). See: https://developers.google.com/api-client-library/java/google-api-java-client/errors for an example in java.",
+	//   "httpMethod": "POST",
+	//   "id": "androidpublisher.internalappsharingartifacts.uploadbundle",
+	//   "mediaUpload": {
+	//     "accept": [
+	//       "application/octet-stream"
+	//     ],
+	//     "maxSize": "2GB",
+	//     "protocols": {
+	//       "resumable": {
+	//         "multipart": true,
+	//         "path": "/resumable/upload/androidpublisher/v3/applications/internalappsharing/{packageName}/artifacts/bundle"
+	//       },
+	//       "simple": {
+	//         "multipart": true,
+	//         "path": "/upload/androidpublisher/v3/applications/internalappsharing/{packageName}/artifacts/bundle"
+	//       }
+	//     }
+	//   },
+	//   "parameterOrder": [
+	//     "packageName"
+	//   ],
+	//   "parameters": {
+	//     "packageName": {
+	//       "description": "Unique identifier for the Android app; for example, \"com.spiffygame\".",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "internalappsharing/{packageName}/artifacts/bundle",
+	//   "response": {
+	//     "$ref": "InternalAppSharingArtifact"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/androidpublisher"
+	//   ],
+	//   "supportsMediaUpload": true
+	// }
+
+}
+
 // method id "androidpublisher.orders.refund":
 
 type OrdersRefundCall struct {
@@ -9228,6 +10093,7 @@ func (c *OrdersRefundCall) Header() http.Header {
 
 func (c *OrdersRefundCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9296,6 +10162,136 @@ func (c *OrdersRefundCall) Do(opts ...googleapi.CallOption) error {
 
 }
 
+// method id "androidpublisher.purchases.products.acknowledge":
+
+type PurchasesProductsAcknowledgeCall struct {
+	s                                  *Service
+	packageName                        string
+	productId                          string
+	token                              string
+	productpurchasesacknowledgerequest *ProductPurchasesAcknowledgeRequest
+	urlParams_                         gensupport.URLParams
+	ctx_                               context.Context
+	header_                            http.Header
+}
+
+// Acknowledge: Acknowledges a purchase of an inapp item.
+func (r *PurchasesProductsService) Acknowledge(packageName string, productId string, token string, productpurchasesacknowledgerequest *ProductPurchasesAcknowledgeRequest) *PurchasesProductsAcknowledgeCall {
+	c := &PurchasesProductsAcknowledgeCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.packageName = packageName
+	c.productId = productId
+	c.token = token
+	c.productpurchasesacknowledgerequest = productpurchasesacknowledgerequest
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *PurchasesProductsAcknowledgeCall) Fields(s ...googleapi.Field) *PurchasesProductsAcknowledgeCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *PurchasesProductsAcknowledgeCall) Context(ctx context.Context) *PurchasesProductsAcknowledgeCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *PurchasesProductsAcknowledgeCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *PurchasesProductsAcknowledgeCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.productpurchasesacknowledgerequest)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "{packageName}/purchases/products/{productId}/tokens/{token}:acknowledge")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"packageName": c.packageName,
+		"productId":   c.productId,
+		"token":       c.token,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "androidpublisher.purchases.products.acknowledge" call.
+func (c *PurchasesProductsAcknowledgeCall) Do(opts ...googleapi.CallOption) error {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if err != nil {
+		return err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return err
+	}
+	return nil
+	// {
+	//   "description": "Acknowledges a purchase of an inapp item.",
+	//   "httpMethod": "POST",
+	//   "id": "androidpublisher.purchases.products.acknowledge",
+	//   "parameterOrder": [
+	//     "packageName",
+	//     "productId",
+	//     "token"
+	//   ],
+	//   "parameters": {
+	//     "packageName": {
+	//       "description": "The package name of the application the inapp product was sold in (for example, 'com.some.thing').",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "productId": {
+	//       "description": "The inapp product SKU (for example, 'com.some.thing.inapp1').",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "token": {
+	//       "description": "The token provided to the user's device when the subscription was purchased.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "{packageName}/purchases/products/{productId}/tokens/{token}:acknowledge",
+	//   "request": {
+	//     "$ref": "ProductPurchasesAcknowledgeRequest"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/androidpublisher"
+	//   ]
+	// }
+
+}
+
 // method id "androidpublisher.purchases.products.get":
 
 type PurchasesProductsGetCall struct {
@@ -9355,6 +10351,7 @@ func (c *PurchasesProductsGetCall) Header() http.Header {
 
 func (c *PurchasesProductsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9457,6 +10454,136 @@ func (c *PurchasesProductsGetCall) Do(opts ...googleapi.CallOption) (*ProductPur
 
 }
 
+// method id "androidpublisher.purchases.subscriptions.acknowledge":
+
+type PurchasesSubscriptionsAcknowledgeCall struct {
+	s                                       *Service
+	packageName                             string
+	subscriptionId                          string
+	token                                   string
+	subscriptionpurchasesacknowledgerequest *SubscriptionPurchasesAcknowledgeRequest
+	urlParams_                              gensupport.URLParams
+	ctx_                                    context.Context
+	header_                                 http.Header
+}
+
+// Acknowledge: Acknowledges a subscription purchase.
+func (r *PurchasesSubscriptionsService) Acknowledge(packageName string, subscriptionId string, token string, subscriptionpurchasesacknowledgerequest *SubscriptionPurchasesAcknowledgeRequest) *PurchasesSubscriptionsAcknowledgeCall {
+	c := &PurchasesSubscriptionsAcknowledgeCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.packageName = packageName
+	c.subscriptionId = subscriptionId
+	c.token = token
+	c.subscriptionpurchasesacknowledgerequest = subscriptionpurchasesacknowledgerequest
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *PurchasesSubscriptionsAcknowledgeCall) Fields(s ...googleapi.Field) *PurchasesSubscriptionsAcknowledgeCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *PurchasesSubscriptionsAcknowledgeCall) Context(ctx context.Context) *PurchasesSubscriptionsAcknowledgeCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *PurchasesSubscriptionsAcknowledgeCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *PurchasesSubscriptionsAcknowledgeCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.subscriptionpurchasesacknowledgerequest)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "{packageName}/purchases/subscriptions/{subscriptionId}/tokens/{token}:acknowledge")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"packageName":    c.packageName,
+		"subscriptionId": c.subscriptionId,
+		"token":          c.token,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "androidpublisher.purchases.subscriptions.acknowledge" call.
+func (c *PurchasesSubscriptionsAcknowledgeCall) Do(opts ...googleapi.CallOption) error {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if err != nil {
+		return err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return err
+	}
+	return nil
+	// {
+	//   "description": "Acknowledges a subscription purchase.",
+	//   "httpMethod": "POST",
+	//   "id": "androidpublisher.purchases.subscriptions.acknowledge",
+	//   "parameterOrder": [
+	//     "packageName",
+	//     "subscriptionId",
+	//     "token"
+	//   ],
+	//   "parameters": {
+	//     "packageName": {
+	//       "description": "The package name of the application for which this subscription was purchased (for example, 'com.some.thing').",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "subscriptionId": {
+	//       "description": "The purchased subscription ID (for example, 'monthly001').",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "token": {
+	//       "description": "The token provided to the user's device when the subscription was purchased.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "{packageName}/purchases/subscriptions/{subscriptionId}/tokens/{token}:acknowledge",
+	//   "request": {
+	//     "$ref": "SubscriptionPurchasesAcknowledgeRequest"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/androidpublisher"
+	//   ]
+	// }
+
+}
+
 // method id "androidpublisher.purchases.subscriptions.cancel":
 
 type PurchasesSubscriptionsCancelCall struct {
@@ -9506,6 +10633,7 @@ func (c *PurchasesSubscriptionsCancelCall) Header() http.Header {
 
 func (c *PurchasesSubscriptionsCancelCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9628,6 +10756,7 @@ func (c *PurchasesSubscriptionsDeferCall) Header() http.Header {
 
 func (c *PurchasesSubscriptionsDeferCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9796,6 +10925,7 @@ func (c *PurchasesSubscriptionsGetCall) Header() http.Header {
 
 func (c *PurchasesSubscriptionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9948,6 +11078,7 @@ func (c *PurchasesSubscriptionsRefundCall) Header() http.Header {
 
 func (c *PurchasesSubscriptionsRefundCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10069,6 +11200,7 @@ func (c *PurchasesSubscriptionsRevokeCall) Header() http.Header {
 
 func (c *PurchasesSubscriptionsRevokeCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10160,13 +11292,12 @@ func (r *PurchasesVoidedpurchasesService) List(packageName string) *PurchasesVoi
 }
 
 // EndTime sets the optional parameter "endTime": The time, in
-// milliseconds since the Epoch, of the newest voided in-app product
-// purchase that you want to see in the response. The value of this
-// parameter cannot be greater than the current time and is ignored if a
-// pagination token is set. Default value is current time. Note: This
-// filter is applied on the time at which the record is seen as voided
-// by our systems and not the actual voided time returned in the
-// response.
+// milliseconds since the Epoch, of the newest voided purchase that you
+// want to see in the response. The value of this parameter cannot be
+// greater than the current time and is ignored if a pagination token is
+// set. Default value is current time. Note: This filter is applied on
+// the time at which the record is seen as voided by our systems and not
+// the actual voided time returned in the response.
 func (c *PurchasesVoidedpurchasesListCall) EndTime(endTime int64) *PurchasesVoidedpurchasesListCall {
 	c.urlParams_.Set("endTime", fmt.Sprint(endTime))
 	return c
@@ -10185,13 +11316,12 @@ func (c *PurchasesVoidedpurchasesListCall) StartIndex(startIndex int64) *Purchas
 }
 
 // StartTime sets the optional parameter "startTime": The time, in
-// milliseconds since the Epoch, of the oldest voided in-app product
-// purchase that you want to see in the response. The value of this
-// parameter cannot be older than 30 days and is ignored if a pagination
-// token is set. Default value is current time minus 30 days. Note: This
-// filter is applied on the time at which the record is seen as voided
-// by our systems and not the actual voided time returned in the
-// response.
+// milliseconds since the Epoch, of the oldest voided purchase that you
+// want to see in the response. The value of this parameter cannot be
+// older than 30 days and is ignored if a pagination token is set.
+// Default value is current time minus 30 days. Note: This filter is
+// applied on the time at which the record is seen as voided by our
+// systems and not the actual voided time returned in the response.
 func (c *PurchasesVoidedpurchasesListCall) StartTime(startTime int64) *PurchasesVoidedpurchasesListCall {
 	c.urlParams_.Set("startTime", fmt.Sprint(startTime))
 	return c
@@ -10200,6 +11330,22 @@ func (c *PurchasesVoidedpurchasesListCall) StartTime(startTime int64) *Purchases
 // Token sets the optional parameter "token":
 func (c *PurchasesVoidedpurchasesListCall) Token(token string) *PurchasesVoidedpurchasesListCall {
 	c.urlParams_.Set("token", token)
+	return c
+}
+
+// Type sets the optional parameter "type": The type of voided purchases
+// that you want to see in the response. Possible values are:
+// - 0: Only voided in-app product purchases will be returned in the
+// response. This is the default value.
+// - 1: Both voided in-app purchases and voided subscription purchases
+// will be returned in the response.  Note: Before requesting to receive
+// voided subscription purchases, you must switch to use orderId in the
+// response which uniquely identifies one-time purchases and
+// subscriptions. Otherwise, you will receive multiple subscription
+// orders with the same PurchaseToken, because subscription renewal
+// orders share the same PurchaseToken.
+func (c *PurchasesVoidedpurchasesListCall) Type(type_ int64) *PurchasesVoidedpurchasesListCall {
+	c.urlParams_.Set("type", fmt.Sprint(type_))
 	return c
 }
 
@@ -10240,6 +11386,7 @@ func (c *PurchasesVoidedpurchasesListCall) Header() http.Header {
 
 func (c *PurchasesVoidedpurchasesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10309,7 +11456,7 @@ func (c *PurchasesVoidedpurchasesListCall) Do(opts ...googleapi.CallOption) (*Vo
 	//   ],
 	//   "parameters": {
 	//     "endTime": {
-	//       "description": "The time, in milliseconds since the Epoch, of the newest voided in-app product purchase that you want to see in the response. The value of this parameter cannot be greater than the current time and is ignored if a pagination token is set. Default value is current time. Note: This filter is applied on the time at which the record is seen as voided by our systems and not the actual voided time returned in the response.",
+	//       "description": "The time, in milliseconds since the Epoch, of the newest voided purchase that you want to see in the response. The value of this parameter cannot be greater than the current time and is ignored if a pagination token is set. Default value is current time. Note: This filter is applied on the time at which the record is seen as voided by our systems and not the actual voided time returned in the response.",
 	//       "format": "int64",
 	//       "location": "query",
 	//       "type": "string"
@@ -10331,7 +11478,7 @@ func (c *PurchasesVoidedpurchasesListCall) Do(opts ...googleapi.CallOption) (*Vo
 	//       "type": "integer"
 	//     },
 	//     "startTime": {
-	//       "description": "The time, in milliseconds since the Epoch, of the oldest voided in-app product purchase that you want to see in the response. The value of this parameter cannot be older than 30 days and is ignored if a pagination token is set. Default value is current time minus 30 days. Note: This filter is applied on the time at which the record is seen as voided by our systems and not the actual voided time returned in the response.",
+	//       "description": "The time, in milliseconds since the Epoch, of the oldest voided purchase that you want to see in the response. The value of this parameter cannot be older than 30 days and is ignored if a pagination token is set. Default value is current time minus 30 days. Note: This filter is applied on the time at which the record is seen as voided by our systems and not the actual voided time returned in the response.",
 	//       "format": "int64",
 	//       "location": "query",
 	//       "type": "string"
@@ -10339,6 +11486,12 @@ func (c *PurchasesVoidedpurchasesListCall) Do(opts ...googleapi.CallOption) (*Vo
 	//     "token": {
 	//       "location": "query",
 	//       "type": "string"
+	//     },
+	//     "type": {
+	//       "description": "The type of voided purchases that you want to see in the response. Possible values are:  \n- 0: Only voided in-app product purchases will be returned in the response. This is the default value.\n- 1: Both voided in-app purchases and voided subscription purchases will be returned in the response.  Note: Before requesting to receive voided subscription purchases, you must switch to use orderId in the response which uniquely identifies one-time purchases and subscriptions. Otherwise, you will receive multiple subscription orders with the same PurchaseToken, because subscription renewal orders share the same PurchaseToken.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
 	//     }
 	//   },
 	//   "path": "{packageName}/purchases/voidedpurchases",
@@ -10416,6 +11569,7 @@ func (c *ReviewsGetCall) Header() http.Header {
 
 func (c *ReviewsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10594,6 +11748,7 @@ func (c *ReviewsListCall) Header() http.Header {
 
 func (c *ReviewsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10746,6 +11901,7 @@ func (c *ReviewsReplyCall) Header() http.Header {
 
 func (c *ReviewsReplyCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

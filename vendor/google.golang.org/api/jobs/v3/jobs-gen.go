@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,39 @@
 
 // Package jobs provides access to the Cloud Talent Solution API.
 //
-// See https://cloud.google.com/talent-solution/job-search/docs/
+// For product documentation, see: https://cloud.google.com/talent-solution/job-search/docs/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/jobs/v3"
 //   ...
-//   jobsService, err := jobs.New(oauthHttpClient)
+//   ctx := context.Background()
+//   jobsService, err := jobs.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   jobsService, err := jobs.NewService(ctx, option.WithScopes(jobs.JobsScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   jobsService, err := jobs.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   jobsService, err := jobs.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package jobs // import "google.golang.org/api/jobs/v3"
 
 import (
@@ -27,8 +53,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -59,6 +87,33 @@ const (
 	JobsScope = "https://www.googleapis.com/auth/jobs"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/jobs",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -85,6 +140,7 @@ func (s *Service) userAgent() string {
 
 func NewProjectsService(s *Service) *ProjectsService {
 	rs := &ProjectsService{s: s}
+	rs.ClientEvents = NewProjectsClientEventsService(s)
 	rs.Companies = NewProjectsCompaniesService(s)
 	rs.Jobs = NewProjectsJobsService(s)
 	return rs
@@ -93,9 +149,20 @@ func NewProjectsService(s *Service) *ProjectsService {
 type ProjectsService struct {
 	s *Service
 
+	ClientEvents *ProjectsClientEventsService
+
 	Companies *ProjectsCompaniesService
 
 	Jobs *ProjectsJobsService
+}
+
+func NewProjectsClientEventsService(s *Service) *ProjectsClientEventsService {
+	rs := &ProjectsClientEventsService{s: s}
+	return rs
+}
+
+type ProjectsClientEventsService struct {
+	s *Service
 }
 
 func NewProjectsCompaniesService(s *Service) *ProjectsCompaniesService {
@@ -181,9 +248,8 @@ func (s *ApplicationInfo) MarshalJSON() ([]byte, error) {
 //
 // Batch delete jobs request.
 type BatchDeleteJobsRequest struct {
-	// Filter: Required.
-	//
-	// The filter string specifies the jobs to be deleted.
+	// Filter: Required. The filter string specifies the jobs to be
+	// deleted.
 	//
 	// Supported operator: =, AND
 	//
@@ -301,24 +367,110 @@ func (s *BucketizedCount) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// ClientEvent: An event issued when an end user interacts with the
+// application that
+// implements Cloud Talent Solution. Providing this information improves
+// the
+// quality of search and recommendation for the API clients, enabling
+// the
+// service to perform optimally. The number of events sent must be
+// consistent
+// with other calls, such as job searches, issued to the service by the
+// client.
+type ClientEvent struct {
+	// CreateTime: Required. The timestamp of the event.
+	CreateTime string `json:"createTime,omitempty"`
+
+	// EventId: Required. A unique identifier, generated by the client
+	// application. This `event_id`
+	// is used to establish the relationship between different events
+	// (see parent_event_id).
+	EventId string `json:"eventId,omitempty"`
+
+	// ExtraInfo: Optional. Extra information about this event. Used for
+	// storing information with no
+	// matching field in event payload, for example, user application
+	// specific
+	// context or details.
+	//
+	// At most 20 keys are supported. The maximum total size of all keys
+	// and
+	// values is 2 KB.
+	ExtraInfo map[string]string `json:"extraInfo,omitempty"`
+
+	// JobEvent: A event issued when a job seeker interacts with the
+	// application that
+	// implements Cloud Talent Solution.
+	JobEvent *JobEvent `json:"jobEvent,omitempty"`
+
+	// ParentEventId: Optional. The event_id of an event that resulted in
+	// the current event. For example, a
+	// Job view event usually follows a parent
+	// impression event: A job seeker first does a
+	// search where a list of jobs appears
+	// (impression). The job seeker then selects a
+	// result and views the description of a particular job (Job
+	// view).
+	ParentEventId string `json:"parentEventId,omitempty"`
+
+	// RequestId: Required. A unique ID generated in the API responses. It
+	// can be found in
+	// ResponseMetadata.request_id.
+	RequestId string `json:"requestId,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "CreateTime") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CreateTime") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ClientEvent) MarshalJSON() ([]byte, error) {
+	type NoMethod ClientEvent
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // CommuteFilter: Input only.
 //
 // Parameters needed for commute search.
 type CommuteFilter struct {
-	// AllowImpreciseAddresses: Optional.
-	// If `true`, jobs without street level addresses may also be
-	// returned.
-	// For city level addresses, the city center is used. For state and
-	// coarser
-	// level addresses, text matching is used.
-	// If this field is set to `false` or is not specified, only jobs that
-	// include
-	// street level addresses will be returned by commute search.
+	// AllowImpreciseAddresses: Optional. If true, jobs without "precise"
+	// addresses (street level addresses or GPS
+	// coordinates) might also be returned. For city and coarser level
+	// addresses,
+	// text matching is used. If this field is set to false or is not
+	// specified,
+	// only jobs that include precise addresses are returned by
+	// Commute
+	// Search.
+	//
+	// Note: If `allow_imprecise_addresses` is set to true, Commute Search
+	// is not
+	// able to calculate accurate commute times to jobs with city level
+	// and
+	// coarser address information. Jobs with imprecise addresses will
+	// return a
+	// `travel_duration` time of 0 regardless of distance from the job
+	// seeker.
 	AllowImpreciseAddresses bool `json:"allowImpreciseAddresses,omitempty"`
 
-	// CommuteMethod: Required.
-	//
-	// The method of transportation for which to calculate the commute time.
+	// CommuteMethod: Required. The method of transportation for which to
+	// calculate the commute time.
 	//
 	// Possible values:
 	//   "COMMUTE_METHOD_UNSPECIFIED" - Commute method is not specified.
@@ -328,18 +480,15 @@ type CommuteFilter struct {
 	// subway, etc.
 	CommuteMethod string `json:"commuteMethod,omitempty"`
 
-	// DepartureTime: Optional.
-	//
-	// The departure time used to calculate traffic impact, represented
-	// as
-	// .google.type.TimeOfDay in local time zone.
+	// DepartureTime: Optional. The departure time used to calculate traffic
+	// impact, represented as
+	// google.type.TimeOfDay in local time zone.
 	//
 	// Currently traffic model is restricted to hour level resolution.
 	DepartureTime *TimeOfDay `json:"departureTime,omitempty"`
 
-	// RoadTraffic: Optional.
-	//
-	// Specifies the traffic density to use when calculating commute time.
+	// RoadTraffic: Optional. Specifies the traffic density to use when
+	// calculating commute time.
 	//
 	// Possible values:
 	//   "ROAD_TRAFFIC_UNSPECIFIED" - Road traffic situation is not
@@ -350,17 +499,13 @@ type CommuteFilter struct {
 	// traffic impact.
 	RoadTraffic string `json:"roadTraffic,omitempty"`
 
-	// StartCoordinates: Required.
-	//
-	// The latitude and longitude of the location from which to calculate
-	// the
+	// StartCoordinates: Required. The latitude and longitude of the
+	// location from which to calculate the
 	// commute time.
 	StartCoordinates *LatLng `json:"startCoordinates,omitempty"`
 
-	// TravelDuration: Required.
-	//
-	// The maximum travel time in seconds. The maximum allowed value is
-	// `3600s`
+	// TravelDuration: Required. The maximum travel time in seconds. The
+	// maximum allowed value is `3600s`
 	// (one hour). Format is `123s`.
 	TravelDuration string `json:"travelDuration,omitempty"`
 
@@ -435,24 +580,20 @@ func (s *CommuteInfo) MarshalJSON() ([]byte, error) {
 // for
 // employing applicants for the job position.
 type Company struct {
-	// CareerSiteUri: Optional.
-	//
-	// The URI to employer's career site or careers page on the employer's
-	// web
+	// CareerSiteUri: Optional. The URI to employer's career site or careers
+	// page on the employer's web
 	// site, for example, "https://careers.google.com".
 	CareerSiteUri string `json:"careerSiteUri,omitempty"`
 
 	// DerivedInfo: Output only. Derived details about the company.
 	DerivedInfo *CompanyDerivedInfo `json:"derivedInfo,omitempty"`
 
-	// DisplayName: Required.
-	//
-	// The display name of the company, for example, "Google, LLC".
+	// DisplayName: Required. The display name of the company, for example,
+	// "Google LLC".
 	DisplayName string `json:"displayName,omitempty"`
 
-	// EeoText: Optional.
-	//
-	// Equal Employment Opportunity legal disclaimer text to be
+	// EeoText: Optional. Equal Employment Opportunity legal disclaimer text
+	// to be
 	// associated with all jobs, and typically to be displayed in
 	// all
 	// roles.
@@ -460,43 +601,33 @@ type Company struct {
 	// The maximum number of allowed characters is 500.
 	EeoText string `json:"eeoText,omitempty"`
 
-	// ExternalId: Required.
-	//
-	// Client side company identifier, used to uniquely identify
-	// the
+	// ExternalId: Required. Client side company identifier, used to
+	// uniquely identify the
 	// company.
 	//
 	// The maximum number of allowed characters is 255.
 	ExternalId string `json:"externalId,omitempty"`
 
-	// HeadquartersAddress: Optional.
-	//
-	// The street address of the company's main headquarters, which may
-	// be
+	// HeadquartersAddress: Optional. The street address of the company's
+	// main headquarters, which may be
 	// different from the job location. The service attempts
 	// to geolocate the provided address, and populates a more
 	// specific
 	// location wherever possible in DerivedInfo.headquarters_location.
 	HeadquartersAddress string `json:"headquartersAddress,omitempty"`
 
-	// HiringAgency: Optional.
-	//
-	// Set to true if it is the hiring agency that post jobs for
-	// other
+	// HiringAgency: Optional. Set to true if it is the hiring agency that
+	// post jobs for other
 	// employers.
 	//
 	// Defaults to false if not provided.
 	HiringAgency bool `json:"hiringAgency,omitempty"`
 
-	// ImageUri: Optional.
-	//
-	// A URI that hosts the employer's company logo.
+	// ImageUri: Optional. A URI that hosts the employer's company logo.
 	ImageUri string `json:"imageUri,omitempty"`
 
-	// KeywordSearchableJobCustomAttributes: Optional.
-	//
-	// A list of keys of filterable Job.custom_attributes,
-	// whose
+	// KeywordSearchableJobCustomAttributes: Optional. A list of keys of
+	// filterable Job.custom_attributes, whose
 	// corresponding `string_values` are used in keyword search. Jobs
 	// with
 	// `string_values` under these specified field keys are returned if
@@ -519,9 +650,7 @@ type Company struct {
 	// "projects/api-test-project/companies/foo".
 	Name string `json:"name,omitempty"`
 
-	// Size: Optional.
-	//
-	// The employer's company size.
+	// Size: Optional. The employer's company size.
 	//
 	// Possible values:
 	//   "COMPANY_SIZE_UNSPECIFIED" - Default value if the size is not
@@ -542,9 +671,8 @@ type Company struct {
 	// abusive, or spammy.
 	Suspended bool `json:"suspended,omitempty"`
 
-	// WebsiteUri: Optional.
-	//
-	// The URI representing the company's primary web site or home page,
+	// WebsiteUri: Optional. The URI representing the company's primary web
+	// site or home page,
 	// for example, "https://www.google.com".
 	//
 	// The maximum number of allowed characters is 255.
@@ -620,23 +748,18 @@ func (s *CompanyDerivedInfo) MarshalJSON() ([]byte, error) {
 // times
 // expected_units_per_year.
 type CompensationEntry struct {
-	// Amount: Optional.
-	//
-	// Compensation amount.
+	// Amount: Optional. Compensation amount.
 	Amount *Money `json:"amount,omitempty"`
 
-	// Description: Optional.
-	//
-	// Compensation description.  For example, could
+	// Description: Optional. Compensation description.  For example,
+	// could
 	// indicate equity terms or provide additional context to an
 	// estimated
 	// bonus.
 	Description string `json:"description,omitempty"`
 
-	// ExpectedUnitsPerYear: Optional.
-	//
-	// Expected number of units paid each year. If not specified,
-	// when
+	// ExpectedUnitsPerYear: Optional. Expected number of units paid each
+	// year. If not specified, when
 	// Job.employment_types is FULLTIME, a default value is inferred
 	// based on unit. Default values:
 	// - HOURLY: 2080
@@ -646,16 +769,12 @@ type CompensationEntry struct {
 	// - ANNUAL: 1
 	ExpectedUnitsPerYear float64 `json:"expectedUnitsPerYear,omitempty"`
 
-	// Range: Optional.
-	//
-	// Compensation range.
+	// Range: Optional. Compensation range.
 	Range *CompensationRange `json:"range,omitempty"`
 
-	// Type: Optional.
+	// Type: Optional. Compensation type.
 	//
-	// Compensation type.
-	//
-	// Default is CompensationUnit.OTHER_COMPENSATION_TYPE.
+	// Default is CompensationUnit.COMPENSATION_TYPE_UNSPECIFIED.
 	//
 	// Possible values:
 	//   "COMPENSATION_TYPE_UNSPECIFIED" - Default value.
@@ -675,11 +794,9 @@ type CompensationEntry struct {
 	//   "OTHER_COMPENSATION_TYPE" - Other compensation type.
 	Type string `json:"type,omitempty"`
 
-	// Unit: Optional.
+	// Unit: Optional. Frequency of the specified amount.
 	//
-	// Frequency of the specified amount.
-	//
-	// Default is CompensationUnit.OTHER_COMPENSATION_UNIT.
+	// Default is CompensationUnit.COMPENSATION_UNIT_UNSPECIFIED.
 	//
 	// Possible values:
 	//   "COMPENSATION_UNIT_UNSPECIFIED" - Default value.
@@ -733,19 +850,15 @@ func (s *CompensationEntry) UnmarshalJSON(data []byte) error {
 //
 // Filter on job compensation type and amount.
 type CompensationFilter struct {
-	// IncludeJobsWithUnspecifiedCompensationRange: Optional.
-	//
-	// Whether to include jobs whose compensation range is unspecified.
+	// IncludeJobsWithUnspecifiedCompensationRange: Optional. If set to
+	// true, jobs with unspecified compensation range fields are
+	// included.
 	IncludeJobsWithUnspecifiedCompensationRange bool `json:"includeJobsWithUnspecifiedCompensationRange,omitempty"`
 
-	// Range: Optional.
-	//
-	// Compensation range.
+	// Range: Optional. Compensation range.
 	Range *CompensationRange `json:"range,omitempty"`
 
-	// Type: Required.
-	//
-	// Type of filter.
+	// Type: Required. Type of filter.
 	//
 	// Possible values:
 	//   "FILTER_TYPE_UNSPECIFIED" - Filter type unspecified. Position
@@ -779,9 +892,7 @@ type CompensationFilter struct {
 	// entry's` unit . Populate range and zero or more units.
 	Type string `json:"type,omitempty"`
 
-	// Units: Required.
-	//
-	// Specify desired `base compensation
+	// Units: Required. Specify desired `base compensation
 	// entry's`
 	// CompensationInfo.CompensationUnit.
 	//
@@ -825,16 +936,12 @@ func (s *CompensationFilter) MarshalJSON() ([]byte, error) {
 //
 // Compensation based histogram request.
 type CompensationHistogramRequest struct {
-	// BucketingOption: Required.
-	//
-	// Numeric histogram options, like buckets, whether include min or max
-	// value.
+	// BucketingOption: Required. Numeric histogram options, like buckets,
+	// whether include min or max value.
 	BucketingOption *NumericBucketingOption `json:"bucketingOption,omitempty"`
 
-	// Type: Required.
-	//
-	// Type of the request, representing which field the histogramming
-	// should be
+	// Type: Required. Type of the request, representing which field the
+	// histogramming should be
 	// performed over. A single request can only specify one histogram of
 	// each
 	// `CompensationHistogramRequestType`.
@@ -945,9 +1052,7 @@ type CompensationInfo struct {
 	// See CompensationEntry for explanation on compensation annualization.
 	AnnualizedTotalCompensationRange *CompensationRange `json:"annualizedTotalCompensationRange,omitempty"`
 
-	// Entries: Optional.
-	//
-	// Job compensation information.
+	// Entries: Optional. Job compensation information.
 	//
 	// At most one entry can be of
 	// type
@@ -982,19 +1087,15 @@ func (s *CompensationInfo) MarshalJSON() ([]byte, error) {
 
 // CompensationRange: Compensation range.
 type CompensationRange struct {
-	// MaxCompensation: Optional.
-	//
-	// The maximum amount of compensation. If left empty, the value is
-	// set
+	// MaxCompensation: Optional. The maximum amount of compensation. If
+	// left empty, the value is set
 	// to a maximal compensation value and the currency code is set to
 	// match the currency code of
 	// min_compensation.
 	MaxCompensation *Money `json:"maxCompensation,omitempty"`
 
-	// MinCompensation: Optional.
-	//
-	// The minimum amount of compensation. If left empty, the value is
-	// set
+	// MinCompensation: Optional. The minimum amount of compensation. If
+	// left empty, the value is set
 	// to zero and the currency code is set to match the
 	// currency code of max_compensation.
 	MinCompensation *Money `json:"minCompensation,omitempty"`
@@ -1106,13 +1207,41 @@ func (s *CompletionResult) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// CreateClientEventRequest: The report event request.
+type CreateClientEventRequest struct {
+	// ClientEvent: Required. Events issued when end user interacts with
+	// customer's application that
+	// uses Cloud Talent Solution.
+	ClientEvent *ClientEvent `json:"clientEvent,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ClientEvent") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ClientEvent") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *CreateClientEventRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod CreateClientEventRequest
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // CreateCompanyRequest: Input only.
 //
 // The Request of the CreateCompany method.
 type CreateCompanyRequest struct {
-	// Company: Required.
-	//
-	// The company to be created.
+	// Company: Required. The company to be created.
 	Company *Company `json:"company,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Company") to
@@ -1142,9 +1271,7 @@ func (s *CreateCompanyRequest) MarshalJSON() ([]byte, error) {
 //
 // Create job request.
 type CreateJobRequest struct {
-	// Job: Required.
-	//
-	// The Job to be created.
+	// Job: Required. The Job to be created.
 	Job *Job `json:"job,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Job") to
@@ -1173,10 +1300,8 @@ func (s *CreateJobRequest) MarshalJSON() ([]byte, error) {
 // CustomAttribute: Custom attribute values that are either filterable
 // or non-filterable.
 type CustomAttribute struct {
-	// Filterable: Optional.
-	//
-	// If the `filterable` flag is true, custom field values are
-	// searchable.
+	// Filterable: Optional. If the `filterable` flag is true, custom field
+	// values are searchable.
 	// If false, values are not searchable.
 	//
 	// Default is false.
@@ -1204,7 +1329,7 @@ type CustomAttribute struct {
 	// values
 	// is allowed, with each `string_value` has a byte size of no more
 	// than
-	// 255B. For unfilterable `string_values`, the maximum total byte size
+	// 500B. For unfilterable `string_values`, the maximum total byte size
 	// of
 	// unfilterable `string_values` is 50KB.
 	//
@@ -1240,10 +1365,8 @@ func (s *CustomAttribute) MarshalJSON() ([]byte, error) {
 // has
 // been defined.
 type CustomAttributeHistogramRequest struct {
-	// Key: Required.
-	//
-	// Specifies the custom field key to perform a histogram on. If
-	// specified
+	// Key: Required. Specifies the custom field key to perform a histogram
+	// on. If specified
 	// without `long_value_histogram_bucketing_option`, histogram on string
 	// values
 	// of the given `key` is triggered, otherwise histogram is performed on
@@ -1251,10 +1374,8 @@ type CustomAttributeHistogramRequest struct {
 	// values.
 	Key string `json:"key,omitempty"`
 
-	// LongValueHistogramBucketingOption: Optional.
-	//
-	// Specifies buckets used to perform a range histogram on
-	// Job's
+	// LongValueHistogramBucketingOption: Optional. Specifies buckets used
+	// to perform a range histogram on Job's
 	// filterable long custom field values, or min/max value requirements.
 	LongValueHistogramBucketingOption *NumericBucketingOption `json:"longValueHistogramBucketingOption,omitempty"`
 
@@ -1334,9 +1455,7 @@ func (s *CustomAttributeHistogramResult) MarshalJSON() ([]byte, error) {
 // improves
 // the quality of the search results across devices.
 type DeviceInfo struct {
-	// DeviceType: Optional.
-	//
-	// Type of the device.
+	// DeviceType: Optional. Type of the device.
 	//
 	// Possible values:
 	//   "DEVICE_TYPE_UNSPECIFIED" - The device type isn't specified.
@@ -1354,10 +1473,8 @@ type DeviceInfo struct {
 	//   "OTHER" - Other devices types.
 	DeviceType string `json:"deviceType,omitempty"`
 
-	// Id: Optional.
-	//
-	// A device-specific ID. The ID must be a unique identifier
-	// that
+	// Id: Optional. A device-specific ID. The ID must be a unique
+	// identifier that
 	// distinguishes the device from other devices.
 	Id string `json:"id,omitempty"`
 
@@ -1406,25 +1523,21 @@ type Empty struct {
 //
 // Histogram facets to be specified in SearchJobsRequest.
 type HistogramFacets struct {
-	// CompensationHistogramFacets: Optional.
-	//
-	// Specifies compensation field-based histogram requests.
+	// CompensationHistogramFacets: Optional. Specifies compensation
+	// field-based histogram requests.
 	// Duplicate values of CompensationHistogramRequest.type are not
 	// allowed.
 	CompensationHistogramFacets []*CompensationHistogramRequest `json:"compensationHistogramFacets,omitempty"`
 
-	// CustomAttributeHistogramFacets: Optional.
-	//
-	// Specifies the custom attributes histogram requests.
+	// CustomAttributeHistogramFacets: Optional. Specifies the custom
+	// attributes histogram requests.
 	// Duplicate values of CustomAttributeHistogramRequest.key are
 	// not
 	// allowed.
 	CustomAttributeHistogramFacets []*CustomAttributeHistogramRequest `json:"customAttributeHistogramFacets,omitempty"`
 
-	// SimpleHistogramFacets: Optional.
-	//
-	// Specifies the simple type of histogram facets, for
-	// example,
+	// SimpleHistogramFacets: Optional. Specifies the simple type of
+	// histogram facets, for example,
 	// `COMPANY_SIZE`, `EMPLOYMENT_TYPE` etc.
 	//
 	// Possible values:
@@ -1694,22 +1807,16 @@ type Job struct {
 	// the job.
 	CompanyDisplayName string `json:"companyDisplayName,omitempty"`
 
-	// CompanyName: Required.
-	//
-	// The resource name of the company listing the job, such
-	// as
+	// CompanyName: Required. The resource name of the company listing the
+	// job, such as
 	// "projects/api-test-project/companies/foo".
 	CompanyName string `json:"companyName,omitempty"`
 
-	// CompensationInfo: Optional.
-	//
-	// Job compensation information.
+	// CompensationInfo: Optional. Job compensation information.
 	CompensationInfo *CompensationInfo `json:"compensationInfo,omitempty"`
 
-	// CustomAttributes: Optional.
-	//
-	// A map of fields to hold both filterable and non-filterable custom
-	// job
+	// CustomAttributes: Optional. A map of fields to hold both filterable
+	// and non-filterable custom job
 	// attributes that are not covered by the provided structured
 	// fields.
 	//
@@ -1729,10 +1836,8 @@ type Job struct {
 	// is 50KB.
 	CustomAttributes map[string]CustomAttribute `json:"customAttributes,omitempty"`
 
-	// DegreeTypes: Optional.
-	//
-	// The desired education degrees for the job, such as Bachelors,
-	// Masters.
+	// DegreeTypes: Optional. The desired education degrees for the job,
+	// such as Bachelors, Masters.
 	//
 	// Possible values:
 	//   "DEGREE_TYPE_UNSPECIFIED" - Default value. Represents no degree, or
@@ -1790,10 +1895,8 @@ type Job struct {
 	// original research. ISCED code 8.
 	DegreeTypes []string `json:"degreeTypes,omitempty"`
 
-	// Department: Optional.
-	//
-	// The department or functional area within the company with the
-	// open
+	// Department: Optional. The department or functional area within the
+	// company with the open
 	// position.
 	//
 	// The maximum number of allowed characters is 255.
@@ -1802,10 +1905,8 @@ type Job struct {
 	// DerivedInfo: Output only. Derived details about the job posting.
 	DerivedInfo *JobDerivedInfo `json:"derivedInfo,omitempty"`
 
-	// Description: Required.
-	//
-	// The description of the job, which typically includes a
-	// multi-paragraph
+	// Description: Required. The description of the job, which typically
+	// includes a multi-paragraph
 	// description of the company and related information. Separate fields
 	// are
 	// provided on the job object for responsibilities,
@@ -1818,9 +1919,8 @@ type Job struct {
 	// The maximum number of allowed characters is 100,000.
 	Description string `json:"description,omitempty"`
 
-	// EmploymentTypes: Optional.
-	//
-	// The employment type(s) of a job, for example,
+	// EmploymentTypes: Optional. The employment type(s) of a job, for
+	// example,
 	// full time or
 	// part time.
 	//
@@ -1866,17 +1966,14 @@ type Job struct {
 	// listed types.
 	EmploymentTypes []string `json:"employmentTypes,omitempty"`
 
-	// Incentives: Optional.
-	//
-	// A description of bonus, commission, and other compensation
+	// Incentives: Optional. A description of bonus, commission, and other
+	// compensation
 	// incentives associated with the job not including salary or pay.
 	//
 	// The maximum number of allowed characters is 10,000.
 	Incentives string `json:"incentives,omitempty"`
 
-	// JobBenefits: Optional.
-	//
-	// The benefits included with the job.
+	// JobBenefits: Optional. The benefits included with the job.
 	//
 	// Possible values:
 	//   "JOB_BENEFIT_UNSPECIFIED" - Default value if the type is not
@@ -1908,16 +2005,13 @@ type Job struct {
 	// insurance plan.
 	JobBenefits []string `json:"jobBenefits,omitempty"`
 
-	// JobEndTime: Optional.
-	//
-	// The end timestamp of the job. Typically this field is used for
-	// contracting
+	// JobEndTime: Optional. The end timestamp of the job. Typically this
+	// field is used for contracting
 	// engagements. Invalid timestamps are ignored.
 	JobEndTime string `json:"jobEndTime,omitempty"`
 
-	// JobLevel: Optional.
-	//
-	// The experience level associated with the job, such as "Entry Level".
+	// JobLevel: Optional. The experience level associated with the job,
+	// such as "Entry Level".
 	//
 	// Possible values:
 	//   "JOB_LEVEL_UNSPECIFIED" - The default value if the level is not
@@ -1936,16 +2030,13 @@ type Job struct {
 	// positions.
 	JobLevel string `json:"jobLevel,omitempty"`
 
-	// JobStartTime: Optional.
-	//
-	// The start timestamp of the job in UTC time zone. Typically this
-	// field
+	// JobStartTime: Optional. The start timestamp of the job in UTC time
+	// zone. Typically this field
 	// is used for contracting engagements. Invalid timestamps are ignored.
 	JobStartTime string `json:"jobStartTime,omitempty"`
 
-	// LanguageCode: Optional.
-	//
-	// The language of the posting. This field is distinct from
+	// LanguageCode: Optional. The language of the posting. This field is
+	// distinct from
 	// any requirements for fluency that are associated with the
 	// job.
 	//
@@ -2035,26 +2126,21 @@ type Job struct {
 	// update time. Otherwise the expiration date isn't updated.
 	PostingExpireTime string `json:"postingExpireTime,omitempty"`
 
-	// PostingPublishTime: Optional.
-	//
-	// The timestamp this job posting was most recently published. The
-	// default
+	// PostingPublishTime: Optional. The timestamp this job posting was most
+	// recently published. The default
 	// value is the time the request arrives at the server. Invalid
 	// timestamps are
 	// ignored.
 	PostingPublishTime string `json:"postingPublishTime,omitempty"`
 
-	// PostingRegion: Optional.
-	//
-	// The job PostingRegion (for example, state, country) throughout
-	// which
+	// PostingRegion: Optional. The job PostingRegion (for example, state,
+	// country) throughout which
 	// the job is available. If this field is set, a
 	// LocationFilter in a search query within the job region
-	// finds this job posting if an exact location match is not
-	// specified.
-	// If this field is set to PostingRegion.NATION_WIDE
+	// finds this job posting if an exact location match isn't specified.
+	// If this field is set to PostingRegion.NATION
 	// or
-	// [PostingRegion.ADMINISTRATIVE_AREA], setting job addresses
+	// PostingRegion.ADMINISTRATIVE_AREA, setting job Job.addresses
 	// to the same location level as this field is strongly recommended.
 	//
 	// Possible values:
@@ -2091,14 +2177,11 @@ type Job struct {
 	// was last updated.
 	PostingUpdateTime string `json:"postingUpdateTime,omitempty"`
 
-	// ProcessingOptions: Optional.
-	//
-	// Options for job processing.
+	// ProcessingOptions: Optional. Options for job processing.
 	ProcessingOptions *ProcessingOptions `json:"processingOptions,omitempty"`
 
-	// PromotionValue: Optional.
-	//
-	// A promotion value of the job, as determined by the client.
+	// PromotionValue: Optional. A promotion value of the job, as determined
+	// by the client.
 	// The value determines the sort order of the jobs returned when
 	// searching for
 	// jobs using the featured jobs search call, with higher promotional
@@ -2111,9 +2194,8 @@ type Job struct {
 	// Default value is 0, and negative values are treated as 0.
 	PromotionValue int64 `json:"promotionValue,omitempty"`
 
-	// Qualifications: Optional.
-	//
-	// A description of the qualifications required to perform the
+	// Qualifications: Optional. A description of the qualifications
+	// required to perform the
 	// job. The use of this field is recommended
 	// as an alternative to using the more general description field.
 	//
@@ -2123,10 +2205,8 @@ type Job struct {
 	// The maximum number of allowed characters is 10,000.
 	Qualifications string `json:"qualifications,omitempty"`
 
-	// RequisitionId: Required.
-	//
-	// The requisition ID, also referred to as the posting ID, assigned by
-	// the
+	// RequisitionId: Required. The requisition ID, also referred to as the
+	// posting ID, assigned by the
 	// client to identify a job. This field is intended to be used by
 	// clients
 	// for client identification and tracking of postings. A job is not
@@ -2138,10 +2218,8 @@ type Job struct {
 	// The maximum number of allowed characters is 255.
 	RequisitionId string `json:"requisitionId,omitempty"`
 
-	// Responsibilities: Optional.
-	//
-	// A description of job responsibilities. The use of this field
-	// is
+	// Responsibilities: Optional. A description of job responsibilities.
+	// The use of this field is
 	// recommended as an alternative to using the more general
 	// description
 	// field.
@@ -2152,14 +2230,13 @@ type Job struct {
 	// The maximum number of allowed characters is 10,000.
 	Responsibilities string `json:"responsibilities,omitempty"`
 
-	// Title: Required.
-	//
-	// The title of the job, such as "Software Engineer"
+	// Title: Required. The title of the job, such as "Software
+	// Engineer"
 	//
 	// The maximum number of allowed characters is 500.
 	Title string `json:"title,omitempty"`
 
-	// Visibility: Optional.
+	// Visibility: Deprecated. The job is only visible to the owner.
 	//
 	// The visibility of the job.
 	//
@@ -2300,14 +2377,155 @@ func (s *JobDerivedInfo) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// JobEvent: An event issued when a job seeker interacts with the
+// application that
+// implements Cloud Talent Solution.
+type JobEvent struct {
+	// Jobs: Required. The job name(s) associated with this event.
+	// For example, if this is an impression event,
+	// this field contains the identifiers of all jobs shown to the job
+	// seeker.
+	// If this was a view event, this field contains the
+	// identifier of the viewed job.
+	Jobs []string `json:"jobs,omitempty"`
+
+	// Type: Required. The type of the event (see JobEventType).
+	//
+	// Possible values:
+	//   "JOB_EVENT_TYPE_UNSPECIFIED" - The event is unspecified by other
+	// provided values.
+	//   "IMPRESSION" - The job seeker or other entity interacting with the
+	// service has
+	// had a job rendered in their view, such as in a list of search results
+	// in
+	// a compressed or clipped format. This event is typically associated
+	// with
+	// the viewing of a jobs list on a single page by a job seeker.
+	//   "VIEW" - The job seeker, or other entity interacting with the
+	// service, has
+	// viewed the details of a job, including the full description.
+	// This
+	// event doesn't apply to the viewing a snippet of a job appearing as
+	// a
+	// part of the job search results. Viewing a snippet is associated with
+	// an
+	// impression).
+	//   "VIEW_REDIRECT" - The job seeker or other entity interacting with
+	// the service
+	// performed an action to view a job and was redirected to a
+	// different
+	// website for job.
+	//   "APPLICATION_START" - The job seeker or other entity interacting
+	// with the service
+	// began the process or demonstrated the intention of applying for a
+	// job.
+	//   "APPLICATION_FINISH" - The job seeker or other entity interacting
+	// with the service
+	// submitted an application for a job.
+	//   "APPLICATION_QUICK_SUBMISSION" - The job seeker or other entity
+	// interacting with the service
+	// submitted an application for a job with a single click
+	// without
+	// entering information. If a job seeker performs this action, send
+	// only
+	// this event to the service. Do not also
+	// send
+	// JobEventType.APPLICATION_START or
+	// JobEventType.APPLICATION_FINISH
+	// events.
+	//   "APPLICATION_REDIRECT" - The job seeker or other entity interacting
+	// with the service
+	// performed an action to apply to a job and was redirected to a
+	// different
+	// website to complete the application.
+	//   "APPLICATION_START_FROM_SEARCH" - The job seeker or other entity
+	// interacting with the service began the
+	// process or demonstrated the intention of applying for a job from
+	// the
+	// search results page without viewing the details of the job
+	// posting.
+	// If sending this event, JobEventType.VIEW event shouldn't be sent.
+	//   "APPLICATION_REDIRECT_FROM_SEARCH" - The job seeker, or other
+	// entity interacting with the service, performs an
+	// action with a single click from the search results page to apply to a
+	// job
+	// (without viewing the details of the job posting), and is
+	// redirected
+	// to a different website to complete the application. If a
+	// candidate
+	// performs this action, send only this event to the service. Do not
+	// also
+	// send JobEventType.APPLICATION_START,
+	// JobEventType.APPLICATION_FINISH or JobEventType.VIEW events.
+	//   "APPLICATION_COMPANY_SUBMIT" - This event should be used when a
+	// company submits an application
+	// on behalf of a job seeker. This event is intended for use by
+	// staffing
+	// agencies attempting to place candidates.
+	//   "BOOKMARK" - The job seeker or other entity interacting with the
+	// service demonstrated
+	// an interest in a job by bookmarking or saving it.
+	//   "NOTIFICATION" - The job seeker or other entity interacting with
+	// the service was
+	// sent a notification, such as an email alert or device
+	// notification,
+	// containing one or more jobs listings generated by the service.
+	//   "HIRED" - The job seeker or other entity interacting with the
+	// service was
+	// employed by the hiring entity (employer). Send this event
+	// only if the job seeker was hired through an application that
+	// was
+	// initiated by a search conducted through the Cloud Talent
+	// Solution
+	// service.
+	//   "SENT_CV" - A recruiter or staffing agency submitted an application
+	// on behalf of the
+	// candidate after interacting with the service to identify a suitable
+	// job
+	// posting.
+	//   "INTERVIEW_GRANTED" - The entity interacting with the service (for
+	// example, the job seeker),
+	// was granted an initial interview by the hiring entity (employer).
+	// This
+	// event should only be sent if the job seeker was granted an interview
+	// as
+	// part of an application that was initiated by a search conducted
+	// through /
+	// recommendation provided by the Cloud Talent Solution service.
+	//   "NOT_INTERESTED" - The job seeker or other entity interacting with
+	// the service showed
+	// no interest in the job.
+	Type string `json:"type,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Jobs") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Jobs") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *JobEvent) MarshalJSON() ([]byte, error) {
+	type NoMethod JobEvent
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // JobQuery: Input only.
 //
 // The query required to perform a search query.
 type JobQuery struct {
-	// CommuteFilter: Optional.
-	//
-	//  Allows filtering jobs by commute time with different travel methods
-	// (for
+	// CommuteFilter: Optional. Allows filtering jobs by commute time with
+	// different travel methods (for
 	//  example, driving or public transit). Note: This only works with
 	// COMMUTE
 	//  MODE. When specified, [JobQuery.location_filters] is
@@ -2316,9 +2534,8 @@ type JobQuery struct {
 	//  Currently we don't support sorting by commute time.
 	CommuteFilter *CommuteFilter `json:"commuteFilter,omitempty"`
 
-	// CompanyDisplayNames: Optional.
-	//
-	// This filter specifies the exact company display
+	// CompanyDisplayNames: Optional. This filter specifies the exact
+	// company display
 	// name of the jobs to search against.
 	//
 	// If a value isn't specified, jobs within the search results
@@ -2332,9 +2549,8 @@ type JobQuery struct {
 	// At most 20 company display name filters are allowed.
 	CompanyDisplayNames []string `json:"companyDisplayNames,omitempty"`
 
-	// CompanyNames: Optional.
-	//
-	// This filter specifies the company entities to search against.
+	// CompanyNames: Optional. This filter specifies the company entities to
+	// search against.
 	//
 	// If a value isn't specified, jobs are searched for against
 	// all
@@ -2351,9 +2567,8 @@ type JobQuery struct {
 	// At most 20 company filters are allowed.
 	CompanyNames []string `json:"companyNames,omitempty"`
 
-	// CompensationFilter: Optional.
-	//
-	// This search filter is applied only to
+	// CompensationFilter: Optional. This search filter is applied only
+	// to
 	// Job.compensation_info. For example, if the filter is specified
 	// as "Hourly job with per-hour compensation > $15", only jobs
 	// meeting
@@ -2362,10 +2577,8 @@ type JobQuery struct {
 	// are searched.
 	CompensationFilter *CompensationFilter `json:"compensationFilter,omitempty"`
 
-	// CustomAttributeFilter: Optional.
-	//
-	// This filter specifies a structured syntax to match against
-	// the
+	// CustomAttributeFilter: Optional. This filter specifies a structured
+	// syntax to match against the
 	// Job.custom_attributes marked as `filterable`.
 	//
 	// The syntax for this expression is a subset of SQL syntax.
@@ -2389,7 +2602,7 @@ type JobQuery struct {
 	// of 100
 	// comparisons or functions are allowed in the expression. The
 	// expression
-	// must be < 3000 bytes in length.
+	// must be < 6000 bytes in length.
 	//
 	// Sample Query:
 	// `(LOWER(driving_license)="class \"a\"" OR EMPTY(driving_license))
@@ -2397,19 +2610,16 @@ type JobQuery struct {
 	// driving_years > 10`
 	CustomAttributeFilter string `json:"customAttributeFilter,omitempty"`
 
-	// DisableSpellCheck: Optional.
-	//
-	// This flag controls the spell-check feature. If false, the
+	// DisableSpellCheck: Optional. This flag controls the spell-check
+	// feature. If false, the
 	// service attempts to correct a misspelled query,
 	// for example, "enginee" is corrected to "engineer".
 	//
 	// Defaults to false: a spell check is performed.
 	DisableSpellCheck bool `json:"disableSpellCheck,omitempty"`
 
-	// EmploymentTypes: Optional.
-	//
-	// The employment type filter specifies the employment type of jobs
-	// to
+	// EmploymentTypes: Optional. The employment type filter specifies the
+	// employment type of jobs to
 	// search against, such as EmploymentType.FULL_TIME.
 	//
 	// If a value is not specified, jobs in the search results includes
@@ -2462,10 +2672,8 @@ type JobQuery struct {
 	// listed types.
 	EmploymentTypes []string `json:"employmentTypes,omitempty"`
 
-	// JobCategories: Optional.
-	//
-	// The category filter specifies the categories of jobs to search
-	// against.
+	// JobCategories: Optional. The category filter specifies the categories
+	// of jobs to search against.
 	// See Category for more information.
 	//
 	// If a value is not specified, jobs from any category are searched
@@ -2534,9 +2742,8 @@ type JobQuery struct {
 	// such as Truck Driver.
 	JobCategories []string `json:"jobCategories,omitempty"`
 
-	// LanguageCodes: Optional.
-	//
-	// This filter specifies the locale of jobs to search against,
+	// LanguageCodes: Optional. This filter specifies the locale of jobs to
+	// search against,
 	// for example, "en-US".
 	//
 	// If a value isn't specified, the search results can contain jobs in
@@ -2553,10 +2760,8 @@ type JobQuery struct {
 	// At most 10 language code filters are allowed.
 	LanguageCodes []string `json:"languageCodes,omitempty"`
 
-	// LocationFilters: Optional.
-	//
-	// The location filter specifies geo-regions containing the jobs
-	// to
+	// LocationFilters: Optional. The location filter specifies geo-regions
+	// containing the jobs to
 	// search against. See LocationFilter for more information.
 	//
 	// If a location value isn't specified, jobs fitting the other
@@ -2574,21 +2779,31 @@ type JobQuery struct {
 	// At most 5 location filters are allowed.
 	LocationFilters []*LocationFilter `json:"locationFilters,omitempty"`
 
-	// PublishTimeRange: Optional.
-	//
-	// Jobs published within a range specified by this filter are
-	// searched
+	// PublishTimeRange: Optional. Jobs published within a range specified
+	// by this filter are searched
 	// against.
 	PublishTimeRange *TimestampRange `json:"publishTimeRange,omitempty"`
 
-	// Query: Optional.
-	//
-	// The query string that matches against the job title, description,
-	// and
+	// Query: Optional. The query string that matches against the job title,
+	// description, and
 	// location fields.
 	//
 	// The maximum number of allowed characters is 255.
 	Query string `json:"query,omitempty"`
+
+	// QueryLanguageCode: The language code of query. For example, "en-US".
+	// This field helps to
+	// better interpret the query.
+	//
+	// If a value isn't specified, the query language code is
+	// automatically
+	// detected, which may not be accurate.
+	//
+	// Language code should be in BCP-47 format, such as "en-US" or
+	// "sr-Latn".
+	// For more information, see
+	// [Tags for Identifying Languages](https://tools.ietf.org/html/bcp47).
+	QueryLanguageCode string `json:"queryLanguageCode,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "CommuteFilter") to
 	// unconditionally include in API requests. By default, fields with
@@ -2857,32 +3072,24 @@ func (s *Location) UnmarshalJSON(data []byte) error {
 //
 // Geographic region of the search.
 type LocationFilter struct {
-	// Address: Optional.
-	//
-	// The address name, such as "Mountain View" or "Bay Area".
+	// Address: Optional. The address name, such as "Mountain View" or "Bay
+	// Area".
 	Address string `json:"address,omitempty"`
 
-	// DistanceInMiles: Optional.
-	//
-	//
-	// The distance_in_miles is applied when the location being searched for
-	// is
+	// DistanceInMiles: Optional. The distance_in_miles is applied when the
+	// location being searched for is
 	// identified as a city or smaller. When the location being searched for
 	// is a
 	// state or larger, this field is ignored.
 	DistanceInMiles float64 `json:"distanceInMiles,omitempty"`
 
-	// LatLng: Optional.
-	//
-	// The latitude and longitude of the geographic center from which
-	// to
+	// LatLng: Optional. The latitude and longitude of the geographic center
+	// from which to
 	// search. This field's ignored if `address` is provided.
 	LatLng *LatLng `json:"latLng,omitempty"`
 
-	// RegionCode: Optional.
-	//
-	// CLDR region code of the country/region of the address. This is
-	// used
+	// RegionCode: Optional. CLDR region code of the country/region of the
+	// address. This is used
 	// to address ambiguity of the user-input location, for example,
 	// "Liverpool"
 	// against "Liverpool, NY, US" or "Liverpool, UK".
@@ -2899,10 +3106,9 @@ type LocationFilter struct {
 	// for details. Example: "CH" for Switzerland.
 	RegionCode string `json:"regionCode,omitempty"`
 
-	// TelecommutePreference: Optional.
-	//
-	// Allows the client to return jobs without a
-	// set location, specifically, telecommuting jobs (telecomuting is
+	// TelecommutePreference: Optional. Allows the client to return jobs
+	// without a
+	// set location, specifically, telecommuting jobs (telecommuting is
 	// considered
 	// by the service as a special location.
 	// Job.posting_region indicates if a job permits telecommuting.
@@ -3025,6 +3231,51 @@ func (s *MatchingJob) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// MendelDebugInput: Message representing input to a Mendel server for
+// debug forcing.
+// See go/mendel-debug-forcing for more details.
+// Next ID: 2
+type MendelDebugInput struct {
+	// NamespacedDebugInput: When a request spans multiple servers, a
+	// MendelDebugInput may travel with
+	// the request and take effect in all the servers. This field is a map
+	// of
+	// namespaces to NamespacedMendelDebugInput protos. In a single server,
+	// up to
+	// two NamespacedMendelDebugInput protos are applied:
+	// 1. NamespacedMendelDebugInput with the global namespace (key ==
+	// "").
+	// 2. NamespacedMendelDebugInput with the server's namespace.
+	// When both NamespacedMendelDebugInput protos are present, they are
+	// merged.
+	// See go/mendel-debug-forcing for more details.
+	NamespacedDebugInput map[string]NamespacedDebugInput `json:"namespacedDebugInput,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "NamespacedDebugInput") to unconditionally include in API requests.
+	// By default, fields with empty values are omitted from API requests.
+	// However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "NamespacedDebugInput") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *MendelDebugInput) MarshalJSON() ([]byte, error) {
+	type NoMethod MendelDebugInput
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // Money: Represents an amount of money with its currency type.
 type Money struct {
 	// CurrencyCode: The 3-letter currency code defined in ISO 4217.
@@ -3067,15 +3318,153 @@ func (s *Money) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// NamespacedDebugInput: Next ID: 15
+type NamespacedDebugInput struct {
+	// AbsolutelyForcedExpNames: Set of experiment names to be absolutely
+	// forced.
+	// These experiments will be forced without evaluating the conditions.
+	AbsolutelyForcedExpNames []string `json:"absolutelyForcedExpNames,omitempty"`
+
+	// AbsolutelyForcedExpTags: Set of experiment tags to be absolutely
+	// forced.
+	// The experiments with these tags will be forced without evaluating
+	// the
+	// conditions.
+	AbsolutelyForcedExpTags []string `json:"absolutelyForcedExpTags,omitempty"`
+
+	// AbsolutelyForcedExps: Set of experiment ids to be absolutely
+	// forced.
+	// These ids will be forced without evaluating the conditions.
+	AbsolutelyForcedExps []int64 `json:"absolutelyForcedExps,omitempty"`
+
+	// ConditionallyForcedExpNames: Set of experiment names to be
+	// conditionally forced.
+	// These experiments will be forced only if their conditions and
+	// their
+	// parent domain's conditions are true.
+	ConditionallyForcedExpNames []string `json:"conditionallyForcedExpNames,omitempty"`
+
+	// ConditionallyForcedExpTags: Set of experiment tags to be
+	// conditionally forced.
+	// The experiments with these tags will be forced only if their
+	// conditions
+	// and their parent domain's conditions are true.
+	ConditionallyForcedExpTags []string `json:"conditionallyForcedExpTags,omitempty"`
+
+	// ConditionallyForcedExps: Set of experiment ids to be conditionally
+	// forced.
+	// These ids will be forced only if their conditions and their
+	// parent
+	// domain's conditions are true.
+	ConditionallyForcedExps []int64 `json:"conditionallyForcedExps,omitempty"`
+
+	// DisableAutomaticEnrollmentSelection: If true, disable automatic
+	// enrollment selection (at all diversion
+	// points). Automatic enrollment selection means experiment
+	// selection
+	// process based on the experiment's automatic enrollment condition.
+	// This
+	// does not disable selection of forced experiments.
+	DisableAutomaticEnrollmentSelection bool `json:"disableAutomaticEnrollmentSelection,omitempty"`
+
+	// DisableExpNames: Set of experiment names to be disabled.
+	// If an experiment is disabled, it is never selected nor forced.
+	// If an aggregate experiment is disabled, its partitions are
+	// disabled
+	// together. If an experiment with an enrollment is disabled, the
+	// enrollment
+	// is disabled together. If a name corresponds to a domain, the
+	// domain
+	// itself and all descendant experiments and domains are disabled
+	// together.
+	DisableExpNames []string `json:"disableExpNames,omitempty"`
+
+	// DisableExpTags: Set of experiment tags to be disabled. All
+	// experiments that are tagged
+	// with one or more of these tags are disabled.
+	// If an experiment is disabled, it is never selected nor forced.
+	// If an aggregate experiment is disabled, its partitions are
+	// disabled
+	// together. If an experiment with an enrollment is disabled, the
+	// enrollment
+	// is disabled together.
+	DisableExpTags []string `json:"disableExpTags,omitempty"`
+
+	// DisableExps: Set of experiment ids to be disabled.
+	// If an experiment is disabled, it is never selected nor forced.
+	// If an aggregate experiment is disabled, its partitions are
+	// disabled
+	// together. If an experiment with an enrollment is disabled, the
+	// enrollment
+	// is disabled together. If an ID corresponds to a domain, the domain
+	// itself
+	// and all descendant experiments and domains are disabled together.
+	DisableExps []int64 `json:"disableExps,omitempty"`
+
+	// DisableManualEnrollmentSelection: If true, disable manual enrollment
+	// selection (at all diversion points).
+	// Manual enrollment selection means experiment selection process based
+	// on
+	// the request's manual enrollment states (a.k.a. opt-in
+	// experiments).
+	// This does not disable selection of forced experiments.
+	DisableManualEnrollmentSelection bool `json:"disableManualEnrollmentSelection,omitempty"`
+
+	// DisableOrganicSelection: If true, disable organic experiment
+	// selection (at all diversion points).
+	// Organic selection means experiment selection process based on
+	// traffic
+	// allocation and diversion condition evaluation.
+	// This does not disable selection of forced experiments.
+	//
+	// This is useful in cases when it is not known whether experiment
+	// selection
+	// behavior is responsible for a error or breakage. Disabling
+	// organic
+	// selection may help to isolate the cause of a given problem.
+	DisableOrganicSelection bool `json:"disableOrganicSelection,omitempty"`
+
+	// ForcedFlags: Flags to force in a particular experiment state.
+	// Map from flag name to flag value.
+	ForcedFlags map[string]string `json:"forcedFlags,omitempty"`
+
+	// ForcedRollouts: Rollouts to force in a particular experiment
+	// state.
+	// Map from rollout name to rollout value.
+	ForcedRollouts map[string]bool `json:"forcedRollouts,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "AbsolutelyForcedExpNames") to unconditionally include in API
+	// requests. By default, fields with empty values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "AbsolutelyForcedExpNames")
+	// to include in API requests with the JSON null value. By default,
+	// fields with empty values are omitted from API requests. However, any
+	// field with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *NamespacedDebugInput) MarshalJSON() ([]byte, error) {
+	type NoMethod NamespacedDebugInput
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // NumericBucketingOption: Input only.
 //
 // Use this field to specify bucketing option for the histogram search
 // response.
 type NumericBucketingOption struct {
-	// BucketBounds: Required.
-	//
-	// Two adjacent values form a histogram bucket. Values should be
-	// in
+	// BucketBounds: Required. Two adjacent values form a histogram bucket.
+	// Values should be in
 	// ascending order. For example, if [5, 10, 15] are provided, four
 	// buckets are
 	// created: (-inf, 5), 5, 10), [10, 15), [15, inf). At most
@@ -3083,9 +3472,8 @@ type NumericBucketingOption struct {
 	// [buckets_bound is supported.
 	BucketBounds []float64 `json:"bucketBounds,omitempty"`
 
-	// RequiresMinMax: Optional.
-	//
-	// If set to true, the histogram result includes minimum/maximum
+	// RequiresMinMax: Optional. If set to true, the histogram result
+	// includes minimum/maximum
 	// value of the numeric field.
 	RequiresMinMax bool `json:"requiresMinMax,omitempty"`
 
@@ -3185,7 +3573,7 @@ func (s *NumericBucketingResult) UnmarshalJSON(data []byte) error {
 //
 // Advice on address input / editing:
 //  - Use an i18n-ready address widget such as
-//    https://github.com/googlei18n/libaddressinput)
+//    https://github.com/google/libaddressinput)
 // - Users should not be presented with UI elements for input or editing
 // of
 //   fields outside countries where that field is used.
@@ -3352,15 +3740,13 @@ func (s *PostalAddress) MarshalJSON() ([]byte, error) {
 //
 // Options for job processing.
 type ProcessingOptions struct {
-	// DisableStreetAddressResolution: Optional.
-	//
-	// If set to `true`, the service does not attempt to resolve a
+	// DisableStreetAddressResolution: Optional. If set to `true`, the
+	// service does not attempt to resolve a
 	// more precise address for the job.
 	DisableStreetAddressResolution bool `json:"disableStreetAddressResolution,omitempty"`
 
-	// HtmlSanitization: Optional.
-	//
-	// Option for job HTML content sanitization. Applied fields are:
+	// HtmlSanitization: Optional. Option for job HTML content sanitization.
+	// Applied fields are:
 	//
 	// * description
 	// * applicationInfo.instruction
@@ -3414,17 +3800,13 @@ func (s *ProcessingOptions) MarshalJSON() ([]byte, error) {
 // the
 // performance of the service.
 type RequestMetadata struct {
-	// DeviceInfo: Optional.
-	//
-	// The type of device used by the job seeker at the time of the call to
-	// the
+	// DeviceInfo: Optional. The type of device used by the job seeker at
+	// the time of the call to the
 	// service.
 	DeviceInfo *DeviceInfo `json:"deviceInfo,omitempty"`
 
-	// Domain: Required.
-	//
-	// The client-defined scope or source of the service call, which
-	// typically
+	// Domain: Required. The client-defined scope or source of the service
+	// call, which typically
 	// is the domain on
 	// which the service has been implemented and is currently being
 	// run.
@@ -3445,10 +3827,8 @@ type RequestMetadata struct {
 	// The maximum number of allowed characters is 255.
 	Domain string `json:"domain,omitempty"`
 
-	// SessionId: Required.
-	//
-	// A unique session identification string. A session is defined as
-	// the
+	// SessionId: Required. A unique session identification string. A
+	// session is defined as the
 	// duration of an end user's interaction with the service over a
 	// certain
 	// period.
@@ -3464,9 +3844,8 @@ type RequestMetadata struct {
 	// The maximum number of allowed characters is 255.
 	SessionId string `json:"sessionId,omitempty"`
 
-	// UserId: Required.
-	//
-	// A unique user identification string, as determined by the client.
+	// UserId: Required. A unique user identification string, as determined
+	// by the client.
 	// To have the strongest positive impact on search quality
 	// make sure the client-level is unique.
 	// Obfuscate this field for privacy concerns before
@@ -3540,10 +3919,8 @@ func (s *ResponseMetadata) MarshalJSON() ([]byte, error) {
 //
 // The Request body of the `SearchJobs` call.
 type SearchJobsRequest struct {
-	// DisableKeywordMatch: Optional.
-	//
-	// Controls whether to disable exact keyword match on
-	// Job.job_title,
+	// DisableKeywordMatch: Optional. Controls whether to disable exact
+	// keyword match on Job.job_title,
 	// Job.description, Job.company_display_name,
 	// Job.locations,
 	// Job.qualifications. When disable keyword match is turned off,
@@ -3575,10 +3952,8 @@ type SearchJobsRequest struct {
 	// Defaults to false.
 	DisableKeywordMatch bool `json:"disableKeywordMatch,omitempty"`
 
-	// DiversificationLevel: Optional.
-	//
-	// Controls whether highly similar jobs are returned next to each other
-	// in
+	// DiversificationLevel: Optional. Controls whether highly similar jobs
+	// are returned next to each other in
 	// the search results. Jobs are identified as highly similar based
 	// on
 	// their titles, job categories, and locations. Highly similar results
@@ -3594,7 +3969,8 @@ type SearchJobsRequest struct {
 	//
 	// Possible values:
 	//   "DIVERSIFICATION_LEVEL_UNSPECIFIED" - The diversification level
-	// isn't specified.
+	// isn't specified. By default, jobs with this
+	// enum are ordered according to SIMPLE diversifying behavior.
 	//   "DISABLED" - Disables diversification. Jobs that would normally be
 	// pushed to the last
 	// page would not have their positions altered. This may result in
@@ -3607,10 +3983,8 @@ type SearchJobsRequest struct {
 	// results.
 	DiversificationLevel string `json:"diversificationLevel,omitempty"`
 
-	// EnableBroadening: Optional.
-	//
-	// Controls whether to broaden the search when it produces sparse
-	// results.
+	// EnableBroadening: Optional. Controls whether to broaden the search
+	// when it produces sparse results.
 	// Broadened queries append results to the end of the matching
 	// results
 	// list.
@@ -3618,20 +3992,16 @@ type SearchJobsRequest struct {
 	// Defaults to false.
 	EnableBroadening bool `json:"enableBroadening,omitempty"`
 
-	// HistogramFacets: Optional.
-	//
-	// Histogram requests for jobs matching JobQuery.
+	// HistogramFacets: Optional. Histogram requests for jobs matching
+	// JobQuery.
 	HistogramFacets *HistogramFacets `json:"histogramFacets,omitempty"`
 
-	// JobQuery: Optional.
-	//
-	// Query used to search against jobs, such as keyword, location filters,
-	// etc.
+	// JobQuery: Optional. Query used to search against jobs, such as
+	// keyword, location filters, etc.
 	JobQuery *JobQuery `json:"jobQuery,omitempty"`
 
-	// JobView: Optional.
-	//
-	// The desired job attributes returned for jobs in the
+	// JobView: Optional. The desired job attributes returned for jobs in
+	// the
 	// search response. Defaults to JobView.SMALL if no value is specified.
 	//
 	// Possible values:
@@ -3641,12 +4011,11 @@ type SearchJobsRequest struct {
 	// Job.name, Job.requisition_id, Job.language_code.
 	//   "JOB_VIEW_MINIMAL" - A minimal view of the job, with the following
 	// attributes:
-	// Job.name, Job.requisition_id, Job.job_title,
+	// Job.name, Job.requisition_id, Job.title,
 	// Job.company_name, Job.DerivedInfo.locations, Job.language_code.
 	//   "JOB_VIEW_SMALL" - A small view of the job, with the following
 	// attributes in the search
-	// results: Job.name, Job.requisition_id,
-	// Job.job_title,
+	// results: Job.name, Job.requisition_id, Job.title,
 	// Job.company_name, Job.DerivedInfo.locations,
 	// Job.visibility,
 	// Job.language_code, Job.description.
@@ -3654,10 +4023,8 @@ type SearchJobsRequest struct {
 	// search results.
 	JobView string `json:"jobView,omitempty"`
 
-	// Offset: Optional.
-	//
-	// An integer that specifies the current offset (that is, starting
-	// result
+	// Offset: Optional. An integer that specifies the current offset (that
+	// is, starting result
 	// location, amongst the jobs deemed by the API as relevant) in
 	// search
 	// results. This field is only considered if page_token is unset.
@@ -3671,10 +4038,8 @@ type SearchJobsRequest struct {
 	// from the second page).
 	Offset int64 `json:"offset,omitempty"`
 
-	// OrderBy: Optional.
-	//
-	// The criteria determining how search results are sorted. Default
-	// is
+	// OrderBy: Optional. The criteria determining how search results are
+	// sorted. Default is
 	// "relevance desc".
 	//
 	// Supported options are:
@@ -3684,34 +4049,36 @@ type SearchJobsRequest struct {
 	// algorithms. Relevance thresholding of query results is only
 	// available
 	// with this ordering.
-	// * "posting`_`publish`_`time desc": By Job.posting_publish_time
+	// * "posting_publish_time desc": By
+	// Job.posting_publish_time
 	// descending.
-	// * "posting`_`update`_`time desc": By Job.posting_update_time
+	// * "posting_update_time desc": By
+	// Job.posting_update_time
 	// descending.
 	// * "title": By Job.title ascending.
 	// * "title desc": By Job.title descending.
-	// * "annualized`_`base`_`compensation": By
+	// * "annualized_base_compensation": By
 	// job's
 	// CompensationInfo.annualized_base_compensation_range ascending.
 	// Jobs
 	// whose annualized base compensation is unspecified are put at the end
 	// of
 	// search results.
-	// * "annualized`_`base`_`compensation desc": By
+	// * "annualized_base_compensation desc": By
 	// job's
 	// CompensationInfo.annualized_base_compensation_range descending.
 	// Jobs
 	// whose annualized base compensation is unspecified are put at the end
 	// of
 	// search results.
-	// * "annualized`_`total`_`compensation": By
+	// * "annualized_total_compensation": By
 	// job's
 	// CompensationInfo.annualized_total_compensation_range ascending.
 	// Jobs
 	// whose annualized base compensation is unspecified are put at the end
 	// of
 	// search results.
-	// * "annualized`_`total`_`compensation desc": By
+	// * "annualized_total_compensation desc": By
 	// job's
 	// CompensationInfo.annualized_total_compensation_range descending.
 	// Jobs
@@ -3720,35 +4087,28 @@ type SearchJobsRequest struct {
 	// search results.
 	OrderBy string `json:"orderBy,omitempty"`
 
-	// PageSize: Optional.
-	//
-	// A limit on the number of jobs returned in the search
-	// results.
+	// PageSize: Optional. A limit on the number of jobs returned in the
+	// search results.
 	// Increasing this value above the default value of 10 can increase
 	// search
 	// response time. The value can be between 1 and 100.
 	PageSize int64 `json:"pageSize,omitempty"`
 
-	// PageToken: Optional.
-	//
-	// The token specifying the current offset within
+	// PageToken: Optional. The token specifying the current offset
+	// within
 	// search results. See SearchJobsResponse.next_page_token for
 	// an explanation of how to obtain the next set of query results.
 	PageToken string `json:"pageToken,omitempty"`
 
-	// RequestMetadata: Required.
-	//
-	// The meta information collected about the job searcher, used to
-	// improve the
-	// search quality of the service.. The identifiers, (such as `user_id`)
+	// RequestMetadata: Required. The meta information collected about the
+	// job searcher, used to improve the
+	// search quality of the service. The identifiers (such as `user_id`)
 	// are
 	// provided by users, and must be unique and consistent.
 	RequestMetadata *RequestMetadata `json:"requestMetadata,omitempty"`
 
-	// RequirePreciseResultSize: Optional.
-	//
-	// Controls if the search job request requires the return of a
-	// precise
+	// RequirePreciseResultSize: Optional. Controls if the search job
+	// request requires the return of a precise
 	// count of the first 300 results. Setting this to `true`
 	// ensures
 	// consistency in the number of results per page. Best practice is to
@@ -3762,15 +4122,14 @@ type SearchJobsRequest struct {
 	// Defaults to false.
 	RequirePreciseResultSize bool `json:"requirePreciseResultSize,omitempty"`
 
-	// SearchMode: Optional.
-	//
-	// Mode of a search.
+	// SearchMode: Optional. Mode of a search.
 	//
 	// Defaults to SearchMode.JOB_SEARCH.
 	//
 	// Possible values:
 	//   "SEARCH_MODE_UNSPECIFIED" - The mode of the search method isn't
-	// specified.
+	// specified. The default search
+	// behavior is identical to JOB_SEARCH search behavior.
 	//   "JOB_SEARCH" - The job search matches against all jobs, and
 	// featured jobs
 	// (jobs with promotionValue > 0) are not specially handled.
@@ -4017,9 +4376,8 @@ func (s *TimestampRange) MarshalJSON() ([]byte, error) {
 //
 // Request for updating a specified company.
 type UpdateCompanyRequest struct {
-	// Company: Required.
-	//
-	// The company resource to replace the current resource in the system.
+	// Company: Required. The company resource to replace the current
+	// resource in the system.
 	Company *Company `json:"company,omitempty"`
 
 	// UpdateMask: Optional but strongly recommended for the best
@@ -4060,9 +4418,7 @@ func (s *UpdateCompanyRequest) MarshalJSON() ([]byte, error) {
 //
 // Update job request.
 type UpdateJobRequest struct {
-	// Job: Required.
-	//
-	// The Job to be updated.
+	// Job: Required. The Job to be updated.
 	Job *Job `json:"job,omitempty"`
 
 	// UpdateMask: Optional but strongly recommended to be provided for the
@@ -4190,10 +4546,8 @@ func (c *ProjectsCompleteCall) LanguageCodes(languageCodes ...string) *ProjectsC
 	return c
 }
 
-// PageSize sets the optional parameter "pageSize":
-// Required.
-//
-// Completion result count.
+// PageSize sets the optional parameter "pageSize": Required. Completion
+// result count.
 //
 // The maximum allowed page size is 10.
 func (c *ProjectsCompleteCall) PageSize(pageSize int64) *ProjectsCompleteCall {
@@ -4201,9 +4555,8 @@ func (c *ProjectsCompleteCall) PageSize(pageSize int64) *ProjectsCompleteCall {
 	return c
 }
 
-// Query sets the optional parameter "query": Required.
-//
-// The query used to generate suggestions.
+// Query sets the optional parameter "query": Required. The query used
+// to generate suggestions.
 //
 // The maximum number of allowed characters is 255.
 func (c *ProjectsCompleteCall) Query(query string) *ProjectsCompleteCall {
@@ -4273,6 +4626,7 @@ func (c *ProjectsCompleteCall) Header() http.Header {
 
 func (c *ProjectsCompleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4343,7 +4697,7 @@ func (c *ProjectsCompleteCall) Do(opts ...googleapi.CallOption) (*CompleteQueryR
 	//   ],
 	//   "parameters": {
 	//     "companyName": {
-	//       "description": "Optional.\n\nIf provided, restricts completion to specified company.\n\nThe format is \"projects/{project_id}/companies/{company_id}\", for example,\n\"projects/api-test-project/companies/foo\".",
+	//       "description": "Optional. If provided, restricts completion to specified company.\n\nThe format is \"projects/{project_id}/companies/{company_id}\", for example,\n\"projects/api-test-project/companies/foo\".",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -4353,31 +4707,31 @@ func (c *ProjectsCompleteCall) Do(opts ...googleapi.CallOption) (*CompleteQueryR
 	//       "type": "string"
 	//     },
 	//     "languageCodes": {
-	//       "description": "Optional.\n\nThe list of languages of the query. This is\nthe BCP-47 language code, such as \"en-US\" or \"sr-Latn\".\nFor more information, see\n[Tags for Identifying Languages](https://tools.ietf.org/html/bcp47).\n\nFor CompletionType.JOB_TITLE type, only open jobs with the same\nlanguage_codes are returned.\n\nFor CompletionType.COMPANY_NAME type,\nonly companies having open jobs with the same language_codes are\nreturned.\n\nFor CompletionType.COMBINED type, only open jobs with the same\nlanguage_codes or companies having open jobs with the same\nlanguage_codes are returned.\n\nThe maximum number of allowed characters is 255.",
+	//       "description": "Optional. The list of languages of the query. This is\nthe BCP-47 language code, such as \"en-US\" or \"sr-Latn\".\nFor more information, see\n[Tags for Identifying Languages](https://tools.ietf.org/html/bcp47).\n\nFor CompletionType.JOB_TITLE type, only open jobs with the same\nlanguage_codes are returned.\n\nFor CompletionType.COMPANY_NAME type,\nonly companies having open jobs with the same language_codes are\nreturned.\n\nFor CompletionType.COMBINED type, only open jobs with the same\nlanguage_codes or companies having open jobs with the same\nlanguage_codes are returned.\n\nThe maximum number of allowed characters is 255.",
 	//       "location": "query",
 	//       "repeated": true,
 	//       "type": "string"
 	//     },
 	//     "name": {
-	//       "description": "Required.\n\nResource name of project the completion is performed within.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
+	//       "description": "Required. Resource name of project the completion is performed within.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "pageSize": {
-	//       "description": "Required.\n\nCompletion result count.\n\nThe maximum allowed page size is 10.",
+	//       "description": "Required. Completion result count.\n\nThe maximum allowed page size is 10.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
 	//     },
 	//     "query": {
-	//       "description": "Required.\n\nThe query used to generate suggestions.\n\nThe maximum number of allowed characters is 255.",
+	//       "description": "Required. The query used to generate suggestions.\n\nThe maximum number of allowed characters is 255.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "scope": {
-	//       "description": "Optional.\n\nThe scope of the completion. The defaults is CompletionScope.PUBLIC.",
+	//       "description": "Optional. The scope of the completion. The defaults is CompletionScope.PUBLIC.",
 	//       "enum": [
 	//         "COMPLETION_SCOPE_UNSPECIFIED",
 	//         "TENANT",
@@ -4387,7 +4741,7 @@ func (c *ProjectsCompleteCall) Do(opts ...googleapi.CallOption) (*CompleteQueryR
 	//       "type": "string"
 	//     },
 	//     "type": {
-	//       "description": "Optional.\n\nThe completion topic. The default is CompletionType.COMBINED.",
+	//       "description": "Optional. The completion topic. The default is CompletionType.COMBINED.",
 	//       "enum": [
 	//         "COMPLETION_TYPE_UNSPECIFIED",
 	//         "JOB_TITLE",
@@ -4401,6 +4755,158 @@ func (c *ProjectsCompleteCall) Do(opts ...googleapi.CallOption) (*CompleteQueryR
 	//   "path": "v3/{+name}:complete",
 	//   "response": {
 	//     "$ref": "CompleteQueryResponse"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/jobs"
+	//   ]
+	// }
+
+}
+
+// method id "jobs.projects.clientEvents.create":
+
+type ProjectsClientEventsCreateCall struct {
+	s                        *Service
+	parent                   string
+	createclienteventrequest *CreateClientEventRequest
+	urlParams_               gensupport.URLParams
+	ctx_                     context.Context
+	header_                  http.Header
+}
+
+// Create: Report events issued when end user interacts with customer's
+// application
+// that uses Cloud Talent Solution. You may inspect the created events
+// in
+// [self
+// service
+// tools](https://console.cloud.google.com/talent-solution/overvi
+// ew).
+// [Learn
+// more](https://cloud.google.com/talent-solution/docs/manage
+// ment-tools)
+// about self service tools.
+func (r *ProjectsClientEventsService) Create(parent string, createclienteventrequest *CreateClientEventRequest) *ProjectsClientEventsCreateCall {
+	c := &ProjectsClientEventsCreateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.parent = parent
+	c.createclienteventrequest = createclienteventrequest
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsClientEventsCreateCall) Fields(s ...googleapi.Field) *ProjectsClientEventsCreateCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsClientEventsCreateCall) Context(ctx context.Context) *ProjectsClientEventsCreateCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsClientEventsCreateCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsClientEventsCreateCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.createclienteventrequest)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v3/{+parent}/clientEvents")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"parent": c.parent,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "jobs.projects.clientEvents.create" call.
+// Exactly one of *ClientEvent or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *ClientEvent.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *ProjectsClientEventsCreateCall) Do(opts ...googleapi.CallOption) (*ClientEvent, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &ClientEvent{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Report events issued when end user interacts with customer's application\nthat uses Cloud Talent Solution. You may inspect the created events in\n[self service\ntools](https://console.cloud.google.com/talent-solution/overview).\n[Learn\nmore](https://cloud.google.com/talent-solution/docs/management-tools)\nabout self service tools.",
+	//   "flatPath": "v3/projects/{projectsId}/clientEvents",
+	//   "httpMethod": "POST",
+	//   "id": "jobs.projects.clientEvents.create",
+	//   "parameterOrder": [
+	//     "parent"
+	//   ],
+	//   "parameters": {
+	//     "parent": {
+	//       "description": "Parent project name.",
+	//       "location": "path",
+	//       "pattern": "^projects/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v3/{+parent}/clientEvents",
+	//   "request": {
+	//     "$ref": "CreateClientEventRequest"
+	//   },
+	//   "response": {
+	//     "$ref": "ClientEvent"
 	//   },
 	//   "scopes": [
 	//     "https://www.googleapis.com/auth/cloud-platform",
@@ -4456,6 +4962,7 @@ func (c *ProjectsCompaniesCreateCall) Header() http.Header {
 
 func (c *ProjectsCompaniesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4528,7 +5035,7 @@ func (c *ProjectsCompaniesCreateCall) Do(opts ...googleapi.CallOption) (*Company
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required.\n\nResource name of the project under which the company is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
+	//       "description": "Required. Resource name of the project under which the company is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
@@ -4595,6 +5102,7 @@ func (c *ProjectsCompaniesDeleteCall) Header() http.Header {
 
 func (c *ProjectsCompaniesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4662,7 +5170,7 @@ func (c *ProjectsCompaniesDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, 
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe resource name of the company to be deleted.\n\nThe format is \"projects/{project_id}/companies/{company_id}\", for example,\n\"projects/api-test-project/companies/foo\".",
+	//       "description": "Required. The resource name of the company to be deleted.\n\nThe format is \"projects/{project_id}/companies/{company_id}\", for example,\n\"projects/api-test-project/companies/foo\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/companies/[^/]+$",
 	//       "required": true,
@@ -4736,6 +5244,7 @@ func (c *ProjectsCompaniesGetCall) Header() http.Header {
 
 func (c *ProjectsCompaniesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4806,7 +5315,7 @@ func (c *ProjectsCompaniesGetCall) Do(opts ...googleapi.CallOption) (*Company, e
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe resource name of the company to be retrieved.\n\nThe format is \"projects/{project_id}/companies/{company_id}\", for example,\n\"projects/api-test-project/companies/foo\".",
+	//       "description": "Required. The resource name of the company to be retrieved.\n\nThe format is \"projects/{project_id}/companies/{company_id}\", for example,\n\"projects/api-test-project/companies/foo\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/companies/[^/]+$",
 	//       "required": true,
@@ -4907,6 +5416,7 @@ func (c *ProjectsCompaniesListCall) Header() http.Header {
 
 func (c *ProjectsCompaniesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4977,25 +5487,25 @@ func (c *ProjectsCompaniesListCall) Do(opts ...googleapi.CallOption) (*ListCompa
 	//   ],
 	//   "parameters": {
 	//     "pageSize": {
-	//       "description": "Optional.\n\nThe maximum number of companies to be returned, at most 100.\nDefault is 100 if a non-positive number is provided.",
+	//       "description": "Optional. The maximum number of companies to be returned, at most 100.\nDefault is 100 if a non-positive number is provided.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
 	//     },
 	//     "pageToken": {
-	//       "description": "Optional.\n\nThe starting indicator from which to return results.",
+	//       "description": "Optional. The starting indicator from which to return results.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "parent": {
-	//       "description": "Required.\n\nResource name of the project under which the company is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
+	//       "description": "Required. Resource name of the project under which the company is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "requireOpenJobs": {
-	//       "description": "Optional.\n\nSet to true if the companies requested must have open jobs.\n\nDefaults to false.\n\nIf true, at most page_size of companies are fetched, among which\nonly those with open jobs are returned.",
+	//       "description": "Optional. Set to true if the companies requested must have open jobs.\n\nDefaults to false.\n\nIf true, at most page_size of companies are fetched, among which\nonly those with open jobs are returned.",
 	//       "location": "query",
 	//       "type": "boolean"
 	//     }
@@ -5083,6 +5593,7 @@ func (c *ProjectsCompaniesPatchCall) Header() http.Header {
 
 func (c *ProjectsCompaniesPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5223,6 +5734,7 @@ func (c *ProjectsJobsBatchDeleteCall) Header() http.Header {
 
 func (c *ProjectsJobsBatchDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5295,7 +5807,7 @@ func (c *ProjectsJobsBatchDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, 
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required.\n\nThe resource name of the project under which the job is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
+	//       "description": "Required. The resource name of the project under which the job is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
@@ -5367,6 +5879,7 @@ func (c *ProjectsJobsCreateCall) Header() http.Header {
 
 func (c *ProjectsJobsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5439,7 +5952,7 @@ func (c *ProjectsJobsCreateCall) Do(opts ...googleapi.CallOption) (*Job, error) 
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required.\n\nThe resource name of the project under which the job is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
+	//       "description": "Required. The resource name of the project under which the job is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
@@ -5509,6 +6022,7 @@ func (c *ProjectsJobsDeleteCall) Header() http.Header {
 
 func (c *ProjectsJobsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5576,7 +6090,7 @@ func (c *ProjectsJobsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, error
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe resource name of the job to be deleted.\n\nThe format is \"projects/{project_id}/jobs/{job_id}\",\nfor example, \"projects/api-test-project/jobs/1234\".",
+	//       "description": "Required. The resource name of the job to be deleted.\n\nThe format is \"projects/{project_id}/jobs/{job_id}\",\nfor example, \"projects/api-test-project/jobs/1234\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/jobs/[^/]+$",
 	//       "required": true,
@@ -5652,6 +6166,7 @@ func (c *ProjectsJobsGetCall) Header() http.Header {
 
 func (c *ProjectsJobsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5722,7 +6237,7 @@ func (c *ProjectsJobsGetCall) Do(opts ...googleapi.CallOption) (*Job, error) {
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe resource name of the job to retrieve.\n\nThe format is \"projects/{project_id}/jobs/{job_id}\",\nfor example, \"projects/api-test-project/jobs/1234\".",
+	//       "description": "Required. The resource name of the job to retrieve.\n\nThe format is \"projects/{project_id}/jobs/{job_id}\",\nfor example, \"projects/api-test-project/jobs/1234\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/jobs/[^/]+$",
 	//       "required": true,
@@ -5759,9 +6274,8 @@ func (r *ProjectsJobsService) List(parent string) *ProjectsJobsListCall {
 	return c
 }
 
-// Filter sets the optional parameter "filter": Required.
-//
-// The filter string specifies the jobs to be enumerated.
+// Filter sets the optional parameter "filter": Required. The filter
+// string specifies the jobs to be enumerated.
 //
 // Supported operator: =, AND
 //
@@ -5856,6 +6370,7 @@ func (c *ProjectsJobsListCall) Header() http.Header {
 
 func (c *ProjectsJobsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5926,12 +6441,12 @@ func (c *ProjectsJobsListCall) Do(opts ...googleapi.CallOption) (*ListJobsRespon
 	//   ],
 	//   "parameters": {
 	//     "filter": {
-	//       "description": "Required.\n\nThe filter string specifies the jobs to be enumerated.\n\nSupported operator: =, AND\n\nThe fields eligible for filtering are:\n\n* `companyName` (Required)\n* `requisitionId` (Optional)\n\nSample Query:\n\n* companyName = \"projects/api-test-project/companies/123\"\n* companyName = \"projects/api-test-project/companies/123\" AND requisitionId\n= \"req-1\"",
+	//       "description": "Required. The filter string specifies the jobs to be enumerated.\n\nSupported operator: =, AND\n\nThe fields eligible for filtering are:\n\n* `companyName` (Required)\n* `requisitionId` (Optional)\n\nSample Query:\n\n* companyName = \"projects/api-test-project/companies/123\"\n* companyName = \"projects/api-test-project/companies/123\" AND requisitionId\n= \"req-1\"",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "jobView": {
-	//       "description": "Optional.\n\nThe desired job attributes returned for jobs in the\nsearch response. Defaults to JobView.JOB_VIEW_FULL if no value is\nspecified.",
+	//       "description": "Optional. The desired job attributes returned for jobs in the\nsearch response. Defaults to JobView.JOB_VIEW_FULL if no value is\nspecified.",
 	//       "enum": [
 	//         "JOB_VIEW_UNSPECIFIED",
 	//         "JOB_VIEW_ID_ONLY",
@@ -5943,18 +6458,18 @@ func (c *ProjectsJobsListCall) Do(opts ...googleapi.CallOption) (*ListJobsRespon
 	//       "type": "string"
 	//     },
 	//     "pageSize": {
-	//       "description": "Optional.\n\nThe maximum number of jobs to be returned per page of results.\n\nIf job_view is set to JobView.JOB_VIEW_ID_ONLY, the maximum allowed\npage size is 1000. Otherwise, the maximum allowed page size is 100.\n\nDefault is 100 if empty or a number \u003c 1 is specified.",
+	//       "description": "Optional. The maximum number of jobs to be returned per page of results.\n\nIf job_view is set to JobView.JOB_VIEW_ID_ONLY, the maximum allowed\npage size is 1000. Otherwise, the maximum allowed page size is 100.\n\nDefault is 100 if empty or a number \u003c 1 is specified.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
 	//     },
 	//     "pageToken": {
-	//       "description": "Optional.\n\nThe starting point of a query result.",
+	//       "description": "Optional. The starting point of a query result.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "parent": {
-	//       "description": "Required.\n\nThe resource name of the project under which the job is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
+	//       "description": "Required. The resource name of the project under which the job is created.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
@@ -6044,6 +6559,7 @@ func (c *ProjectsJobsPatchCall) Header() http.Header {
 
 func (c *ProjectsJobsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6189,6 +6705,7 @@ func (c *ProjectsJobsSearchCall) Header() http.Header {
 
 func (c *ProjectsJobsSearchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6261,7 +6778,7 @@ func (c *ProjectsJobsSearchCall) Do(opts ...googleapi.CallOption) (*SearchJobsRe
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required.\n\nThe resource name of the project to search within.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
+	//       "description": "Required. The resource name of the project to search within.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
@@ -6364,6 +6881,7 @@ func (c *ProjectsJobsSearchForAlertCall) Header() http.Header {
 
 func (c *ProjectsJobsSearchForAlertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6436,7 +6954,7 @@ func (c *ProjectsJobsSearchForAlertCall) Do(opts ...googleapi.CallOption) (*Sear
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required.\n\nThe resource name of the project to search within.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
+	//       "description": "Required. The resource name of the project to search within.\n\nThe format is \"projects/{project_id}\", for example,\n\"projects/api-test-project\".",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,

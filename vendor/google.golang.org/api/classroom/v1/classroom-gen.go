@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,39 @@
 
 // Package classroom provides access to the Google Classroom API.
 //
-// See https://developers.google.com/classroom/
+// For product documentation, see: https://developers.google.com/classroom/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/classroom/v1"
 //   ...
-//   classroomService, err := classroom.New(oauthHttpClient)
+//   ctx := context.Background()
+//   classroomService, err := classroom.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   classroomService, err := classroom.NewService(ctx, option.WithScopes(classroom.ClassroomTopicsReadonlyScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   classroomService, err := classroom.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   classroomService, err := classroom.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package classroom // import "google.golang.org/api/classroom/v1"
 
 import (
@@ -27,8 +53,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -110,8 +138,59 @@ const (
 	// View course work and grades for students in the Google Classroom
 	// classes you teach or administer
 	ClassroomStudentSubmissionsStudentsReadonlyScope = "https://www.googleapis.com/auth/classroom.student-submissions.students.readonly"
+
+	// See, create, and edit topics in Google Classroom
+	ClassroomTopicsScope = "https://www.googleapis.com/auth/classroom.topics"
+
+	// View topics in Google Classroom
+	ClassroomTopicsReadonlyScope = "https://www.googleapis.com/auth/classroom.topics.readonly"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/classroom.announcements",
+		"https://www.googleapis.com/auth/classroom.announcements.readonly",
+		"https://www.googleapis.com/auth/classroom.courses",
+		"https://www.googleapis.com/auth/classroom.courses.readonly",
+		"https://www.googleapis.com/auth/classroom.coursework.me",
+		"https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+		"https://www.googleapis.com/auth/classroom.coursework.students",
+		"https://www.googleapis.com/auth/classroom.coursework.students.readonly",
+		"https://www.googleapis.com/auth/classroom.guardianlinks.me.readonly",
+		"https://www.googleapis.com/auth/classroom.guardianlinks.students",
+		"https://www.googleapis.com/auth/classroom.guardianlinks.students.readonly",
+		"https://www.googleapis.com/auth/classroom.profile.emails",
+		"https://www.googleapis.com/auth/classroom.profile.photos",
+		"https://www.googleapis.com/auth/classroom.push-notifications",
+		"https://www.googleapis.com/auth/classroom.rosters",
+		"https://www.googleapis.com/auth/classroom.rosters.readonly",
+		"https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
+		"https://www.googleapis.com/auth/classroom.student-submissions.students.readonly",
+		"https://www.googleapis.com/auth/classroom.topics",
+		"https://www.googleapis.com/auth/classroom.topics.readonly",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -152,6 +231,7 @@ func NewCoursesService(s *Service) *CoursesService {
 	rs.CourseWork = NewCoursesCourseWorkService(s)
 	rs.Students = NewCoursesStudentsService(s)
 	rs.Teachers = NewCoursesTeachersService(s)
+	rs.Topics = NewCoursesTopicsService(s)
 	return rs
 }
 
@@ -167,6 +247,8 @@ type CoursesService struct {
 	Students *CoursesStudentsService
 
 	Teachers *CoursesTeachersService
+
+	Topics *CoursesTopicsService
 }
 
 func NewCoursesAliasesService(s *Service) *CoursesAliasesService {
@@ -223,6 +305,15 @@ func NewCoursesTeachersService(s *Service) *CoursesTeachersService {
 }
 
 type CoursesTeachersService struct {
+	s *Service
+}
+
+func NewCoursesTopicsService(s *Service) *CoursesTopicsService {
+	rs := &CoursesTopicsService{s: s}
+	return rs
+}
+
+type CoursesTopicsService struct {
 	s *Service
 }
 
@@ -324,9 +415,9 @@ type Announcement struct {
 	// IndividualStudentsOptions: Identifiers of students with access to the
 	// announcement.
 	// This field is set only if `assigneeMode` is `INDIVIDUAL_STUDENTS`.
-	// If the `assigneeMode` is `INDIVIDUAL_STUDENTS`, then only students
-	// specified in this
-	// field will be able to see the announcement.
+	// If the `assigneeMode` is `INDIVIDUAL_STUDENTS`, then only
+	// students
+	// specified in this field will be able to see the announcement.
 	IndividualStudentsOptions *IndividualStudentsOptions `json:"individualStudentsOptions,omitempty"`
 
 	// Materials: Additional materials.
@@ -703,7 +794,8 @@ type Course struct {
 	// all teachers of the
 	// course.
 	//
-	// This field will only be set for teachers of the course and domain
+	// This field will only be set for teachers of the course and
+	// domain
 	// administrators.
 	//
 	// Read-only.
@@ -1066,6 +1158,11 @@ type CourseWork struct {
 	// 3000
 	// characters.
 	Title string `json:"title,omitempty"`
+
+	// TopicId: Identifier for the topic that this coursework is associated
+	// with.
+	// Must match an existing topic in the course.
+	TopicId string `json:"topicId,omitempty"`
 
 	// UpdateTime: Timestamp of the most recent change to this course
 	// work.
@@ -2157,6 +2254,43 @@ func (s *ListTeachersResponse) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// ListTopicResponse: Response when listing topics.
+type ListTopicResponse struct {
+	// NextPageToken: Token identifying the next page of results to return.
+	// If empty, no further
+	// results are available.
+	NextPageToken string `json:"nextPageToken,omitempty"`
+
+	// Topic: Topic items that match the request.
+	Topic []*Topic `json:"topic,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "NextPageToken") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "NextPageToken") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ListTopicResponse) MarshalJSON() ([]byte, error) {
+	type NoMethod ListTopicResponse
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // Material: Material attached to course work.
 //
 // When creating attachments, setting the `form` field is not supported.
@@ -3005,6 +3139,61 @@ func (s *TimeOfDay) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// Topic: Topic created by a teacher for the course
+type Topic struct {
+	// CourseId: Identifier of the course.
+	//
+	// Read-only.
+	CourseId string `json:"courseId,omitempty"`
+
+	// Name: The name of the topic, generated by the user.
+	// Leading and trailing whitespaces, if any, will be trimmed. Also,
+	// multiple
+	// consecutive whitespaces will be collapsed into one inside the name.
+	// The
+	// result must be a non-empty string. Topic names are case sensitive,
+	// and must
+	// be no longer than 100 characters.
+	Name string `json:"name,omitempty"`
+
+	// TopicId: Unique identifier for the topic.
+	//
+	// Read-only.
+	TopicId string `json:"topicId,omitempty"`
+
+	// UpdateTime: The time the topic was last updated by the
+	// system.
+	//
+	// Read-only.
+	UpdateTime string `json:"updateTime,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "CourseId") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CourseId") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Topic) MarshalJSON() ([]byte, error) {
+	type NoMethod Topic
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // TurnInStudentSubmissionRequest: Request to turn in a student
 // submission.
 type TurnInStudentSubmissionRequest struct {
@@ -3180,6 +3369,7 @@ func (c *CoursesCreateCall) Header() http.Header {
 
 func (c *CoursesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3311,6 +3501,7 @@ func (c *CoursesDeleteCall) Header() http.Header {
 
 func (c *CoursesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3457,6 +3648,7 @@ func (c *CoursesGetCall) Header() http.Header {
 
 func (c *CoursesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3673,6 +3865,7 @@ func (c *CoursesListCall) Header() http.Header {
 
 func (c *CoursesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3893,6 +4086,7 @@ func (c *CoursesPatchCall) Header() http.Header {
 
 func (c *CoursesPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4046,6 +4240,7 @@ func (c *CoursesUpdateCall) Header() http.Header {
 
 func (c *CoursesUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4196,6 +4391,7 @@ func (c *CoursesAliasesCreateCall) Header() http.Header {
 
 func (c *CoursesAliasesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4345,6 +4541,7 @@ func (c *CoursesAliasesDeleteCall) Header() http.Header {
 
 func (c *CoursesAliasesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4523,6 +4720,7 @@ func (c *CoursesAliasesListCall) Header() http.Header {
 
 func (c *CoursesAliasesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4701,6 +4899,7 @@ func (c *CoursesAnnouncementsCreateCall) Header() http.Header {
 
 func (c *CoursesAnnouncementsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4857,6 +5056,7 @@ func (c *CoursesAnnouncementsDeleteCall) Header() http.Header {
 
 func (c *CoursesAnnouncementsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5014,6 +5214,7 @@ func (c *CoursesAnnouncementsGetCall) Header() http.Header {
 
 func (c *CoursesAnnouncementsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5230,6 +5431,7 @@ func (c *CoursesAnnouncementsListCall) Header() http.Header {
 
 func (c *CoursesAnnouncementsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5427,6 +5629,7 @@ func (c *CoursesAnnouncementsModifyAssigneesCall) Header() http.Header {
 
 func (c *CoursesAnnouncementsModifyAssigneesCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5610,6 +5813,7 @@ func (c *CoursesAnnouncementsPatchCall) Header() http.Header {
 
 func (c *CoursesAnnouncementsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5785,6 +5989,7 @@ func (c *CoursesCourseWorkCreateCall) Header() http.Header {
 
 func (c *CoursesCourseWorkCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5941,6 +6146,7 @@ func (c *CoursesCourseWorkDeleteCall) Header() http.Header {
 
 func (c *CoursesCourseWorkDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6098,6 +6304,7 @@ func (c *CoursesCourseWorkGetCall) Header() http.Header {
 
 func (c *CoursesCourseWorkGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6318,6 +6525,7 @@ func (c *CoursesCourseWorkListCall) Header() http.Header {
 
 func (c *CoursesCourseWorkListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6517,6 +6725,7 @@ func (c *CoursesCourseWorkModifyAssigneesCall) Header() http.Header {
 
 func (c *CoursesCourseWorkModifyAssigneesCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6687,6 +6896,7 @@ func (r *CoursesCourseWorkService) Patch(courseId string, id string, coursework 
 // * `max_points`
 // * `scheduled_time`
 // * `submission_modification_mode`
+// * `topic_id`
 func (c *CoursesCourseWorkPatchCall) UpdateMask(updateMask string) *CoursesCourseWorkPatchCall {
 	c.urlParams_.Set("updateMask", updateMask)
 	return c
@@ -6719,6 +6929,7 @@ func (c *CoursesCourseWorkPatchCall) Header() http.Header {
 
 func (c *CoursesCourseWorkPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6805,7 +7016,7 @@ func (c *CoursesCourseWorkPatchCall) Do(opts ...googleapi.CallOption) (*CourseWo
 	//       "type": "string"
 	//     },
 	//     "updateMask": {
-	//       "description": "Mask that identifies which fields on the course work to update.\nThis field is required to do an update. The update fails if invalid\nfields are specified. If a field supports empty values, it can be cleared\nby specifying it in the update mask and not in the CourseWork object. If a\nfield that does not support empty values is included in the update mask and\nnot set in the CourseWork object, an `INVALID_ARGUMENT` error will be\nreturned.\n\nThe following fields may be specified by teachers:\n\n* `title`\n* `description`\n* `state`\n* `due_date`\n* `due_time`\n* `max_points`\n* `scheduled_time`\n* `submission_modification_mode`",
+	//       "description": "Mask that identifies which fields on the course work to update.\nThis field is required to do an update. The update fails if invalid\nfields are specified. If a field supports empty values, it can be cleared\nby specifying it in the update mask and not in the CourseWork object. If a\nfield that does not support empty values is included in the update mask and\nnot set in the CourseWork object, an `INVALID_ARGUMENT` error will be\nreturned.\n\nThe following fields may be specified by teachers:\n\n* `title`\n* `description`\n* `state`\n* `due_date`\n* `due_time`\n* `max_points`\n* `scheduled_time`\n* `submission_modification_mode`\n* `topic_id`",
 	//       "format": "google-fieldmask",
 	//       "location": "query",
 	//       "type": "string"
@@ -6893,6 +7104,7 @@ func (c *CoursesCourseWorkStudentSubmissionsGetCall) Header() http.Header {
 
 func (c *CoursesCourseWorkStudentSubmissionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7142,6 +7354,7 @@ func (c *CoursesCourseWorkStudentSubmissionsListCall) Header() http.Header {
 
 func (c *CoursesCourseWorkStudentSubmissionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7377,6 +7590,7 @@ func (c *CoursesCourseWorkStudentSubmissionsModifyAttachmentsCall) Header() http
 
 func (c *CoursesCourseWorkStudentSubmissionsModifyAttachmentsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7573,6 +7787,7 @@ func (c *CoursesCourseWorkStudentSubmissionsPatchCall) Header() http.Header {
 
 func (c *CoursesCourseWorkStudentSubmissionsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7768,6 +7983,7 @@ func (c *CoursesCourseWorkStudentSubmissionsReclaimCall) Header() http.Header {
 
 func (c *CoursesCourseWorkStudentSubmissionsReclaimCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7955,6 +8171,7 @@ func (c *CoursesCourseWorkStudentSubmissionsReturnCall) Header() http.Header {
 
 func (c *CoursesCourseWorkStudentSubmissionsReturnCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8139,6 +8356,7 @@ func (c *CoursesCourseWorkStudentSubmissionsTurnInCall) Header() http.Header {
 
 func (c *CoursesCourseWorkStudentSubmissionsTurnInCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8320,6 +8538,7 @@ func (c *CoursesStudentsCreateCall) Header() http.Header {
 
 func (c *CoursesStudentsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8474,6 +8693,7 @@ func (c *CoursesStudentsDeleteCall) Header() http.Header {
 
 func (c *CoursesStudentsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8632,6 +8852,7 @@ func (c *CoursesStudentsGetCall) Header() http.Header {
 
 func (c *CoursesStudentsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8813,6 +9034,7 @@ func (c *CoursesStudentsListCall) Header() http.Header {
 
 func (c *CoursesStudentsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8998,6 +9220,7 @@ func (c *CoursesTeachersCreateCall) Header() http.Header {
 
 func (c *CoursesTeachersCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9150,6 +9373,7 @@ func (c *CoursesTeachersDeleteCall) Header() http.Header {
 
 func (c *CoursesTeachersDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9308,6 +9532,7 @@ func (c *CoursesTeachersGetCall) Header() http.Header {
 
 func (c *CoursesTeachersGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9489,6 +9714,7 @@ func (c *CoursesTeachersListCall) Header() http.Header {
 
 func (c *CoursesTeachersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9611,6 +9837,859 @@ func (c *CoursesTeachersListCall) Pages(ctx context.Context, f func(*ListTeacher
 	}
 }
 
+// method id "classroom.courses.topics.create":
+
+type CoursesTopicsCreateCall struct {
+	s          *Service
+	courseId   string
+	topic      *Topic
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Create: Creates a topic.
+//
+// This method returns the following error codes:
+//
+// * `PERMISSION_DENIED` if the requesting user is not permitted to
+// access the
+// requested course, create a topic in the requested course,
+// or for access errors.
+// * `INVALID_ARGUMENT` if the request is malformed.
+// * `NOT_FOUND` if the requested course does not exist.
+func (r *CoursesTopicsService) Create(courseId string, topic *Topic) *CoursesTopicsCreateCall {
+	c := &CoursesTopicsCreateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.courseId = courseId
+	c.topic = topic
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *CoursesTopicsCreateCall) Fields(s ...googleapi.Field) *CoursesTopicsCreateCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *CoursesTopicsCreateCall) Context(ctx context.Context) *CoursesTopicsCreateCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *CoursesTopicsCreateCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *CoursesTopicsCreateCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.topic)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/courses/{courseId}/topics")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"courseId": c.courseId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "classroom.courses.topics.create" call.
+// Exactly one of *Topic or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Topic.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *CoursesTopicsCreateCall) Do(opts ...googleapi.CallOption) (*Topic, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Topic{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Creates a topic.\n\nThis method returns the following error codes:\n\n* `PERMISSION_DENIED` if the requesting user is not permitted to access the\nrequested course, create a topic in the requested course,\nor for access errors.\n* `INVALID_ARGUMENT` if the request is malformed.\n* `NOT_FOUND` if the requested course does not exist.",
+	//   "flatPath": "v1/courses/{courseId}/topics",
+	//   "httpMethod": "POST",
+	//   "id": "classroom.courses.topics.create",
+	//   "parameterOrder": [
+	//     "courseId"
+	//   ],
+	//   "parameters": {
+	//     "courseId": {
+	//       "description": "Identifier of the course.\nThis identifier can be either the Classroom-assigned identifier or an\nalias.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/courses/{courseId}/topics",
+	//   "request": {
+	//     "$ref": "Topic"
+	//   },
+	//   "response": {
+	//     "$ref": "Topic"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/classroom.topics"
+	//   ]
+	// }
+
+}
+
+// method id "classroom.courses.topics.delete":
+
+type CoursesTopicsDeleteCall struct {
+	s          *Service
+	courseId   string
+	id         string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Delete: Deletes a topic.
+//
+// This method returns the following error codes:
+//
+// * `PERMISSION_DENIED` if the requesting user is not allowed to delete
+// the
+// requested topic or for access errors.
+// * `FAILED_PRECONDITION` if the requested topic has already
+// been
+// deleted.
+// * `NOT_FOUND` if no course or topic exists with the requested ID.
+func (r *CoursesTopicsService) Delete(courseId string, id string) *CoursesTopicsDeleteCall {
+	c := &CoursesTopicsDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.courseId = courseId
+	c.id = id
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *CoursesTopicsDeleteCall) Fields(s ...googleapi.Field) *CoursesTopicsDeleteCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *CoursesTopicsDeleteCall) Context(ctx context.Context) *CoursesTopicsDeleteCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *CoursesTopicsDeleteCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *CoursesTopicsDeleteCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/courses/{courseId}/topics/{id}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("DELETE", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"courseId": c.courseId,
+		"id":       c.id,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "classroom.courses.topics.delete" call.
+// Exactly one of *Empty or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Empty.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *CoursesTopicsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Empty{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Deletes a topic.\n\nThis method returns the following error codes:\n\n* `PERMISSION_DENIED` if the requesting user is not allowed to delete the\nrequested topic or for access errors.\n* `FAILED_PRECONDITION` if the requested topic has already been\ndeleted.\n* `NOT_FOUND` if no course or topic exists with the requested ID.",
+	//   "flatPath": "v1/courses/{courseId}/topics/{id}",
+	//   "httpMethod": "DELETE",
+	//   "id": "classroom.courses.topics.delete",
+	//   "parameterOrder": [
+	//     "courseId",
+	//     "id"
+	//   ],
+	//   "parameters": {
+	//     "courseId": {
+	//       "description": "Identifier of the course.\nThis identifier can be either the Classroom-assigned identifier or an\nalias.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "id": {
+	//       "description": "Identifier of the topic to delete.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/courses/{courseId}/topics/{id}",
+	//   "response": {
+	//     "$ref": "Empty"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/classroom.topics"
+	//   ]
+	// }
+
+}
+
+// method id "classroom.courses.topics.get":
+
+type CoursesTopicsGetCall struct {
+	s            *Service
+	courseId     string
+	id           string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// Get: Returns a topic.
+//
+// This method returns the following error codes:
+//
+// * `PERMISSION_DENIED` if the requesting user is not permitted to
+// access the
+// requested course or topic, or for access errors.
+// * `INVALID_ARGUMENT` if the request is malformed.
+// * `NOT_FOUND` if the requested course or topic does not exist.
+func (r *CoursesTopicsService) Get(courseId string, id string) *CoursesTopicsGetCall {
+	c := &CoursesTopicsGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.courseId = courseId
+	c.id = id
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *CoursesTopicsGetCall) Fields(s ...googleapi.Field) *CoursesTopicsGetCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *CoursesTopicsGetCall) IfNoneMatch(entityTag string) *CoursesTopicsGetCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *CoursesTopicsGetCall) Context(ctx context.Context) *CoursesTopicsGetCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *CoursesTopicsGetCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *CoursesTopicsGetCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/courses/{courseId}/topics/{id}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"courseId": c.courseId,
+		"id":       c.id,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "classroom.courses.topics.get" call.
+// Exactly one of *Topic or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Topic.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *CoursesTopicsGetCall) Do(opts ...googleapi.CallOption) (*Topic, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Topic{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Returns a topic.\n\nThis method returns the following error codes:\n\n* `PERMISSION_DENIED` if the requesting user is not permitted to access the\nrequested course or topic, or for access errors.\n* `INVALID_ARGUMENT` if the request is malformed.\n* `NOT_FOUND` if the requested course or topic does not exist.",
+	//   "flatPath": "v1/courses/{courseId}/topics/{id}",
+	//   "httpMethod": "GET",
+	//   "id": "classroom.courses.topics.get",
+	//   "parameterOrder": [
+	//     "courseId",
+	//     "id"
+	//   ],
+	//   "parameters": {
+	//     "courseId": {
+	//       "description": "Identifier of the course.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "id": {
+	//       "description": "Identifier of the topic.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/courses/{courseId}/topics/{id}",
+	//   "response": {
+	//     "$ref": "Topic"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/classroom.topics",
+	//     "https://www.googleapis.com/auth/classroom.topics.readonly"
+	//   ]
+	// }
+
+}
+
+// method id "classroom.courses.topics.list":
+
+type CoursesTopicsListCall struct {
+	s            *Service
+	courseId     string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// List: Returns the list of topics that the requester is permitted to
+// view.
+//
+// This method returns the following error codes:
+//
+// * `PERMISSION_DENIED` if the requesting user is not permitted to
+// access
+// the requested course or for access errors.
+// * `INVALID_ARGUMENT` if the request is malformed.
+// * `NOT_FOUND` if the requested course does not exist.
+func (r *CoursesTopicsService) List(courseId string) *CoursesTopicsListCall {
+	c := &CoursesTopicsListCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.courseId = courseId
+	return c
+}
+
+// PageSize sets the optional parameter "pageSize": Maximum number of
+// items to return. Zero or unspecified indicates that the
+// server may assign a maximum.
+//
+// The server may return fewer than the specified number of results.
+func (c *CoursesTopicsListCall) PageSize(pageSize int64) *CoursesTopicsListCall {
+	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
+	return c
+}
+
+// PageToken sets the optional parameter "pageToken":
+// nextPageToken
+// value returned from a previous
+// list call,
+// indicating that the subsequent page of results should be
+// returned.
+//
+// The list request
+// must be otherwise identical to the one that resulted in this token.
+func (c *CoursesTopicsListCall) PageToken(pageToken string) *CoursesTopicsListCall {
+	c.urlParams_.Set("pageToken", pageToken)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *CoursesTopicsListCall) Fields(s ...googleapi.Field) *CoursesTopicsListCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *CoursesTopicsListCall) IfNoneMatch(entityTag string) *CoursesTopicsListCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *CoursesTopicsListCall) Context(ctx context.Context) *CoursesTopicsListCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *CoursesTopicsListCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *CoursesTopicsListCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/courses/{courseId}/topics")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"courseId": c.courseId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "classroom.courses.topics.list" call.
+// Exactly one of *ListTopicResponse or error will be non-nil. Any
+// non-2xx status code is an error. Response headers are in either
+// *ListTopicResponse.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *CoursesTopicsListCall) Do(opts ...googleapi.CallOption) (*ListTopicResponse, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &ListTopicResponse{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Returns the list of topics that the requester is permitted to view.\n\nThis method returns the following error codes:\n\n* `PERMISSION_DENIED` if the requesting user is not permitted to access\nthe requested course or for access errors.\n* `INVALID_ARGUMENT` if the request is malformed.\n* `NOT_FOUND` if the requested course does not exist.",
+	//   "flatPath": "v1/courses/{courseId}/topics",
+	//   "httpMethod": "GET",
+	//   "id": "classroom.courses.topics.list",
+	//   "parameterOrder": [
+	//     "courseId"
+	//   ],
+	//   "parameters": {
+	//     "courseId": {
+	//       "description": "Identifier of the course.\nThis identifier can be either the Classroom-assigned identifier or an\nalias.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "pageSize": {
+	//       "description": "Maximum number of items to return. Zero or unspecified indicates that the\nserver may assign a maximum.\n\nThe server may return fewer than the specified number of results.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
+	//     },
+	//     "pageToken": {
+	//       "description": "nextPageToken\nvalue returned from a previous\nlist call,\nindicating that the subsequent page of results should be returned.\n\nThe list request\nmust be otherwise identical to the one that resulted in this token.",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/courses/{courseId}/topics",
+	//   "response": {
+	//     "$ref": "ListTopicResponse"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/classroom.topics",
+	//     "https://www.googleapis.com/auth/classroom.topics.readonly"
+	//   ]
+	// }
+
+}
+
+// Pages invokes f for each page of results.
+// A non-nil error returned from f will halt the iteration.
+// The provided context supersedes any context provided to the Context method.
+func (c *CoursesTopicsListCall) Pages(ctx context.Context, f func(*ListTopicResponse) error) error {
+	c.ctx_ = ctx
+	defer c.PageToken(c.urlParams_.Get("pageToken")) // reset paging to original point
+	for {
+		x, err := c.Do()
+		if err != nil {
+			return err
+		}
+		if err := f(x); err != nil {
+			return err
+		}
+		if x.NextPageToken == "" {
+			return nil
+		}
+		c.PageToken(x.NextPageToken)
+	}
+}
+
+// method id "classroom.courses.topics.patch":
+
+type CoursesTopicsPatchCall struct {
+	s          *Service
+	courseId   string
+	id         string
+	topic      *Topic
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Patch: Updates one or more fields of a topic.
+//
+// This method returns the following error codes:
+//
+// * `PERMISSION_DENIED` if the requesting developer project did not
+// create
+// the corresponding topic or for access errors.
+// * `INVALID_ARGUMENT` if the request is malformed.
+// * `NOT_FOUND` if the requested course or topic does not exist
+func (r *CoursesTopicsService) Patch(courseId string, id string, topic *Topic) *CoursesTopicsPatchCall {
+	c := &CoursesTopicsPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.courseId = courseId
+	c.id = id
+	c.topic = topic
+	return c
+}
+
+// UpdateMask sets the optional parameter "updateMask": Mask that
+// identifies which fields on the topic to update.
+// This field is required to do an update. The update fails if
+// invalid
+// fields are specified. If a field supports empty values, it can be
+// cleared
+// by specifying it in the update mask and not in the Topic object. If
+// a
+// field that does not support empty values is included in the update
+// mask and
+// not set in the Topic object, an `INVALID_ARGUMENT` error will
+// be
+// returned.
+//
+// The following fields may be specified:
+//
+// * `name`
+func (c *CoursesTopicsPatchCall) UpdateMask(updateMask string) *CoursesTopicsPatchCall {
+	c.urlParams_.Set("updateMask", updateMask)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *CoursesTopicsPatchCall) Fields(s ...googleapi.Field) *CoursesTopicsPatchCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *CoursesTopicsPatchCall) Context(ctx context.Context) *CoursesTopicsPatchCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *CoursesTopicsPatchCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *CoursesTopicsPatchCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.topic)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/courses/{courseId}/topics/{id}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("PATCH", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"courseId": c.courseId,
+		"id":       c.id,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "classroom.courses.topics.patch" call.
+// Exactly one of *Topic or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Topic.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *CoursesTopicsPatchCall) Do(opts ...googleapi.CallOption) (*Topic, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Topic{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Updates one or more fields of a topic.\n\nThis method returns the following error codes:\n\n* `PERMISSION_DENIED` if the requesting developer project did not create\nthe corresponding topic or for access errors.\n* `INVALID_ARGUMENT` if the request is malformed.\n* `NOT_FOUND` if the requested course or topic does not exist",
+	//   "flatPath": "v1/courses/{courseId}/topics/{id}",
+	//   "httpMethod": "PATCH",
+	//   "id": "classroom.courses.topics.patch",
+	//   "parameterOrder": [
+	//     "courseId",
+	//     "id"
+	//   ],
+	//   "parameters": {
+	//     "courseId": {
+	//       "description": "Identifier of the course.\nThis identifier can be either the Classroom-assigned identifier or an\nalias.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "id": {
+	//       "description": "Identifier of the topic.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "updateMask": {
+	//       "description": "Mask that identifies which fields on the topic to update.\nThis field is required to do an update. The update fails if invalid\nfields are specified. If a field supports empty values, it can be cleared\nby specifying it in the update mask and not in the Topic object. If a\nfield that does not support empty values is included in the update mask and\nnot set in the Topic object, an `INVALID_ARGUMENT` error will be\nreturned.\n\nThe following fields may be specified:\n\n* `name`",
+	//       "format": "google-fieldmask",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/courses/{courseId}/topics/{id}",
+	//   "request": {
+	//     "$ref": "Topic"
+	//   },
+	//   "response": {
+	//     "$ref": "Topic"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/classroom.topics"
+	//   ]
+	// }
+
+}
+
 // method id "classroom.invitations.accept":
 
 type InvitationsAcceptCall struct {
@@ -9671,6 +10750,7 @@ func (c *InvitationsAcceptCall) Header() http.Header {
 
 func (c *InvitationsAcceptCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9814,6 +10894,7 @@ func (c *InvitationsCreateCall) Header() http.Header {
 
 func (c *InvitationsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9945,6 +11026,7 @@ func (c *InvitationsDeleteCall) Header() http.Header {
 
 func (c *InvitationsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10091,6 +11173,7 @@ func (c *InvitationsGetCall) Header() http.Header {
 
 func (c *InvitationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10284,6 +11367,7 @@ func (c *InvitationsListCall) Header() http.Header {
 
 func (c *InvitationsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10487,6 +11571,7 @@ func (c *RegistrationsCreateCall) Header() http.Header {
 
 func (c *RegistrationsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10613,6 +11698,7 @@ func (c *RegistrationsDeleteCall) Header() http.Header {
 
 func (c *RegistrationsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10760,6 +11846,7 @@ func (c *UserProfilesGetCall) Header() http.Header {
 
 func (c *UserProfilesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10941,6 +12028,7 @@ func (c *UserProfilesGuardianInvitationsCreateCall) Header() http.Header {
 
 func (c *UserProfilesGuardianInvitationsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11109,6 +12197,7 @@ func (c *UserProfilesGuardianInvitationsGetCall) Header() http.Header {
 
 func (c *UserProfilesGuardianInvitationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11330,6 +12419,7 @@ func (c *UserProfilesGuardianInvitationsListCall) Header() http.Header {
 
 func (c *UserProfilesGuardianInvitationsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11556,6 +12646,7 @@ func (c *UserProfilesGuardianInvitationsPatchCall) Header() http.Header {
 
 func (c *UserProfilesGuardianInvitationsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11732,6 +12823,7 @@ func (c *UserProfilesGuardiansDeleteCall) Header() http.Header {
 
 func (c *UserProfilesGuardiansDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11902,6 +12994,7 @@ func (c *UserProfilesGuardiansGetCall) Header() http.Header {
 
 func (c *UserProfilesGuardiansGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -12118,6 +13211,7 @@ func (c *UserProfilesGuardiansListCall) Header() http.Header {
 
 func (c *UserProfilesGuardiansListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

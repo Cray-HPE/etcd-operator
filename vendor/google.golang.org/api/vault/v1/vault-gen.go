@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,39 @@
 
 // Package vault provides access to the G Suite Vault API.
 //
-// See https://developers.google.com/vault
+// For product documentation, see: https://developers.google.com/vault
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/vault/v1"
 //   ...
-//   vaultService, err := vault.New(oauthHttpClient)
+//   ctx := context.Background()
+//   vaultService, err := vault.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   vaultService, err := vault.NewService(ctx, option.WithScopes(vault.EdiscoveryReadonlyScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   vaultService, err := vault.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   vaultService, err := vault.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package vault // import "google.golang.org/api/vault/v1"
 
 import (
@@ -27,8 +53,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -59,12 +87,40 @@ const (
 	EdiscoveryReadonlyScope = "https://www.googleapis.com/auth/ediscovery.readonly"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/ediscovery",
+		"https://www.googleapis.com/auth/ediscovery.readonly",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
 	}
 	s := &Service{client: client, BasePath: basePath}
 	s.Matters = NewMattersService(s)
+	s.Operations = NewOperationsService(s)
 	return s, nil
 }
 
@@ -74,6 +130,8 @@ type Service struct {
 	UserAgent string // optional additional User-Agent fragment
 
 	Matters *MattersService
+
+	Operations *OperationsService
 }
 
 func (s *Service) userAgent() string {
@@ -137,6 +195,15 @@ func NewMattersSavedQueriesService(s *Service) *MattersSavedQueriesService {
 }
 
 type MattersSavedQueriesService struct {
+	s *Service
+}
+
+func NewOperationsService(s *Service) *OperationsService {
+	rs := &OperationsService{s: s}
+	return rs
+}
+
+type OperationsService struct {
 	s *Service
 }
 
@@ -460,10 +527,11 @@ func (s *CorpusQuery) MarshalJSON() ([]byte, error) {
 type DriveExportOptions struct {
 	// IncludeAccessInfo: Set to true to include access level information
 	// for users
-	// with <a
-	// href="https://support.google.com/vault/answer/6099459#metadata">indire
-	// ct access</a>
-	// to files.
+	// with
+	// <a
+	// href="https://support.google.com/vault/answer/6099459#metadata">ind
+	// irect
+	// access</a> to files.
 	IncludeAccessInfo bool `json:"includeAccessInfo,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "IncludeAccessInfo")
@@ -492,6 +560,9 @@ func (s *DriveExportOptions) MarshalJSON() ([]byte, error) {
 
 // DriveOptions: Drive search advanced options
 type DriveOptions struct {
+	// IncludeSharedDrives: Set to true to include shared drive.
+	IncludeSharedDrives bool `json:"includeSharedDrives,omitempty"`
+
 	// IncludeTeamDrives: Set to true to include Team Drive.
 	IncludeTeamDrives bool `json:"includeTeamDrives,omitempty"`
 
@@ -500,7 +571,7 @@ type DriveOptions struct {
 	// rounded down to the given date.
 	VersionDate string `json:"versionDate,omitempty"`
 
-	// ForceSendFields is a list of field names (e.g. "IncludeTeamDrives")
+	// ForceSendFields is a list of field names (e.g. "IncludeSharedDrives")
 	// to unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
 	// non-interface field appearing in ForceSendFields will be sent to the
@@ -508,7 +579,7 @@ type DriveOptions struct {
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "IncludeTeamDrives") to
+	// NullFields is a list of field names (e.g. "IncludeSharedDrives") to
 	// include in API requests with the JSON null value. By default, fields
 	// with empty values are omitted from API requests. However, any field
 	// with an empty value appearing in NullFields will be sent to the
@@ -823,8 +894,19 @@ type HeldAccount struct {
 	// <a href="https://developers.google.com/admin-sdk/">Admin SDK</a>.
 	AccountId string `json:"accountId,omitempty"`
 
-	// HoldTime: When the account was put on hold.
+	// Email: The primary email address of the account. If used as an input,
+	// this takes
+	// precedence over account ID.
+	Email string `json:"email,omitempty"`
+
+	// FirstName: Output only. The first name of the account holder.
+	FirstName string `json:"firstName,omitempty"`
+
+	// HoldTime: Output only. When the account was put on hold.
 	HoldTime string `json:"holdTime,omitempty"`
+
+	// LastName: Output only. The last name of the account holder.
+	LastName string `json:"lastName,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
 	// server.
@@ -855,23 +937,27 @@ func (s *HeldAccount) MarshalJSON() ([]byte, error) {
 
 // HeldDriveQuery: Query options for Drive holds.
 type HeldDriveQuery struct {
+	// IncludeSharedDriveFiles: If true, include files in shared drives in
+	// the hold.
+	IncludeSharedDriveFiles bool `json:"includeSharedDriveFiles,omitempty"`
+
 	// IncludeTeamDriveFiles: If true, include files in Team Drives in the
 	// hold.
 	IncludeTeamDriveFiles bool `json:"includeTeamDriveFiles,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g.
-	// "IncludeTeamDriveFiles") to unconditionally include in API requests.
-	// By default, fields with empty values are omitted from API requests.
-	// However, any non-pointer, non-interface field appearing in
+	// "IncludeSharedDriveFiles") to unconditionally include in API
+	// requests. By default, fields with empty values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
 	// ForceSendFields will be sent to the server regardless of whether the
 	// field is empty or not. This may be used to include empty fields in
 	// Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "IncludeTeamDriveFiles") to
-	// include in API requests with the JSON null value. By default, fields
-	// with empty values are omitted from API requests. However, any field
-	// with an empty value appearing in NullFields will be sent to the
+	// NullFields is a list of field names (e.g. "IncludeSharedDriveFiles")
+	// to include in API requests with the JSON null value. By default,
+	// fields with empty values are omitted from API requests. However, any
+	// field with an empty value appearing in NullFields will be sent to the
 	// server as null. It is an error if a field in this list has a
 	// non-empty value. This may be used to include null fields in Patch
 	// requests.
@@ -1284,6 +1370,10 @@ type MailExportOptions struct {
 	//   "PST" - PST as export format
 	ExportFormat string `json:"exportFormat,omitempty"`
 
+	// ShowConfidentialModeContent: Set to true to export confidential mode
+	// content.
+	ShowConfidentialModeContent bool `json:"showConfidentialModeContent,omitempty"`
+
 	// ForceSendFields is a list of field names (e.g. "ExportFormat") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
@@ -1394,7 +1484,8 @@ func (s *Matter) MarshalJSON() ([]byte, error) {
 // resources
 // cease to exist.
 type MatterPermission struct {
-	// AccountId: The account id, as provided by <a
+	// AccountId: The account id, as provided by
+	// <a
 	// href="https://developers.google.com/admin-sdk/">Admin SDK</a>.
 	AccountId string `json:"accountId,omitempty"`
 
@@ -1437,7 +1528,8 @@ func (s *MatterPermission) MarshalJSON() ([]byte, error) {
 type OrgUnitInfo struct {
 	// OrgUnitId: Org unit to search, as provided by the
 	// <a href="https://developers.google.com/admin-sdk/directory/">Admin
-	// SDK Directory API</a>.
+	// SDK
+	// Directory API</a>.
 	OrgUnitId string `json:"orgUnitId,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "OrgUnitId") to
@@ -1508,6 +1600,32 @@ type Query struct {
 	// MailOptions: For mail search, specify more options in this field.
 	MailOptions *MailOptions `json:"mailOptions,omitempty"`
 
+	// Method: The search method to use. This field is similar to the
+	// search_method field
+	// but is introduced to support shared drives. It supports all
+	// search method types. In case the search_method is TEAM_DRIVE the
+	// response
+	// of this field will be SHARED_DRIVE only.
+	//
+	// Possible values:
+	//   "SEARCH_METHOD_UNSPECIFIED" - A search method must be specified. If
+	// a request does not specify a
+	// search method, it will be rejected.
+	//   "ACCOUNT" - Will search all accounts provided in account_info.
+	//   "ORG_UNIT" - Will search all accounts in the OU specified in
+	// org_unit_info.
+	//   "TEAM_DRIVE" - Will search for all accounts in the Team Drive
+	// specified in
+	// team_drive_info.
+	//   "ENTIRE_ORG" - Will search for all accounts in the organization.
+	// No need to set account_info or org_unit_info.
+	//   "ROOM" - Will search in the Room specified in
+	// hangout_chats_info. (read-only)
+	//   "SHARED_DRIVE" - Will search for all accounts in the shared drive
+	// specified in
+	// shared_drive_info.
+	Method string `json:"method,omitempty"`
+
 	// OrgUnitInfo: When 'ORG_UNIT' is chosen as as search method,
 	// org_unit_info needs
 	// to be specified.
@@ -1529,7 +1647,15 @@ type Query struct {
 	// No need to set account_info or org_unit_info.
 	//   "ROOM" - Will search in the Room specified in
 	// hangout_chats_info. (read-only)
+	//   "SHARED_DRIVE" - Will search for all accounts in the shared drive
+	// specified in
+	// shared_drive_info.
 	SearchMethod string `json:"searchMethod,omitempty"`
+
+	// SharedDriveInfo: When 'SHARED_DRIVE' is chosen as search method,
+	// shared_drive_info needs
+	// to be specified.
+	SharedDriveInfo *SharedDriveInfo `json:"sharedDriveInfo,omitempty"`
 
 	// StartTime: The start time range for the search query. These
 	// timestamps are in GMT and
@@ -1542,9 +1668,10 @@ type Query struct {
 	TeamDriveInfo *TeamDriveInfo `json:"teamDriveInfo,omitempty"`
 
 	// Terms: The corpus-specific
-	// <a href="https://support.google.com/vault/answer/2474474">search
-	// operators</a>
-	// used to generate search results.
+	// <a
+	// href="https://support.google.com/vault/answer/2474474">search
+	// operator
+	// s</a> used to generate search results.
 	Terms string `json:"terms,omitempty"`
 
 	// TimeZone: The time zone name.
@@ -1757,85 +1884,49 @@ func (s *SavedQuery) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// SharedDriveInfo: Shared drives to search
+type SharedDriveInfo struct {
+	// SharedDriveIds: List of Shared drive ids, as provided by
+	// <a
+	// href="https://developers.google.com/drive">Drive API</a>.
+	SharedDriveIds []string `json:"sharedDriveIds,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "SharedDriveIds") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "SharedDriveIds") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *SharedDriveInfo) MarshalJSON() ([]byte, error) {
+	type NoMethod SharedDriveInfo
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // Status: The `Status` type defines a logical error model that is
-// suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -1987,6 +2078,7 @@ func (c *MattersAddPermissionsCall) Header() http.Header {
 
 func (c *MattersAddPermissionsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2126,6 +2218,7 @@ func (c *MattersCloseCall) Header() http.Header {
 
 func (c *MattersCloseCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2266,6 +2359,7 @@ func (c *MattersCreateCall) Header() http.Header {
 
 func (c *MattersCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2391,6 +2485,7 @@ func (c *MattersDeleteCall) Header() http.Header {
 
 func (c *MattersDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2542,6 +2637,7 @@ func (c *MattersGetCall) Header() http.Header {
 
 func (c *MattersGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2734,6 +2830,7 @@ func (c *MattersListCall) Header() http.Header {
 
 func (c *MattersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2910,6 +3007,7 @@ func (c *MattersRemovePermissionsCall) Header() http.Header {
 
 func (c *MattersRemovePermissionsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3049,6 +3147,7 @@ func (c *MattersReopenCall) Header() http.Header {
 
 func (c *MattersReopenCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3188,6 +3287,7 @@ func (c *MattersUndeleteCall) Header() http.Header {
 
 func (c *MattersUndeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3330,6 +3430,7 @@ func (c *MattersUpdateCall) Header() http.Header {
 
 func (c *MattersUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3468,6 +3569,7 @@ func (c *MattersExportsCreateCall) Header() http.Header {
 
 func (c *MattersExportsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3606,6 +3708,7 @@ func (c *MattersExportsDeleteCall) Header() http.Header {
 
 func (c *MattersExportsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3755,6 +3858,7 @@ func (c *MattersExportsGetCall) Header() http.Header {
 
 func (c *MattersExportsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3920,6 +4024,7 @@ func (c *MattersExportsListCall) Header() http.Header {
 
 func (c *MattersExportsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4092,6 +4197,7 @@ func (c *MattersHoldsAddHeldAccountsCall) Header() http.Header {
 
 func (c *MattersHoldsAddHeldAccountsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4238,6 +4344,7 @@ func (c *MattersHoldsCreateCall) Header() http.Header {
 
 func (c *MattersHoldsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4377,6 +4484,7 @@ func (c *MattersHoldsDeleteCall) Header() http.Header {
 
 func (c *MattersHoldsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4538,6 +4646,7 @@ func (c *MattersHoldsGetCall) Header() http.Header {
 
 func (c *MattersHoldsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4729,6 +4838,7 @@ func (c *MattersHoldsListCall) Header() http.Header {
 
 func (c *MattersHoldsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4911,6 +5021,7 @@ func (c *MattersHoldsRemoveHeldAccountsCall) Header() http.Header {
 
 func (c *MattersHoldsRemoveHeldAccountsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5063,6 +5174,7 @@ func (c *MattersHoldsUpdateCall) Header() http.Header {
 
 func (c *MattersHoldsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5215,6 +5327,7 @@ func (c *MattersHoldsAccountsCreateCall) Header() http.Header {
 
 func (c *MattersHoldsAccountsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5365,6 +5478,7 @@ func (c *MattersHoldsAccountsDeleteCall) Header() http.Header {
 
 func (c *MattersHoldsAccountsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5526,6 +5640,7 @@ func (c *MattersHoldsAccountsListCall) Header() http.Header {
 
 func (c *MattersHoldsAccountsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5668,6 +5783,7 @@ func (c *MattersSavedQueriesCreateCall) Header() http.Header {
 
 func (c *MattersSavedQueriesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5806,6 +5922,7 @@ func (c *MattersSavedQueriesDeleteCall) Header() http.Header {
 
 func (c *MattersSavedQueriesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5955,6 +6072,7 @@ func (c *MattersSavedQueriesGetCall) Header() http.Header {
 
 func (c *MattersSavedQueriesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6123,6 +6241,7 @@ func (c *MattersSavedQueriesListCall) Header() http.Header {
 
 func (c *MattersSavedQueriesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6241,4 +6360,137 @@ func (c *MattersSavedQueriesListCall) Pages(ctx context.Context, f func(*ListSav
 		}
 		c.PageToken(x.NextPageToken)
 	}
+}
+
+// method id "vault.operations.delete":
+
+type OperationsDeleteCall struct {
+	s          *Service
+	name       string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Delete: Deletes a long-running operation. This method indicates that
+// the client is
+// no longer interested in the operation result. It does not cancel
+// the
+// operation. If the server doesn't support this method, it
+// returns
+// `google.rpc.Code.UNIMPLEMENTED`.
+func (r *OperationsService) Delete(name string) *OperationsDeleteCall {
+	c := &OperationsDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.name = name
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *OperationsDeleteCall) Fields(s ...googleapi.Field) *OperationsDeleteCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *OperationsDeleteCall) Context(ctx context.Context) *OperationsDeleteCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *OperationsDeleteCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *OperationsDeleteCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/{+name}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("DELETE", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"name": c.name,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "vault.operations.delete" call.
+// Exactly one of *Empty or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *Empty.ServerResponse.Header or (if a response was returned at all)
+// in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified
+// was returned.
+func (c *OperationsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Empty{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Deletes a long-running operation. This method indicates that the client is\nno longer interested in the operation result. It does not cancel the\noperation. If the server doesn't support this method, it returns\n`google.rpc.Code.UNIMPLEMENTED`.",
+	//   "flatPath": "v1/operations/{operationsId}",
+	//   "httpMethod": "DELETE",
+	//   "id": "vault.operations.delete",
+	//   "parameterOrder": [
+	//     "name"
+	//   ],
+	//   "parameters": {
+	//     "name": {
+	//       "description": "The name of the operation resource to be deleted.",
+	//       "location": "path",
+	//       "pattern": "^operations/.+$",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/{+name}",
+	//   "response": {
+	//     "$ref": "Empty"
+	//   }
+	// }
+
 }

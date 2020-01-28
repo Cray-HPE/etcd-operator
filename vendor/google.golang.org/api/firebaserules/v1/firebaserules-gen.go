@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,39 @@
 
 // Package firebaserules provides access to the Firebase Rules API.
 //
-// See https://firebase.google.com/docs/storage/security
+// For product documentation, see: https://firebase.google.com/docs/storage/security
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/firebaserules/v1"
 //   ...
-//   firebaserulesService, err := firebaserules.New(oauthHttpClient)
+//   ctx := context.Background()
+//   firebaserulesService, err := firebaserules.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   firebaserulesService, err := firebaserules.NewService(ctx, option.WithScopes(firebaserules.FirebaseReadonlyScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   firebaserulesService, err := firebaserules.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   firebaserulesService, err := firebaserules.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package firebaserules // import "google.golang.org/api/firebaserules/v1"
 
 import (
@@ -27,8 +53,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -62,6 +90,34 @@ const (
 	FirebaseReadonlyScope = "https://www.googleapis.com/auth/firebase.readonly"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/firebase",
+		"https://www.googleapis.com/auth/firebase.readonly",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -166,6 +222,42 @@ type Empty struct {
 	// ServerResponse contains the HTTP response code and headers from the
 	// server.
 	googleapi.ServerResponse `json:"-"`
+}
+
+// ExpressionReport: Describes where in a file an expression is found
+// and what it was
+// evaluated to over the course of its use.
+type ExpressionReport struct {
+	// Children: Subexpressions
+	Children []*ExpressionReport `json:"children,omitempty"`
+
+	// SourcePosition: Position of expression in original rules source.
+	SourcePosition *SourcePosition `json:"sourcePosition,omitempty"`
+
+	// Values: Values that this expression evaluated to when encountered.
+	Values []*ValueCount `json:"values,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Children") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Children") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ExpressionReport) MarshalJSON() ([]byte, error) {
+	type NoMethod ExpressionReport
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // File: `File` containing source content.
@@ -477,6 +569,36 @@ func (s *ListRulesetsResponse) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// Metadata: Metadata for a Ruleset.
+type Metadata struct {
+	// Services: Services that this ruleset has declarations for
+	// (e.g.,
+	// "cloud.firestore"). There may be 0+ of these.
+	Services []string `json:"services,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Services") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Services") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Metadata) MarshalJSON() ([]byte, error) {
+	type NoMethod Metadata
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // Release: `Release` is a named reference to a `Ruleset`. Once a
 // `Release` refers to a
 // `Ruleset`, rules-enabled services will be able to enforce the
@@ -600,6 +722,10 @@ type Ruleset struct {
 	// CreateTime: Time the `Ruleset` was created.
 	// Output only.
 	CreateTime string `json:"createTime,omitempty"`
+
+	// Metadata: The metadata for this ruleset.
+	// Output only.
+	Metadata *Metadata `json:"metadata,omitempty"`
 
 	// Name: Name of the `Ruleset`. The ruleset_id is auto generated by the
 	// service.
@@ -725,12 +851,34 @@ type TestCase struct {
 	//   "DENY" - Expect a denied result.
 	Expectation string `json:"expectation,omitempty"`
 
+	// ExpressionReportLevel: Specifies what should be included in the
+	// response.
+	//
+	// Possible values:
+	//   "LEVEL_UNSPECIFIED" - No level has been specified. Defaults to
+	// "NONE" behavior.
+	//   "NONE" - Do not include any additional information.
+	//   "FULL" - Include detailed reporting on expressions evaluated.
+	ExpressionReportLevel string `json:"expressionReportLevel,omitempty"`
+
 	// FunctionMocks: Optional function mocks for service-defined functions.
 	// If not set, any
 	// service defined function is expected to return an error, which may or
 	// may
 	// not influence the test outcome.
 	FunctionMocks []*FunctionMock `json:"functionMocks,omitempty"`
+
+	// PathEncoding: Specifies whether paths (such as request.path) are
+	// encoded and how.
+	//
+	// Possible values:
+	//   "ENCODING_UNSPECIFIED" - No encoding has been specified. Defaults
+	// to "URL_ENCODED" behavior.
+	//   "URL_ENCODED" - Treats path segments as URL encoded but with
+	// non-encoded separators
+	// ("/"). This is the default behavior.
+	//   "PLAIN" - Treats total path as non-URL encoded e.g. raw.
+	PathEncoding string `json:"pathEncoding,omitempty"`
 
 	// Request: Request context.
 	//
@@ -817,6 +965,17 @@ type TestResult struct {
 	// E.g. `error_position { line: 19 column: 37 }`
 	ErrorPosition *SourcePosition `json:"errorPosition,omitempty"`
 
+	// ExpressionReports: The mapping from expression in the ruleset AST to
+	// the values they were
+	// evaluated to. Partially-nested to mirror AST structure. Note that
+	// this
+	// field is actually tracking expressions and not permission statements
+	// in
+	// contrast to the "visited_expressions" field above. Literal
+	// expressions
+	// are omitted.
+	ExpressionReports []*ExpressionReport `json:"expressionReports,omitempty"`
+
 	// FunctionCalls: The set of function calls made to service-defined
 	// methods.
 	//
@@ -835,9 +994,19 @@ type TestResult struct {
 	//   "FAILURE" - Test is a failure.
 	State string `json:"state,omitempty"`
 
-	// VisitedExpressions: The set of visited expressions for a given test.
-	// This returns positions
-	// and evaluation results of all visited expressions.
+	// VisitedExpressions: The set of visited permission expressions for a
+	// given test. This returns
+	// the positions and evaluation results of all visited
+	// permission
+	// expressions which were relevant to the test case, e.g.
+	// ```
+	// match /path {
+	//   allow read if: <expr>
+	// }
+	// ```
+	// For a detailed report of the intermediate evaluation states, see
+	// the
+	// `expression_reports` field
 	VisitedExpressions []*VisitedExpression `json:"visitedExpressions,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "DebugMessages") to
@@ -1005,6 +1174,39 @@ func (s *UpdateReleaseRequest) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// ValueCount: Tuple for how many times an Expression was evaluated to a
+// particular
+// ExpressionValue.
+type ValueCount struct {
+	// Count: The amount of times that expression returned.
+	Count int64 `json:"count,omitempty"`
+
+	// Value: The return value of the expression
+	Value interface{} `json:"value,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Count") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Count") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ValueCount) MarshalJSON() ([]byte, error) {
+	type NoMethod ValueCount
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // VisitedExpression: Store the position and access outcome for an
 // expression visited in rules.
 type VisitedExpression struct {
@@ -1113,6 +1315,7 @@ func (c *ProjectsTestCall) Header() http.Header {
 
 func (c *ProjectsTestCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1288,6 +1491,7 @@ func (c *ProjectsReleasesCreateCall) Header() http.Header {
 
 func (c *ProjectsReleasesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1426,6 +1630,7 @@ func (c *ProjectsReleasesDeleteCall) Header() http.Header {
 
 func (c *ProjectsReleasesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1567,6 +1772,7 @@ func (c *ProjectsReleasesGetCall) Header() http.Header {
 
 func (c *ProjectsReleasesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1726,6 +1932,7 @@ func (c *ProjectsReleasesGetExecutableCall) Header() http.Header {
 
 func (c *ProjectsReleasesGetExecutableCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1949,6 +2156,7 @@ func (c *ProjectsReleasesListCall) Header() http.Header {
 
 func (c *ProjectsReleasesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2128,6 +2336,7 @@ func (c *ProjectsReleasesPatchCall) Header() http.Header {
 
 func (c *ProjectsReleasesPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2276,6 +2485,7 @@ func (c *ProjectsRulesetsCreateCall) Header() http.Header {
 
 func (c *ProjectsRulesetsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2417,6 +2627,7 @@ func (c *ProjectsRulesetsDeleteCall) Header() http.Header {
 
 func (c *ProjectsRulesetsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2558,6 +2769,7 @@ func (c *ProjectsRulesetsGetCall) Header() http.Header {
 
 func (c *ProjectsRulesetsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2682,7 +2894,7 @@ func (r *ProjectsRulesetsService) List(name string) *ProjectsRulesetsListCall {
 // parses strings that conform to the RFC 3339 date/time
 // specifications.
 //
-// Example: `create_time > date("2017-01-01") AND name=UUID-*`
+// Example: `create_time > date("2017-01-01T00:00:00Z") AND name=UUID-*`
 func (c *ProjectsRulesetsListCall) Filter(filter string) *ProjectsRulesetsListCall {
 	c.urlParams_.Set("filter", filter)
 	return c
@@ -2744,6 +2956,7 @@ func (c *ProjectsRulesetsListCall) Header() http.Header {
 
 func (c *ProjectsRulesetsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2814,7 +3027,7 @@ func (c *ProjectsRulesetsListCall) Do(opts ...googleapi.CallOption) (*ListRulese
 	//   ],
 	//   "parameters": {
 	//     "filter": {
-	//       "description": "`Ruleset` filter. The list method supports filters with restrictions on\n`Ruleset.name`.\n\nFilters on `Ruleset.create_time` should use the `date` function which\nparses strings that conform to the RFC 3339 date/time specifications.\n\nExample: `create_time \u003e date(\"2017-01-01\") AND name=UUID-*`",
+	//       "description": "`Ruleset` filter. The list method supports filters with restrictions on\n`Ruleset.name`.\n\nFilters on `Ruleset.create_time` should use the `date` function which\nparses strings that conform to the RFC 3339 date/time specifications.\n\nExample: `create_time \u003e date(\"2017-01-01T00:00:00Z\") AND name=UUID-*`",
 	//       "location": "query",
 	//       "type": "string"
 	//     },

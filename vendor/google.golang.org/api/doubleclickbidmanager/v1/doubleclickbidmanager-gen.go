@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package doubleclickbidmanager provides access to the DoubleClick Bid Manager API.
 //
-// See https://developers.google.com/bid-manager/
+// For product documentation, see: https://developers.google.com/bid-manager/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/doubleclickbidmanager/v1"
 //   ...
-//   doubleclickbidmanagerService, err := doubleclickbidmanager.New(oauthHttpClient)
+//   ctx := context.Background()
+//   doubleclickbidmanagerService, err := doubleclickbidmanager.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   doubleclickbidmanagerService, err := doubleclickbidmanager.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   doubleclickbidmanagerService, err := doubleclickbidmanager.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package doubleclickbidmanager // import "google.golang.org/api/doubleclickbidmanager/v1"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -56,6 +80,32 @@ const (
 	DoubleclickbidmanagerScope = "https://www.googleapis.com/auth/doubleclickbidmanager"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/doubleclickbidmanager",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -209,16 +259,18 @@ func (s *DownloadLineItemsResponse) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// DownloadRequest: Request to fetch stored campaigns, insertion orders,
-// line items, TrueView ad groups and ads.
+// DownloadRequest: Request to fetch stored inventory sources,
+// campaigns, insertion orders, line items, TrueView ad groups and ads.
 type DownloadRequest struct {
-	// FileTypes: File types that will be returned.
+	// FileTypes: File types that will be returned. If INVENTORY_SOURCE is
+	// requested, no other file types may be requested.
 	//
 	// Acceptable values are:
 	// - "AD"
 	// - "AD_GROUP"
 	// - "CAMPAIGN"
 	// - "INSERTION_ORDER"
+	// - "INVENTORY_SOURCE"
 	// - "LINE_ITEM"
 	//
 	// Possible values:
@@ -226,6 +278,7 @@ type DownloadRequest struct {
 	//   "AD_GROUP"
 	//   "CAMPAIGN"
 	//   "INSERTION_ORDER"
+	//   "INVENTORY_SOURCE"
 	//   "LINE_ITEM"
 	FileTypes []string `json:"fileTypes,omitempty"`
 
@@ -233,13 +286,17 @@ type DownloadRequest struct {
 	// filter entities to fetch. At least one ID must be specified.
 	FilterIds googleapi.Int64s `json:"filterIds,omitempty"`
 
-	// FilterType: Filter type used to filter entities to fetch.
+	// FilterType: Filter type used to filter entities to fetch. PARTNER_ID
+	// and INVENTORY_SOURCE_ID may only be used when downloading inventory
+	// sources.
 	//
 	// Possible values:
 	//   "ADVERTISER_ID"
 	//   "CAMPAIGN_ID"
 	//   "INSERTION_ORDER_ID"
+	//   "INVENTORY_SOURCE_ID"
 	//   "LINE_ITEM_ID"
+	//   "PARTNER_ID"
 	FilterType string `json:"filterType,omitempty"`
 
 	// Version: SDF Version (column names, types, order) in which the
@@ -283,6 +340,8 @@ type DownloadResponse struct {
 	// InsertionOrders: Retrieved insertion orders in SDF format.
 	InsertionOrders string `json:"insertionOrders,omitempty"`
 
+	InventorySources string `json:"inventorySources,omitempty"`
+
 	// LineItems: Retrieved line items in SDF format.
 	LineItems string `json:"lineItems,omitempty"`
 
@@ -319,14 +378,12 @@ type FilterPair struct {
 	//
 	// Possible values:
 	//   "FILTER_ACTIVE_VIEW_EXPECTED_VIEWABILITY"
-	//   "FILTER_ACTIVITY_ID"
 	//   "FILTER_ADVERTISER"
 	//   "FILTER_ADVERTISER_CURRENCY"
 	//   "FILTER_ADVERTISER_TIMEZONE"
 	//   "FILTER_AD_POSITION"
 	//   "FILTER_AGE"
-	//   "FILTER_AUTHORIZED_SELLER_STATE_ID"
-	//   "FILTER_BRANDSAFE_CHANNEL_ID"
+	//   "FILTER_AUTHORIZED_SELLER_STATE"
 	//   "FILTER_BROWSER"
 	//   "FILTER_BUDGET_SEGMENT_DESCRIPTION"
 	//   "FILTER_CAMPAIGN_DAILY_FREQUENCY"
@@ -336,6 +393,7 @@ type FilterPair struct {
 	//   "FILTER_COMPANION_CREATIVE_ID"
 	//   "FILTER_CONVERSION_DELAY"
 	//   "FILTER_COUNTRY"
+	//   "FILTER_CREATIVE_ATTRIBUTE"
 	//   "FILTER_CREATIVE_HEIGHT"
 	//   "FILTER_CREATIVE_ID"
 	//   "FILTER_CREATIVE_SIZE"
@@ -349,14 +407,16 @@ type FilterPair struct {
 	//   "FILTER_DEVICE_TYPE"
 	//   "FILTER_DFP_ORDER_ID"
 	//   "FILTER_DMA"
-	//   "FILTER_DV360_ACTIVITY_ID"
 	//   "FILTER_EXCHANGE_ID"
 	//   "FILTER_FLOODLIGHT_ACTIVITY_ID"
-	//   "FILTER_FLOODLIGHT_PIXEL_ID"
 	//   "FILTER_GENDER"
 	//   "FILTER_INSERTION_ORDER"
+	//   "FILTER_INVENTORY_COMMITMENT_TYPE"
+	//   "FILTER_INVENTORY_DELIVERY_METHOD"
 	//   "FILTER_INVENTORY_FORMAT"
+	//   "FILTER_INVENTORY_RATE_TYPE"
 	//   "FILTER_INVENTORY_SOURCE"
+	//   "FILTER_INVENTORY_SOURCE_EXTERNAL_ID"
 	//   "FILTER_INVENTORY_SOURCE_TYPE"
 	//   "FILTER_KEYWORD"
 	//   "FILTER_LINE_ITEM"
@@ -364,9 +424,6 @@ type FilterPair struct {
 	//   "FILTER_LINE_ITEM_LIFETIME_FREQUENCY"
 	//   "FILTER_LINE_ITEM_TYPE"
 	//   "FILTER_MEDIA_PLAN"
-	//   "FILTER_MOBILE_DEVICE_MAKE"
-	//   "FILTER_MOBILE_DEVICE_MAKE_MODEL"
-	//   "FILTER_MOBILE_DEVICE_TYPE"
 	//   "FILTER_MOBILE_GEO"
 	//   "FILTER_MONTH"
 	//   "FILTER_MRAID_SUPPORT"
@@ -381,10 +438,8 @@ type FilterPair struct {
 	//   "FILTER_PAGE_LAYOUT"
 	//   "FILTER_PARTNER"
 	//   "FILTER_PARTNER_CURRENCY"
-	//   "FILTER_PUBLIC_INVENTORY"
 	//   "FILTER_QUARTER"
 	//   "FILTER_REGION"
-	//   "FILTER_REGULAR_CHANNEL_ID"
 	//   "FILTER_SITE_ID"
 	//   "FILTER_SITE_LANGUAGE"
 	//   "FILTER_SKIPPABLE_SUPPORT"
@@ -432,6 +487,7 @@ type FilterPair struct {
 	//   "FILTER_VIDEO_CREATIVE_DURATION"
 	//   "FILTER_VIDEO_CREATIVE_DURATION_SKIPPABLE"
 	//   "FILTER_VIDEO_DURATION_SECONDS"
+	//   "FILTER_VIDEO_DURATION_SECONDS_RANGE"
 	//   "FILTER_VIDEO_FORMAT_SUPPORT"
 	//   "FILTER_VIDEO_INVENTORY_TYPE"
 	//   "FILTER_VIDEO_PLAYER_SIZE"
@@ -440,7 +496,6 @@ type FilterPair struct {
 	//   "FILTER_VIDEO_VPAID_SUPPORT"
 	//   "FILTER_WEEK"
 	//   "FILTER_YEAR"
-	//   "FILTER_YOUTUBE_VERTICAL"
 	//   "FILTER_ZIP_CODE"
 	Type string `json:"type,omitempty"`
 
@@ -551,14 +606,12 @@ type Parameters struct {
 	//
 	// Possible values:
 	//   "FILTER_ACTIVE_VIEW_EXPECTED_VIEWABILITY"
-	//   "FILTER_ACTIVITY_ID"
 	//   "FILTER_ADVERTISER"
 	//   "FILTER_ADVERTISER_CURRENCY"
 	//   "FILTER_ADVERTISER_TIMEZONE"
 	//   "FILTER_AD_POSITION"
 	//   "FILTER_AGE"
-	//   "FILTER_AUTHORIZED_SELLER_STATE_ID"
-	//   "FILTER_BRANDSAFE_CHANNEL_ID"
+	//   "FILTER_AUTHORIZED_SELLER_STATE"
 	//   "FILTER_BROWSER"
 	//   "FILTER_BUDGET_SEGMENT_DESCRIPTION"
 	//   "FILTER_CAMPAIGN_DAILY_FREQUENCY"
@@ -568,6 +621,7 @@ type Parameters struct {
 	//   "FILTER_COMPANION_CREATIVE_ID"
 	//   "FILTER_CONVERSION_DELAY"
 	//   "FILTER_COUNTRY"
+	//   "FILTER_CREATIVE_ATTRIBUTE"
 	//   "FILTER_CREATIVE_HEIGHT"
 	//   "FILTER_CREATIVE_ID"
 	//   "FILTER_CREATIVE_SIZE"
@@ -581,14 +635,16 @@ type Parameters struct {
 	//   "FILTER_DEVICE_TYPE"
 	//   "FILTER_DFP_ORDER_ID"
 	//   "FILTER_DMA"
-	//   "FILTER_DV360_ACTIVITY_ID"
 	//   "FILTER_EXCHANGE_ID"
 	//   "FILTER_FLOODLIGHT_ACTIVITY_ID"
-	//   "FILTER_FLOODLIGHT_PIXEL_ID"
 	//   "FILTER_GENDER"
 	//   "FILTER_INSERTION_ORDER"
+	//   "FILTER_INVENTORY_COMMITMENT_TYPE"
+	//   "FILTER_INVENTORY_DELIVERY_METHOD"
 	//   "FILTER_INVENTORY_FORMAT"
+	//   "FILTER_INVENTORY_RATE_TYPE"
 	//   "FILTER_INVENTORY_SOURCE"
+	//   "FILTER_INVENTORY_SOURCE_EXTERNAL_ID"
 	//   "FILTER_INVENTORY_SOURCE_TYPE"
 	//   "FILTER_KEYWORD"
 	//   "FILTER_LINE_ITEM"
@@ -596,9 +652,6 @@ type Parameters struct {
 	//   "FILTER_LINE_ITEM_LIFETIME_FREQUENCY"
 	//   "FILTER_LINE_ITEM_TYPE"
 	//   "FILTER_MEDIA_PLAN"
-	//   "FILTER_MOBILE_DEVICE_MAKE"
-	//   "FILTER_MOBILE_DEVICE_MAKE_MODEL"
-	//   "FILTER_MOBILE_DEVICE_TYPE"
 	//   "FILTER_MOBILE_GEO"
 	//   "FILTER_MONTH"
 	//   "FILTER_MRAID_SUPPORT"
@@ -613,10 +666,8 @@ type Parameters struct {
 	//   "FILTER_PAGE_LAYOUT"
 	//   "FILTER_PARTNER"
 	//   "FILTER_PARTNER_CURRENCY"
-	//   "FILTER_PUBLIC_INVENTORY"
 	//   "FILTER_QUARTER"
 	//   "FILTER_REGION"
-	//   "FILTER_REGULAR_CHANNEL_ID"
 	//   "FILTER_SITE_ID"
 	//   "FILTER_SITE_LANGUAGE"
 	//   "FILTER_SKIPPABLE_SUPPORT"
@@ -664,6 +715,7 @@ type Parameters struct {
 	//   "FILTER_VIDEO_CREATIVE_DURATION"
 	//   "FILTER_VIDEO_CREATIVE_DURATION_SKIPPABLE"
 	//   "FILTER_VIDEO_DURATION_SECONDS"
+	//   "FILTER_VIDEO_DURATION_SECONDS_RANGE"
 	//   "FILTER_VIDEO_FORMAT_SUPPORT"
 	//   "FILTER_VIDEO_INVENTORY_TYPE"
 	//   "FILTER_VIDEO_PLAYER_SIZE"
@@ -672,11 +724,10 @@ type Parameters struct {
 	//   "FILTER_VIDEO_VPAID_SUPPORT"
 	//   "FILTER_WEEK"
 	//   "FILTER_YEAR"
-	//   "FILTER_YOUTUBE_VERTICAL"
 	//   "FILTER_ZIP_CODE"
 	GroupBys []string `json:"groupBys,omitempty"`
 
-	// IncludeInviteData: Whether to include data from Invite Media.
+	// IncludeInviteData: Deprecated. This field is no longer in use.
 	IncludeInviteData bool `json:"includeInviteData,omitempty"`
 
 	// Metrics: Metrics to include as columns in your report.
@@ -710,18 +761,11 @@ type Parameters struct {
 	//   "METRIC_BILLABLE_COST_ADVERTISER"
 	//   "METRIC_BILLABLE_COST_PARTNER"
 	//   "METRIC_BILLABLE_COST_USD"
+	//   "METRIC_BILLABLE_IMPRESSIONS"
 	//   "METRIC_CLICKS"
 	//   "METRIC_CLICK_TO_POST_CLICK_CONVERSION_RATE"
 	//   "METRIC_CM_POST_CLICK_REVENUE"
 	//   "METRIC_CM_POST_VIEW_REVENUE"
-	//   "METRIC_COMSCORE_VCE_AUDIENCE_AVG_FREQUENCY"
-	//   "METRIC_COMSCORE_VCE_AUDIENCE_IMPRESSIONS"
-	//   "METRIC_COMSCORE_VCE_AUDIENCE_IMPRESSIONS_SHARE"
-	//   "METRIC_COMSCORE_VCE_AUDIENCE_REACH_PCT"
-	//   "METRIC_COMSCORE_VCE_AUDIENCE_SHARE_PCT"
-	//   "METRIC_COMSCORE_VCE_GROSS_RATING_POINTS"
-	//   "METRIC_COMSCORE_VCE_POPULATION"
-	//   "METRIC_COMSCORE_VCE_UNIQUE_AUDIENCE"
 	//   "METRIC_CONVERSIONS_PER_MILLE"
 	//   "METRIC_COOKIE_REACH_AVERAGE_IMPRESSION_FREQUENCY"
 	//   "METRIC_COOKIE_REACH_IMPRESSION_REACH"
@@ -852,25 +896,10 @@ type Parameters struct {
 	//   "METRIC_MEDIA_FEE5_ADVERTISER"
 	//   "METRIC_MEDIA_FEE5_PARTNER"
 	//   "METRIC_MEDIA_FEE5_USD"
-	//   "METRIC_PIXEL_LOADS"
 	//   "METRIC_PLATFORM_FEE_ADVERTISER"
 	//   "METRIC_PLATFORM_FEE_PARTNER"
 	//   "METRIC_PLATFORM_FEE_USD"
-	//   "METRIC_POST_CLICK_DFA_REVENUE"
-	//   "METRIC_POST_VIEW_DFA_REVENUE"
 	//   "METRIC_PROFIT_ADVERTISER"
-	//   "METRIC_PROFIT_ECPAPC_ADVERTISER"
-	//   "METRIC_PROFIT_ECPAPC_PARTNER"
-	//   "METRIC_PROFIT_ECPAPC_USD"
-	//   "METRIC_PROFIT_ECPAPV_ADVERTISER"
-	//   "METRIC_PROFIT_ECPAPV_PARTNER"
-	//   "METRIC_PROFIT_ECPAPV_USD"
-	//   "METRIC_PROFIT_ECPA_ADVERTISER"
-	//   "METRIC_PROFIT_ECPA_PARTNER"
-	//   "METRIC_PROFIT_ECPA_USD"
-	//   "METRIC_PROFIT_ECPC_ADVERTISER"
-	//   "METRIC_PROFIT_ECPC_PARTNER"
-	//   "METRIC_PROFIT_ECPC_USD"
 	//   "METRIC_PROFIT_ECPM_ADVERTISER"
 	//   "METRIC_PROFIT_ECPM_PARTNER"
 	//   "METRIC_PROFIT_ECPM_USD"
@@ -880,8 +909,6 @@ type Parameters struct {
 	//   "METRIC_PROFIT_VIEWABLE_ECPM_ADVERTISER"
 	//   "METRIC_PROFIT_VIEWABLE_ECPM_PARTNER"
 	//   "METRIC_PROFIT_VIEWABLE_ECPM_USD"
-	//   "METRIC_REACH_COOKIE_FREQUENCY"
-	//   "METRIC_REACH_COOKIE_REACH"
 	//   "METRIC_REVENUE_ADVERTISER"
 	//   "METRIC_REVENUE_ECPAPC_ADVERTISER"
 	//   "METRIC_REVENUE_ECPAPC_PARTNER"
@@ -898,7 +925,6 @@ type Parameters struct {
 	//   "METRIC_REVENUE_ECPC_ADVERTISER"
 	//   "METRIC_REVENUE_ECPC_PARTNER"
 	//   "METRIC_REVENUE_ECPC_USD"
-	//   "METRIC_REVENUE_ECPIAVC_ADVERTISER"
 	//   "METRIC_REVENUE_ECPM_ADVERTISER"
 	//   "METRIC_REVENUE_ECPM_PARTNER"
 	//   "METRIC_REVENUE_ECPM_USD"
@@ -919,7 +945,6 @@ type Parameters struct {
 	//   "METRIC_RICH_MEDIA_VIDEO_THIRD_QUARTILE_COMPLETES"
 	//   "METRIC_TEA_TRUEVIEW_IMPRESSIONS"
 	//   "METRIC_TEA_TRUEVIEW_UNIQUE_COOKIES"
-	//   "METRIC_TEA_TRUEVIEW_UNIQUE_PEOPLE"
 	//   "METRIC_TOTAL_CONVERSIONS"
 	//   "METRIC_TOTAL_MEDIA_COST_ADVERTISER"
 	//   "METRIC_TOTAL_MEDIA_COST_ECPAPC_ADVERTISER"
@@ -951,20 +976,8 @@ type Parameters struct {
 	//   "METRIC_TRUEVIEW_CONVERSION_COST_MANY_PER_VIEW_ADVERTISER"
 	//   "METRIC_TRUEVIEW_CONVERSION_COST_MANY_PER_VIEW_PARTNER"
 	//   "METRIC_TRUEVIEW_CONVERSION_COST_MANY_PER_VIEW_USD"
-	//   "METRIC_TRUEVIEW_CONVERSION_COST_ONE_PER_VIEW_ADVERTISER"
-	//   "METRIC_TRUEVIEW_CONVERSION_COST_ONE_PER_VIEW_PARTNER"
-	//   "METRIC_TRUEVIEW_CONVERSION_COST_ONE_PER_VIEW_USD"
 	//   "METRIC_TRUEVIEW_CONVERSION_MANY_PER_VIEW"
-	//   "METRIC_TRUEVIEW_CONVERSION_ONE_PER_VIEW"
 	//   "METRIC_TRUEVIEW_CONVERSION_RATE_ONE_PER_VIEW"
-	//   "METRIC_TRUEVIEW_CONVERSION_VALUE_MANY_PER_VIEW_ADVERTISER"
-	//   "METRIC_TRUEVIEW_CONVERSION_VALUE_MANY_PER_VIEW_PARTNER"
-	//   "METRIC_TRUEVIEW_CONVERSION_VALUE_MANY_PER_VIEW_USD"
-	//   "METRIC_TRUEVIEW_CONVERSION_VALUE_ONE_PER_VIEW_ADVERTISER"
-	//   "METRIC_TRUEVIEW_CONVERSION_VALUE_ONE_PER_VIEW_PARTNER"
-	//   "METRIC_TRUEVIEW_CONVERSION_VALUE_ONE_PER_VIEW_USD"
-	//   "METRIC_TRUEVIEW_COST_CONVERSION_MANY_PER_VIEW_RATIO"
-	//   "METRIC_TRUEVIEW_COST_CONVERSION_ONE_PER_VIEW_RATIO"
 	//   "METRIC_TRUEVIEW_CPV_ADVERTISER"
 	//   "METRIC_TRUEVIEW_CPV_PARTNER"
 	//   "METRIC_TRUEVIEW_CPV_USD"
@@ -983,8 +996,6 @@ type Parameters struct {
 	//   "METRIC_TRUEVIEW_TOTAL_CONVERSION_VALUES_PARTNER"
 	//   "METRIC_TRUEVIEW_TOTAL_CONVERSION_VALUES_USD"
 	//   "METRIC_TRUEVIEW_UNIQUE_VIEWERS"
-	//   "METRIC_TRUEVIEW_VALUE_CONVERSION_MANY_PER_VIEW_RATIO"
-	//   "METRIC_TRUEVIEW_VALUE_CONVERSION_ONE_PER_VIEW_RATIO"
 	//   "METRIC_TRUEVIEW_VIEWS"
 	//   "METRIC_TRUEVIEW_VIEW_RATE"
 	//   "METRIC_TRUEVIEW_VIEW_THROUGH_CONVERSION"
@@ -1717,6 +1728,7 @@ func (c *LineitemsDownloadlineitemsCall) Header() http.Header {
 
 func (c *LineitemsDownloadlineitemsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1839,6 +1851,7 @@ func (c *LineitemsUploadlineitemsCall) Header() http.Header {
 
 func (c *LineitemsUploadlineitemsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1960,6 +1973,7 @@ func (c *QueriesCreatequeryCall) Header() http.Header {
 
 func (c *QueriesCreatequeryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2082,6 +2096,7 @@ func (c *QueriesDeletequeryCall) Header() http.Header {
 
 func (c *QueriesDeletequeryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2193,6 +2208,7 @@ func (c *QueriesGetqueryCall) Header() http.Header {
 
 func (c *QueriesGetqueryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2333,6 +2349,7 @@ func (c *QueriesListqueriesCall) Header() http.Header {
 
 func (c *QueriesListqueriesCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2451,6 +2468,7 @@ func (c *QueriesRunqueryCall) Header() http.Header {
 
 func (c *QueriesRunqueryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2570,6 +2588,7 @@ func (c *ReportsListreportsCall) Header() http.Header {
 
 func (c *ReportsListreportsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2701,6 +2720,7 @@ func (c *SdfDownloadCall) Header() http.Header {
 
 func (c *SdfDownloadCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

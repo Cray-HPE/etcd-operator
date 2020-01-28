@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,39 @@
 
 // Package cloudidentity provides access to the Cloud Identity API.
 //
-// See https://cloud.google.com/identity/
+// For product documentation, see: https://cloud.google.com/identity/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/cloudidentity/v1beta1"
 //   ...
-//   cloudidentityService, err := cloudidentity.New(oauthHttpClient)
+//   ctx := context.Background()
+//   cloudidentityService, err := cloudidentity.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   cloudidentityService, err := cloudidentity.NewService(ctx, option.WithScopes(cloudidentity.CloudPlatformScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   cloudidentityService, err := cloudidentity.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   cloudidentityService, err := cloudidentity.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package cloudidentity // import "google.golang.org/api/cloudidentity/v1beta1"
 
 import (
@@ -27,8 +53,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -50,6 +78,48 @@ const apiName = "cloudidentity"
 const apiVersion = "v1beta1"
 const basePath = "https://cloudidentity.googleapis.com/"
 
+// OAuth2 scopes used by this API.
+const (
+	// See, change, create, and delete any of the Cloud Identity Groups that
+	// you can access, including the members of each group
+	CloudIdentityGroupsScope = "https://www.googleapis.com/auth/cloud-identity.groups"
+
+	// See any Cloud Identity Groups that you can access, including group
+	// members and their emails
+	CloudIdentityGroupsReadonlyScope = "https://www.googleapis.com/auth/cloud-identity.groups.readonly"
+
+	// View and manage your data across Google Cloud Platform services
+	CloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
+)
+
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-identity.groups",
+		"https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+		"https://www.googleapis.com/auth/cloud-platform",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -146,7 +216,7 @@ type Group struct {
 	// Group
 	AdditionalGroupKeys []*EntityKey `json:"additionalGroupKeys,omitempty"`
 
-	// CreateTime: The time when the Group was created.
+	// CreateTime: Output only. The time when the Group was created.
 	// Output only
 	CreateTime string `json:"createTime,omitempty"`
 
@@ -162,19 +232,19 @@ type Group struct {
 	// DisplayName: The Group's display name.
 	DisplayName string `json:"displayName,omitempty"`
 
-	// GroupKey: EntityKey of the Group.
+	// GroupKey: Required. Immutable. EntityKey of the Group.
 	//
 	// Must be set when creating a Group, read-only afterwards.
 	GroupKey *EntityKey `json:"groupKey,omitempty"`
 
-	// Labels: Labels for Group resource.
+	// Labels: Required. Labels for Group resource.
 	// Required.
 	// For creating Groups under a namespace, set label key
 	// to
 	// 'labels/system/groups/external' and label value as empty.
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// Name: [Resource
+	// Name: Output only. [Resource
 	// name](https://cloud.google.com/apis/design/resource_names) of
 	// the
 	// Group in the format: `groups/{group_id}`, where group_id is the
@@ -184,15 +254,16 @@ type Group struct {
 	// Must be left blank while creating a Group
 	Name string `json:"name,omitempty"`
 
-	// Parent: The entity under which this Group resides in Cloud Identity
-	// resource
+	// Parent: Required. Immutable. The entity under which this Group
+	// resides in Cloud Identity resource
 	// hierarchy. Must be set when creating a Group, read-only
 	// afterwards.
 	//
 	// Currently allowed types: 'identitysources'.
 	Parent string `json:"parent,omitempty"`
 
-	// UpdateTime: The time when the Group was last updated.
+	// UpdateTime: Output only. The time when the Group was last
+	// updated.
 	// Output only
 	UpdateTime string `json:"updateTime,omitempty"`
 
@@ -338,17 +409,18 @@ func (s *LookupMembershipNameResponse) MarshalJSON() ([]byte, error) {
 
 // Membership: Resource representing a Membership within a Group
 type Membership struct {
-	// CreateTime: Creation timestamp of the Membership.
+	// CreateTime: Output only. Creation timestamp of the Membership.
 	CreateTime string `json:"createTime,omitempty"`
 
-	// MemberKey: EntityKey of the entity to be added as the member. Must be
-	// set while
+	// MemberKey: Required. Immutable. EntityKey of the entity to be added
+	// as the member. Must be set while
 	// creating a Membership, read-only afterwards.
 	//
 	// Currently allowed entity types: `Users`, `Groups`.
+	// This field will be deprecated soon.
 	MemberKey *EntityKey `json:"memberKey,omitempty"`
 
-	// Name: [Resource
+	// Name: Output only. [Resource
 	// name](https://cloud.google.com/apis/design/resource_names) of
 	// the
 	// Membership in the format:
@@ -363,10 +435,10 @@ type Membership struct {
 
 	// Roles: Roles for a member within the Group.
 	//
-	// Currently supported MembershipRoles: "MEMBER".
+	// Currently supported MembershipRoles: "MEMBER", "OWNER", "MANAGER".
 	Roles []*MembershipRole `json:"roles,omitempty"`
 
-	// UpdateTime: Last updated timestamp of the Membership.
+	// UpdateTime: Output only. Last updated timestamp of the Membership.
 	UpdateTime string `json:"updateTime,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -399,8 +471,7 @@ func (s *Membership) MarshalJSON() ([]byte, error) {
 // MembershipRole: Resource representing a role within a Membership.
 type MembershipRole struct {
 	// Name: MembershipRole in string format.
-	//
-	// Currently supported MembershipRoles: "MEMBER".
+	// Currently supported MembershipRoles: "MEMBER", "OWNER", "MANAGER".
 	Name string `json:"name,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Name") to
@@ -454,7 +525,8 @@ type Operation struct {
 	// service that
 	// originally returns it. If you use the default HTTP mapping,
 	// the
-	// `name` should have the format of `operations/some/unique/name`.
+	// `name` should be a resource name ending with
+	// `operations/{unique_id}`.
 	Name string `json:"name,omitempty"`
 
 	// Response: The normal response of the operation in case of success.
@@ -538,84 +610,17 @@ func (s *SearchGroupsResponse) MarshalJSON() ([]byte, error) {
 }
 
 // Status: The `Status` type defines a logical error model that is
-// suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -700,6 +705,7 @@ func (c *GroupsCreateCall) Header() http.Header {
 
 func (c *GroupsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -772,7 +778,11 @@ func (c *GroupsCreateCall) Do(opts ...googleapi.CallOption) (*Operation, error) 
 	//   },
 	//   "response": {
 	//     "$ref": "Operation"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -821,6 +831,7 @@ func (c *GroupsDeleteCall) Header() http.Header {
 
 func (c *GroupsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -898,7 +909,11 @@ func (c *GroupsDeleteCall) Do(opts ...googleapi.CallOption) (*Operation, error) 
 	//   "path": "v1beta1/{+name}",
 	//   "response": {
 	//     "$ref": "Operation"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -958,6 +973,7 @@ func (c *GroupsGetCall) Header() http.Header {
 
 func (c *GroupsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1038,7 +1054,12 @@ func (c *GroupsGetCall) Do(opts ...googleapi.CallOption) (*Group, error) {
 	//   "path": "v1beta1/{+name}",
 	//   "response": {
 	//     "$ref": "Group"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -1123,6 +1144,7 @@ func (c *GroupsLookupCall) Header() http.Header {
 
 func (c *GroupsLookupCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1201,7 +1223,12 @@ func (c *GroupsLookupCall) Do(opts ...googleapi.CallOption) (*LookupGroupNameRes
 	//   "path": "v1beta1/groups:lookup",
 	//   "response": {
 	//     "$ref": "LookupGroupNameResponse"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -1259,6 +1286,7 @@ func (c *GroupsPatchCall) Header() http.Header {
 
 func (c *GroupsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1331,7 +1359,7 @@ func (c *GroupsPatchCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "[Resource name](https://cloud.google.com/apis/design/resource_names) of the\nGroup in the format: `groups/{group_id}`, where group_id is the unique id\nassigned to the Group.\n\nMust be left blank while creating a Group",
+	//       "description": "Output only. [Resource name](https://cloud.google.com/apis/design/resource_names) of the\nGroup in the format: `groups/{group_id}`, where group_id is the unique id\nassigned to the Group.\n\nMust be left blank while creating a Group",
 	//       "location": "path",
 	//       "pattern": "^groups/[^/]+$",
 	//       "required": true,
@@ -1350,7 +1378,11 @@ func (c *GroupsPatchCall) Do(opts ...googleapi.CallOption) (*Operation, error) {
 	//   },
 	//   "response": {
 	//     "$ref": "Operation"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -1371,12 +1403,9 @@ func (r *GroupsService) Search() *GroupsSearchCall {
 	return c
 }
 
-// PageSize sets the optional parameter "pageSize": The max number of
-// groups to return.
-// GroupView | Default | Maximum
-// --------- | ------- | -------
-// BASIC     | 200     | 1000
-// FULL      | 50      | 500
+// PageSize sets the optional parameter "pageSize": The default page
+// size is 200 (max 1000) for the BASIC view, and 50
+// (max 500) for the FULL view.
 func (c *GroupsSearchCall) PageSize(pageSize int64) *GroupsSearchCall {
 	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
 	return c
@@ -1454,6 +1483,7 @@ func (c *GroupsSearchCall) Header() http.Header {
 
 func (c *GroupsSearchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1519,7 +1549,7 @@ func (c *GroupsSearchCall) Do(opts ...googleapi.CallOption) (*SearchGroupsRespon
 	//   "parameterOrder": [],
 	//   "parameters": {
 	//     "pageSize": {
-	//       "description": "The max number of groups to return.\nGroupView | Default | Maximum\n--------- | ------- | -------\nBASIC     | 200     | 1000\nFULL      | 50      | 500",
+	//       "description": "The default page size is 200 (max 1000) for the BASIC view, and 50\n(max 500) for the FULL view.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
@@ -1547,7 +1577,12 @@ func (c *GroupsSearchCall) Do(opts ...googleapi.CallOption) (*SearchGroupsRespon
 	//   "path": "v1beta1/groups:search",
 	//   "response": {
 	//     "$ref": "SearchGroupsResponse"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -1619,6 +1654,7 @@ func (c *GroupsMembershipsCreateCall) Header() http.Header {
 
 func (c *GroupsMembershipsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1704,7 +1740,11 @@ func (c *GroupsMembershipsCreateCall) Do(opts ...googleapi.CallOption) (*Operati
 	//   },
 	//   "response": {
 	//     "$ref": "Operation"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -1753,6 +1793,7 @@ func (c *GroupsMembershipsDeleteCall) Header() http.Header {
 
 func (c *GroupsMembershipsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1830,7 +1871,11 @@ func (c *GroupsMembershipsDeleteCall) Do(opts ...googleapi.CallOption) (*Operati
 	//   "path": "v1beta1/{+name}",
 	//   "response": {
 	//     "$ref": "Operation"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -1890,6 +1935,7 @@ func (c *GroupsMembershipsGetCall) Header() http.Header {
 
 func (c *GroupsMembershipsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1970,7 +2016,12 @@ func (c *GroupsMembershipsGetCall) Do(opts ...googleapi.CallOption) (*Membership
 	//   "path": "v1beta1/{+name}",
 	//   "response": {
 	//     "$ref": "Membership"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -1993,13 +2044,9 @@ func (r *GroupsMembershipsService) List(parent string) *GroupsMembershipsListCal
 	return c
 }
 
-// PageSize sets the optional parameter "pageSize": Maximum number of
-// Memberships to return.
-//
-// MembershipView | Default | Maximum
-// -------------- | ------- | -------
-// BASIC          | 200     | 1000
-// FULL           | 50      | 500
+// PageSize sets the optional parameter "pageSize": The default page
+// size is 200 (max 1000) for the BASIC view, and 50
+// (max 500) for the FULL view.
 func (c *GroupsMembershipsListCall) PageSize(pageSize int64) *GroupsMembershipsListCall {
 	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
 	return c
@@ -2060,6 +2107,7 @@ func (c *GroupsMembershipsListCall) Header() http.Header {
 
 func (c *GroupsMembershipsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2130,7 +2178,7 @@ func (c *GroupsMembershipsListCall) Do(opts ...googleapi.CallOption) (*ListMembe
 	//   ],
 	//   "parameters": {
 	//     "pageSize": {
-	//       "description": "Maximum number of Memberships to return.\n\nMembershipView | Default | Maximum\n-------------- | ------- | -------\nBASIC          | 200     | 1000\nFULL           | 50      | 500",
+	//       "description": "The default page size is 200 (max 1000) for the BASIC view, and 50\n(max 500) for the FULL view.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
@@ -2160,7 +2208,12 @@ func (c *GroupsMembershipsListCall) Do(opts ...googleapi.CallOption) (*ListMembe
 	//   "path": "v1beta1/{+parent}/memberships",
 	//   "response": {
 	//     "$ref": "ListMembershipsResponse"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }
@@ -2268,6 +2321,7 @@ func (c *GroupsMembershipsLookupCall) Header() http.Header {
 
 func (c *GroupsMembershipsLookupCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2358,7 +2412,12 @@ func (c *GroupsMembershipsLookupCall) Do(opts ...googleapi.CallOption) (*LookupM
 	//   "path": "v1beta1/{+parent}/memberships:lookup",
 	//   "response": {
 	//     "$ref": "LookupMembershipNameResponse"
-	//   }
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-identity.groups",
+	//     "https://www.googleapis.com/auth/cloud-identity.groups.readonly",
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
 	// }
 
 }

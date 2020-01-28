@@ -1,3 +1,7 @@
+// Copyright 2018 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package lsp
 
 import (
@@ -5,56 +9,30 @@ import (
 
 	"golang.org/x/tools/internal/lsp/protocol"
 	"golang.org/x/tools/internal/lsp/source"
+	"golang.org/x/tools/internal/span"
 )
 
-// formatRange formats a document with a given range.
-func formatRange(ctx context.Context, v source.View, uri protocol.DocumentURI, rng *protocol.Range) ([]protocol.TextEdit, error) {
-	sourceURI, err := fromProtocolURI(uri)
+func (s *Server) formatting(ctx context.Context, params *protocol.DocumentFormattingParams) ([]protocol.TextEdit, error) {
+	uri := span.NewURI(params.TextDocument.URI)
+	view, err := s.session.ViewOf(uri)
 	if err != nil {
 		return nil, err
 	}
-	f, err := v.GetFile(ctx, sourceURI)
+	snapshot := view.Snapshot()
+	fh, err := snapshot.GetFile(uri)
 	if err != nil {
 		return nil, err
 	}
-	tok := f.GetToken()
-	var r source.Range
-	if rng == nil {
-		r.Start = tok.Pos(0)
-		r.End = tok.Pos(tok.Size())
-	} else {
-		r = fromProtocolRange(tok, *rng)
+	var edits []protocol.TextEdit
+	switch fh.Identity().Kind {
+	case source.Go:
+		edits, err = source.Format(ctx, snapshot, fh)
+	case source.Mod:
+		return nil, nil
 	}
-	edits, err := source.Format(ctx, f, r)
-	if err != nil {
-		return nil, err
-	}
-	return toProtocolEdits(f, edits), nil
-}
 
-func toProtocolEdits(f source.File, edits []source.TextEdit) []protocol.TextEdit {
-	if edits == nil {
-		return nil
+	if err != nil {
+		return nil, err
 	}
-	tok := f.GetToken()
-	content := f.GetContent()
-	// When a file ends with an empty line, the newline character is counted
-	// as part of the previous line. This causes the formatter to insert
-	// another unnecessary newline on each formatting. We handle this case by
-	// checking if the file already ends with a newline character.
-	hasExtraNewline := content[len(content)-1] == '\n'
-	result := make([]protocol.TextEdit, len(edits))
-	for i, edit := range edits {
-		rng := toProtocolRange(tok, edit.Range)
-		// If the edit ends at the end of the file, add the extra line.
-		if hasExtraNewline && tok.Offset(edit.Range.End) == len(content) {
-			rng.End.Line++
-			rng.End.Character = 0
-		}
-		result[i] = protocol.TextEdit{
-			Range:   rng,
-			NewText: edit.NewText,
-		}
-	}
-	return result
+	return edits, nil
 }

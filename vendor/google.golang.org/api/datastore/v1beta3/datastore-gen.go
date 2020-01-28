@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,39 @@
 //
 // This package is DEPRECATED. Use package cloud.google.com/go/datastore instead.
 //
-// See https://cloud.google.com/datastore/
+// For product documentation, see: https://cloud.google.com/datastore/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/datastore/v1beta3"
 //   ...
-//   datastoreService, err := datastore.New(oauthHttpClient)
+//   ctx := context.Background()
+//   datastoreService, err := datastore.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   datastoreService, err := datastore.NewService(ctx, option.WithScopes(datastore.DatastoreScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   datastoreService, err := datastore.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   datastoreService, err := datastore.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package datastore // import "google.golang.org/api/datastore/v1beta3"
 
 import (
@@ -29,8 +55,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -61,6 +89,33 @@ const (
 	DatastoreScope = "https://www.googleapis.com/auth/datastore"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/datastore",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -96,8 +151,8 @@ type ProjectsService struct {
 
 // AllocateIdsRequest: The request for Datastore.AllocateIds.
 type AllocateIdsRequest struct {
-	// Keys: A list of keys with incomplete key paths for which to allocate
-	// IDs.
+	// Keys: Required. A list of keys with incomplete key paths for which to
+	// allocate IDs.
 	// No key may be reserved/read-only.
 	Keys []*Key `json:"keys,omitempty"`
 
@@ -259,8 +314,10 @@ type CommitRequest struct {
 	//   "MODE_UNSPECIFIED" - Unspecified. This value must not be used.
 	//   "TRANSACTIONAL" - Transactional: The mutations are either all
 	// applied, or none are applied.
-	// Learn about transactions
-	// [here](https://cloud.google.com/datastore/docs/concepts/transactions).
+	// Learn about
+	// transactions
+	// [here](https://cloud.google.com/datastore/docs/concepts/t
+	// ransactions).
 	//   "NON_TRANSACTIONAL" - Non-transactional: The mutations may not
 	// apply as all or none.
 	Mode string `json:"mode,omitempty"`
@@ -1140,9 +1197,10 @@ func (s *GoogleDatastoreAdminV1beta1Progress) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GqlQuery: A [GQL
-// query](https://cloud.google.com/datastore/docs/apis/gql/gql_reference)
-// .
+// GqlQuery: A
+// [GQL
+// query](https://cloud.google.com/datastore/docs/apis/gql/gql_refer
+// ence).
 type GqlQuery struct {
 	// AllowLiterals: When false, the query string must not contain any
 	// literals and instead must
@@ -1380,7 +1438,7 @@ func (s *LatLng) UnmarshalJSON(data []byte) error {
 
 // LookupRequest: The request for Datastore.Lookup.
 type LookupRequest struct {
-	// Keys: Keys of entities to look up.
+	// Keys: Required. Keys of entities to look up.
 	Keys []*Key `json:"keys,omitempty"`
 
 	// ReadOptions: The options for this lookup request.
@@ -1804,9 +1862,10 @@ type Query struct {
 	// EndCursor: An ending point for the query results. Query cursors
 	// are
 	// returned in query result batches and
-	// [can only be used to limit the same
-	// query](https://cloud.google.com/datastore/docs/concepts/queries#cursor
-	// s_limits_and_offsets).
+	// [can only be used to limit the
+	// same
+	// query](https://cloud.google.com/datastore/docs/concepts/queries#c
+	// ursors_limits_and_offsets).
 	EndCursor string `json:"endCursor,omitempty"`
 
 	// Filter: The filter to apply.
@@ -1840,9 +1899,10 @@ type Query struct {
 	// StartCursor: A starting point for the query results. Query cursors
 	// are
 	// returned in query result batches and
-	// [can only be used to continue the same
-	// query](https://cloud.google.com/datastore/docs/concepts/queries#cursor
-	// s_limits_and_offsets).
+	// [can only be used to continue the
+	// same
+	// query](https://cloud.google.com/datastore/docs/concepts/queries#c
+	// ursors_limits_and_offsets).
 	StartCursor string `json:"startCursor,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "DistinctOn") to
@@ -2036,8 +2096,8 @@ type ReserveIdsRequest struct {
 	// make the request.
 	DatabaseId string `json:"databaseId,omitempty"`
 
-	// Keys: A list of keys with complete key paths whose numeric IDs should
-	// not be
+	// Keys: Required. A list of keys with complete key paths whose numeric
+	// IDs should not be
 	// auto-allocated.
 	Keys []*Key `json:"keys,omitempty"`
 
@@ -2073,7 +2133,7 @@ type ReserveIdsResponse struct {
 
 // RollbackRequest: The request for Datastore.Rollback.
 type RollbackRequest struct {
-	// Transaction: The transaction identifier, returned by a call
+	// Transaction: Required. The transaction identifier, returned by a call
 	// to
 	// Datastore.BeginTransaction.
 	Transaction string `json:"transaction,omitempty"`
@@ -2378,6 +2438,7 @@ func (c *ProjectsAllocateIdsCall) Header() http.Header {
 
 func (c *ProjectsAllocateIdsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2450,7 +2511,7 @@ func (c *ProjectsAllocateIdsCall) Do(opts ...googleapi.CallOption) (*AllocateIds
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -2517,6 +2578,7 @@ func (c *ProjectsBeginTransactionCall) Header() http.Header {
 
 func (c *ProjectsBeginTransactionCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2589,7 +2651,7 @@ func (c *ProjectsBeginTransactionCall) Do(opts ...googleapi.CallOption) (*BeginT
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -2658,6 +2720,7 @@ func (c *ProjectsCommitCall) Header() http.Header {
 
 func (c *ProjectsCommitCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2730,7 +2793,7 @@ func (c *ProjectsCommitCall) Do(opts ...googleapi.CallOption) (*CommitResponse, 
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -2797,6 +2860,7 @@ func (c *ProjectsLookupCall) Header() http.Header {
 
 func (c *ProjectsLookupCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2869,7 +2933,7 @@ func (c *ProjectsLookupCall) Do(opts ...googleapi.CallOption) (*LookupResponse, 
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -2938,6 +3002,7 @@ func (c *ProjectsReserveIdsCall) Header() http.Header {
 
 func (c *ProjectsReserveIdsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3010,7 +3075,7 @@ func (c *ProjectsReserveIdsCall) Do(opts ...googleapi.CallOption) (*ReserveIdsRe
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3077,6 +3142,7 @@ func (c *ProjectsRollbackCall) Header() http.Header {
 
 func (c *ProjectsRollbackCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3149,7 +3215,7 @@ func (c *ProjectsRollbackCall) Do(opts ...googleapi.CallOption) (*RollbackRespon
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3216,6 +3282,7 @@ func (c *ProjectsRunQueryCall) Header() http.Header {
 
 func (c *ProjectsRunQueryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3288,7 +3355,7 @@ func (c *ProjectsRunQueryCall) Do(opts ...googleapi.CallOption) (*RunQueryRespon
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"

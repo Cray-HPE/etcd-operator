@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package websecurityscanner provides access to the Web Security Scanner API.
 //
-// See https://cloud.google.com/security-scanner/
+// For product documentation, see: https://cloud.google.com/security-scanner/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/websecurityscanner/v1alpha"
 //   ...
-//   websecurityscannerService, err := websecurityscanner.New(oauthHttpClient)
+//   ctx := context.Background()
+//   websecurityscannerService, err := websecurityscanner.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   websecurityscannerService, err := websecurityscanner.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   websecurityscannerService, err := websecurityscanner.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package websecurityscanner // import "google.golang.org/api/websecurityscanner/v1alpha"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -56,6 +80,32 @@ const (
 	CloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -186,18 +236,16 @@ func (s *Authentication) MarshalJSON() ([]byte, error) {
 // links
 // within the scope of sites, to find the URLs to test against.
 type CrawledUrl struct {
-	// Body: Output only.
-	// The body of the request that was used to visit the URL.
+	// Body: Output only. The body of the request that was used to visit the
+	// URL.
 	Body string `json:"body,omitempty"`
 
-	// HttpMethod: Output only.
-	// The http method of the request that was used to visit the URL,
-	// in
+	// HttpMethod: Output only. The http method of the request that was used
+	// to visit the URL, in
 	// uppercase.
 	HttpMethod string `json:"httpMethod,omitempty"`
 
-	// Url: Output only.
-	// The URL that was crawled.
+	// Url: Output only. The URL that was crawled.
 	Url string `json:"url,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Body") to
@@ -226,19 +274,15 @@ func (s *CrawledUrl) MarshalJSON() ([]byte, error) {
 // CustomAccount: Describes authentication configuration that uses a
 // custom account.
 type CustomAccount struct {
-	// LoginUrl: Required.
-	// The login form URL of the website.
+	// LoginUrl: Required. The login form URL of the website.
 	LoginUrl string `json:"loginUrl,omitempty"`
 
-	// Password: Input only.
-	// Required.
-	// The password of the custom account. The credential is stored
-	// encrypted
+	// Password: Required. Input only. The password of the custom account.
+	// The credential is stored encrypted
 	// and not returned in any response nor included in audit logs.
 	Password string `json:"password,omitempty"`
 
-	// Username: Required.
-	// The user name of the custom account.
+	// Username: Required. The user name of the custom account.
 	Username string `json:"username,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "LoginUrl") to
@@ -286,20 +330,17 @@ type Empty struct {
 // identified during a
 // ScanRun.
 type Finding struct {
-	// Body: Output only.
-	// The body of the request that triggered the vulnerability.
+	// Body: The body of the request that triggered the vulnerability.
 	Body string `json:"body,omitempty"`
 
-	// Description: Output only.
-	// The description of the vulnerability.
+	// Description: The description of the vulnerability.
 	Description string `json:"description,omitempty"`
 
-	// FinalUrl: Output only.
-	// The URL where the browser lands when the vulnerability is detected.
+	// FinalUrl: The URL where the browser lands when the vulnerability is
+	// detected.
 	FinalUrl string `json:"finalUrl,omitempty"`
 
-	// FindingType: Output only.
-	// The type of the Finding.
+	// FindingType: The type of the Finding.
 	//
 	// Possible values:
 	//   "FINDING_TYPE_UNSPECIFIED" - The invalid finding type.
@@ -367,67 +408,57 @@ type Finding struct {
 	// duplicate security header.
 	FindingType string `json:"findingType,omitempty"`
 
-	// FrameUrl: Output only.
-	// If the vulnerability was originated from nested IFrame, the
+	// FrameUrl: If the vulnerability was originated from nested IFrame, the
 	// immediate
 	// parent IFrame is reported.
 	FrameUrl string `json:"frameUrl,omitempty"`
 
-	// FuzzedUrl: Output only.
-	// The URL produced by the server-side fuzzer and used in the request
-	// that
+	// FuzzedUrl: The URL produced by the server-side fuzzer and used in the
+	// request that
 	// triggered the vulnerability.
 	FuzzedUrl string `json:"fuzzedUrl,omitempty"`
 
-	// HttpMethod: Output only.
-	// The http method of the request that triggered the vulnerability,
-	// in
+	// HttpMethod: The http method of the request that triggered the
+	// vulnerability, in
 	// uppercase.
 	HttpMethod string `json:"httpMethod,omitempty"`
 
-	// Name: Output only.
-	// The resource name of the Finding. The name follows the format
+	// Name: The resource name of the Finding. The name follows the format
 	// of
 	// 'projects/{projectId}/scanConfigs/{scanConfigId}/scanruns/{scanRunI
 	// d}/findings/{findingId}'.
 	// The finding IDs are generated by the system.
 	Name string `json:"name,omitempty"`
 
-	// OutdatedLibrary: Output only.
-	// An addon containing information about outdated libraries.
+	// OutdatedLibrary: An addon containing information about outdated
+	// libraries.
 	OutdatedLibrary *OutdatedLibrary `json:"outdatedLibrary,omitempty"`
 
-	// ReproductionUrl: Output only.
-	// The URL containing human-readable payload that user can leverage
-	// to
+	// ReproductionUrl: The URL containing human-readable payload that user
+	// can leverage to
 	// reproduce the vulnerability.
 	ReproductionUrl string `json:"reproductionUrl,omitempty"`
 
-	// TrackingId: Output only.
-	// The tracking ID uniquely identifies a vulnerability instance
-	// across
+	// TrackingId: The tracking ID uniquely identifies a vulnerability
+	// instance across
 	// multiple ScanRuns.
 	TrackingId string `json:"trackingId,omitempty"`
 
-	// ViolatingResource: Output only.
-	// An addon containing detailed information regarding any resource
-	// causing the
+	// ViolatingResource: An addon containing detailed information regarding
+	// any resource causing the
 	// vulnerability such as JavaScript sources, image, audio files, etc.
 	ViolatingResource *ViolatingResource `json:"violatingResource,omitempty"`
 
-	// VulnerableHeaders: Output only.
-	// An addon containing information about vulnerable or missing HTTP
-	// headers.
+	// VulnerableHeaders: An addon containing information about vulnerable
+	// or missing HTTP headers.
 	VulnerableHeaders *VulnerableHeaders `json:"vulnerableHeaders,omitempty"`
 
-	// VulnerableParameters: Output only.
-	// An addon containing information about request parameters which were
-	// found
+	// VulnerableParameters: An addon containing information about request
+	// parameters which were found
 	// to be vulnerable.
 	VulnerableParameters *VulnerableParameters `json:"vulnerableParameters,omitempty"`
 
-	// Xss: Output only.
-	// An addon containing information reported for an XSS, if any.
+	// Xss: An addon containing information reported for an XSS, if any.
 	Xss *Xss `json:"xss,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -461,12 +492,10 @@ func (s *Finding) MarshalJSON() ([]byte, error) {
 // regarding a specific FindingType
 // of Findings under a given ScanRun.
 type FindingTypeStats struct {
-	// FindingCount: Output only.
-	// The count of findings belonging to this finding type.
+	// FindingCount: The count of findings belonging to this finding type.
 	FindingCount int64 `json:"findingCount,omitempty"`
 
-	// FindingType: Output only.
-	// The finding type associated with the stats.
+	// FindingType: The finding type associated with the stats.
 	//
 	// Possible values:
 	//   "FINDING_TYPE_UNSPECIFIED" - The invalid finding type.
@@ -560,15 +589,12 @@ func (s *FindingTypeStats) MarshalJSON() ([]byte, error) {
 // GoogleAccount: Describes authentication configuration that uses a
 // Google account.
 type GoogleAccount struct {
-	// Password: Input only.
-	// Required.
-	// The password of the Google account. The credential is stored
-	// encrypted
+	// Password: Required. Input only. The password of the Google account.
+	// The credential is stored encrypted
 	// and not returned in any response nor included in audit logs.
 	Password string `json:"password,omitempty"`
 
-	// Username: Required.
-	// The user name of the Google account.
+	// Username: Required. The user name of the Google account.
 	Username string `json:"username,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Password") to
@@ -844,6 +870,7 @@ func (s *OutdatedLibrary) MarshalJSON() ([]byte, error) {
 
 // ScanConfig: A ScanConfig resource contains the configurations to
 // launch a scan.
+// next id: 12
 type ScanConfig struct {
 	// Authentication: The authentication configuration. If specified,
 	// service will use the
@@ -855,9 +882,12 @@ type ScanConfig struct {
 	// https://cloud.google.com/security-scanner/docs/excluded-urls
 	BlacklistPatterns []string `json:"blacklistPatterns,omitempty"`
 
-	// DisplayName: Required.
-	// The user provided display name of the ScanConfig.
+	// DisplayName: Required. The user provided display name of the
+	// ScanConfig.
 	DisplayName string `json:"displayName,omitempty"`
+
+	// LatestRun: Latest ScanRun if available.
+	LatestRun *ScanRun `json:"latestRun,omitempty"`
 
 	// MaxQps: The maximum QPS during scanning. A valid value ranges from 5
 	// to 20
@@ -878,8 +908,8 @@ type ScanConfig struct {
 	// Schedule: The schedule of the ScanConfig.
 	Schedule *Schedule `json:"schedule,omitempty"`
 
-	// StartingUrls: Required.
-	// The starting URLs from which the scanner finds site pages.
+	// StartingUrls: Required. The starting URLs from which the scanner
+	// finds site pages.
 	StartingUrls []string `json:"startingUrls,omitempty"`
 
 	// TargetPlatforms: Set of Cloud Platforms targeted by the scan. If
@@ -936,14 +966,12 @@ func (s *ScanConfig) MarshalJSON() ([]byte, error) {
 // ScanRun: A ScanRun is a output-only resource representing an actual
 // run of the scan.
 type ScanRun struct {
-	// EndTime: Output only.
-	// The time at which the ScanRun reached termination state - that the
-	// ScanRun
+	// EndTime: The time at which the ScanRun reached termination state -
+	// that the ScanRun
 	// is either finished or stopped by user.
 	EndTime string `json:"endTime,omitempty"`
 
-	// ExecutionState: Output only.
-	// The execution state of the ScanRun.
+	// ExecutionState: The execution state of the ScanRun.
 	//
 	// Possible values:
 	//   "EXECUTION_STATE_UNSPECIFIED" - Represents an invalid state caused
@@ -954,28 +982,26 @@ type ScanRun struct {
 	//   "FINISHED" - The scan is either finished or stopped by user.
 	ExecutionState string `json:"executionState,omitempty"`
 
-	// HasVulnerabilities: Output only.
-	// Whether the scan run has found any vulnerabilities.
+	// HasVulnerabilities: Whether the scan run has found any
+	// vulnerabilities.
 	HasVulnerabilities bool `json:"hasVulnerabilities,omitempty"`
 
-	// Name: Output only.
-	// The resource name of the ScanRun. The name follows the format
+	// Name: The resource name of the ScanRun. The name follows the format
 	// of
 	// 'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunI
 	// d}'.
 	// The ScanRun IDs are generated by the system.
 	Name string `json:"name,omitempty"`
 
-	// ProgressPercent: Output only.
-	// The percentage of total completion ranging from 0 to 100.
+	// ProgressPercent: The percentage of total completion ranging from 0 to
+	// 100.
 	// If the scan is in queue, the value is 0.
 	// If the scan is running, the value ranges from 0 to 100.
 	// If the scan is finished, the value is 100.
 	ProgressPercent int64 `json:"progressPercent,omitempty"`
 
-	// ResultState: Output only.
-	// The result state of the ScanRun. This field is only available after
-	// the
+	// ResultState: The result state of the ScanRun. This field is only
+	// available after the
 	// execution state reaches "FINISHED".
 	//
 	// Possible values:
@@ -987,19 +1013,16 @@ type ScanRun struct {
 	//   "KILLED" - The scan was terminated by user.
 	ResultState string `json:"resultState,omitempty"`
 
-	// StartTime: Output only.
-	// The time at which the ScanRun started.
+	// StartTime: The time at which the ScanRun started.
 	StartTime string `json:"startTime,omitempty"`
 
-	// UrlsCrawledCount: Output only.
-	// The number of URLs crawled during this ScanRun. If the scan is in
-	// progress,
+	// UrlsCrawledCount: The number of URLs crawled during this ScanRun. If
+	// the scan is in progress,
 	// the value represents the number of URLs crawled up to now.
 	UrlsCrawledCount int64 `json:"urlsCrawledCount,omitempty,string"`
 
-	// UrlsTestedCount: Output only.
-	// The number of URLs tested during this ScanRun. If the scan is in
-	// progress,
+	// UrlsTestedCount: The number of URLs tested during this ScanRun. If
+	// the scan is in progress,
 	// the value represents the number of URLs tested up to now. The number
 	// of
 	// URLs tested is usually larger than the number URLS crawled
@@ -1036,8 +1059,8 @@ func (s *ScanRun) MarshalJSON() ([]byte, error) {
 
 // Schedule: Scan schedule configuration.
 type Schedule struct {
-	// IntervalDurationDays: Required.
-	// The duration of time between executions in days.
+	// IntervalDurationDays: Required. The duration of time between
+	// executions in days.
 	IntervalDurationDays int64 `json:"intervalDurationDays,omitempty"`
 
 	// ScheduleTime: A timestamp indicates when the next run will be
@@ -1255,6 +1278,7 @@ func (c *ProjectsScanConfigsCreateCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1327,7 +1351,7 @@ func (c *ProjectsScanConfigsCreateCall) Do(opts ...googleapi.CallOption) (*ScanC
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required.\nThe parent resource name where the scan is created, which should be a\nproject resource name in the format 'projects/{projectId}'.",
+	//       "description": "Required. The parent resource name where the scan is created, which should be a\nproject resource name in the format 'projects/{projectId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
@@ -1392,6 +1416,7 @@ func (c *ProjectsScanConfigsDeleteCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1459,7 +1484,7 @@ func (c *ProjectsScanConfigsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\nThe resource name of the ScanConfig to be deleted. The name follows the\nformat of 'projects/{projectId}/scanConfigs/{scanConfigId}'.",
+	//       "description": "Required. The resource name of the ScanConfig to be deleted. The name follows the\nformat of 'projects/{projectId}/scanConfigs/{scanConfigId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+$",
 	//       "required": true,
@@ -1532,6 +1557,7 @@ func (c *ProjectsScanConfigsGetCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1602,7 +1628,7 @@ func (c *ProjectsScanConfigsGetCall) Do(opts ...googleapi.CallOption) (*ScanConf
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\nThe resource name of the ScanConfig to be returned. The name follows the\nformat of 'projects/{projectId}/scanConfigs/{scanConfigId}'.",
+	//       "description": "Required. The resource name of the ScanConfig to be returned. The name follows the\nformat of 'projects/{projectId}/scanConfigs/{scanConfigId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+$",
 	//       "required": true,
@@ -1695,6 +1721,7 @@ func (c *ProjectsScanConfigsListCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1776,7 +1803,7 @@ func (c *ProjectsScanConfigsListCall) Do(opts ...googleapi.CallOption) (*ListSca
 	//       "type": "string"
 	//     },
 	//     "parent": {
-	//       "description": "Required.\nThe parent resource name, which should be a project resource name in the\nformat 'projects/{projectId}'.",
+	//       "description": "Required. The parent resource name, which should be a project resource name in the\nformat 'projects/{projectId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+$",
 	//       "required": true,
@@ -1835,8 +1862,8 @@ func (r *ProjectsScanConfigsService) Patch(name string, scanconfig *ScanConfig) 
 	return c
 }
 
-// UpdateMask sets the optional parameter "updateMask": Required.
-// The update mask applies to the resource. For the `FieldMask`
+// UpdateMask sets the optional parameter "updateMask": Required. The
+// update mask applies to the resource. For the `FieldMask`
 // definition,
 // see
 // https://developers.google.com/protocol-buffers/docs/re
@@ -1873,6 +1900,7 @@ func (c *ProjectsScanConfigsPatchCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1952,7 +1980,7 @@ func (c *ProjectsScanConfigsPatchCall) Do(opts ...googleapi.CallOption) (*ScanCo
 	//       "type": "string"
 	//     },
 	//     "updateMask": {
-	//       "description": "Required.\nThe update mask applies to the resource. For the `FieldMask` definition,\nsee\nhttps://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
+	//       "description": "Required. The update mask applies to the resource. For the `FieldMask` definition,\nsee\nhttps://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask",
 	//       "format": "google-fieldmask",
 	//       "location": "query",
 	//       "type": "string"
@@ -2018,6 +2046,7 @@ func (c *ProjectsScanConfigsStartCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsStartCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2090,7 +2119,7 @@ func (c *ProjectsScanConfigsStartCall) Do(opts ...googleapi.CallOption) (*ScanRu
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\nThe resource name of the ScanConfig to be used. The name follows the\nformat of 'projects/{projectId}/scanConfigs/{scanConfigId}'.",
+	//       "description": "Required. The resource name of the ScanConfig to be used. The name follows the\nformat of 'projects/{projectId}/scanConfigs/{scanConfigId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+$",
 	//       "required": true,
@@ -2166,6 +2195,7 @@ func (c *ProjectsScanConfigsScanRunsGetCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsScanRunsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2236,7 +2266,7 @@ func (c *ProjectsScanConfigsScanRunsGetCall) Do(opts ...googleapi.CallOption) (*
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\nThe resource name of the ScanRun to be returned. The name follows the\nformat of\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
+	//       "description": "Required. The resource name of the ScanRun to be returned. The name follows the\nformat of\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+/scanRuns/[^/]+$",
 	//       "required": true,
@@ -2331,6 +2361,7 @@ func (c *ProjectsScanConfigsScanRunsListCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsScanRunsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2412,7 +2443,7 @@ func (c *ProjectsScanConfigsScanRunsListCall) Do(opts ...googleapi.CallOption) (
 	//       "type": "string"
 	//     },
 	//     "parent": {
-	//       "description": "Required.\nThe parent resource name, which should be a scan resource name in the\nformat 'projects/{projectId}/scanConfigs/{scanConfigId}'.",
+	//       "description": "Required. The parent resource name, which should be a scan resource name in the\nformat 'projects/{projectId}/scanConfigs/{scanConfigId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+$",
 	//       "required": true,
@@ -2497,6 +2528,7 @@ func (c *ProjectsScanConfigsScanRunsStopCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsScanRunsStopCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2569,7 +2601,7 @@ func (c *ProjectsScanConfigsScanRunsStopCall) Do(opts ...googleapi.CallOption) (
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\nThe resource name of the ScanRun to be stopped. The name follows the\nformat of\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
+	//       "description": "Required. The resource name of the ScanRun to be stopped. The name follows the\nformat of\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+/scanRuns/[^/]+$",
 	//       "required": true,
@@ -2665,6 +2697,7 @@ func (c *ProjectsScanConfigsScanRunsCrawledUrlsListCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsScanRunsCrawledUrlsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2746,7 +2779,7 @@ func (c *ProjectsScanConfigsScanRunsCrawledUrlsListCall) Do(opts ...googleapi.Ca
 	//       "type": "string"
 	//     },
 	//     "parent": {
-	//       "description": "Required.\nThe parent resource name, which should be a scan run resource name in the\nformat\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
+	//       "description": "Required. The parent resource name, which should be a scan run resource name in the\nformat\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+/scanRuns/[^/]+$",
 	//       "required": true,
@@ -2840,6 +2873,7 @@ func (c *ProjectsScanConfigsScanRunsFindingTypeStatsListCall) Header() http.Head
 
 func (c *ProjectsScanConfigsScanRunsFindingTypeStatsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2910,7 +2944,7 @@ func (c *ProjectsScanConfigsScanRunsFindingTypeStatsListCall) Do(opts ...googlea
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required.\nThe parent resource name, which should be a scan run resource name in the\nformat\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
+	//       "description": "Required. The parent resource name, which should be a scan run resource name in the\nformat\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+/scanRuns/[^/]+$",
 	//       "required": true,
@@ -2983,6 +3017,7 @@ func (c *ProjectsScanConfigsScanRunsFindingsGetCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsScanRunsFindingsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3053,7 +3088,7 @@ func (c *ProjectsScanConfigsScanRunsFindingsGetCall) Do(opts ...googleapi.CallOp
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\nThe resource name of the Finding to be returned. The name follows the\nformat of\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}/findings/{findingId}'.",
+	//       "description": "Required. The resource name of the Finding to be returned. The name follows the\nformat of\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}/findings/{findingId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+/scanRuns/[^/]+/findings/[^/]+$",
 	//       "required": true,
@@ -3089,8 +3124,8 @@ func (r *ProjectsScanConfigsScanRunsFindingsService) List(parent string) *Projec
 	return c
 }
 
-// Filter sets the optional parameter "filter": The filter expression.
-// The expression must be in the format: <field>
+// Filter sets the optional parameter "filter": Required. The filter
+// expression. The expression must be in the format: <field>
 // <operator> <value>.
 // Supported field: 'finding_type'.
 // Supported operator: '='.
@@ -3156,6 +3191,7 @@ func (c *ProjectsScanConfigsScanRunsFindingsListCall) Header() http.Header {
 
 func (c *ProjectsScanConfigsScanRunsFindingsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3226,7 +3262,7 @@ func (c *ProjectsScanConfigsScanRunsFindingsListCall) Do(opts ...googleapi.CallO
 	//   ],
 	//   "parameters": {
 	//     "filter": {
-	//       "description": "The filter expression. The expression must be in the format: \u003cfield\u003e\n\u003coperator\u003e \u003cvalue\u003e.\nSupported field: 'finding_type'.\nSupported operator: '='.",
+	//       "description": "Required. The filter expression. The expression must be in the format: \u003cfield\u003e\n\u003coperator\u003e \u003cvalue\u003e.\nSupported field: 'finding_type'.\nSupported operator: '='.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -3242,7 +3278,7 @@ func (c *ProjectsScanConfigsScanRunsFindingsListCall) Do(opts ...googleapi.CallO
 	//       "type": "string"
 	//     },
 	//     "parent": {
-	//       "description": "Required.\nThe parent resource name, which should be a scan run resource name in the\nformat\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
+	//       "description": "Required. The parent resource name, which should be a scan run resource name in the\nformat\n'projects/{projectId}/scanConfigs/{scanConfigId}/scanRuns/{scanRunId}'.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/scanConfigs/[^/]+/scanRuns/[^/]+$",
 	//       "required": true,

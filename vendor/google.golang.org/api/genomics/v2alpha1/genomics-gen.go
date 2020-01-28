@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,39 @@
 
 // Package genomics provides access to the Genomics API.
 //
-// See https://cloud.google.com/genomics
+// For product documentation, see: https://cloud.google.com/genomics
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/genomics/v2alpha1"
 //   ...
-//   genomicsService, err := genomics.New(oauthHttpClient)
+//   ctx := context.Background()
+//   genomicsService, err := genomics.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   genomicsService, err := genomics.NewService(ctx, option.WithScopes(genomics.GenomicsScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   genomicsService, err := genomics.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   genomicsService, err := genomics.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package genomics // import "google.golang.org/api/genomics/v2alpha1"
 
 import (
@@ -27,8 +53,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -59,6 +87,33 @@ const (
 	GenomicsScope = "https://www.googleapis.com/auth/genomics"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/genomics",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -201,9 +256,9 @@ type Action struct {
 
 	// Environment: The environment to pass into the container. This
 	// environment is merged
-	// with any values specified in the `Pipeline` message. These
-	// values
-	// overwrite any in the `Pipeline` message.
+	// with values specified in the
+	// google.genomics.v2alpha1.Pipeline
+	// message, overwriting any duplicate values.
 	//
 	// In addition to the values passed here, a few other values
 	// are
@@ -246,7 +301,9 @@ type Action struct {
 	// already
 	// failed. This is useful for actions that copy output files off of the
 	// VM
-	// or for debugging.
+	// or for debugging. Note that no actions will be run if
+	// image
+	// prefetching fails.
 	//   "ENABLE_FUSE" - Enable access to the FUSE device for this action.
 	// Filesystems can then
 	// be mounted into disks shared with other actions. The other actions
@@ -280,14 +337,30 @@ type Action struct {
 	// flag disables this functionality.
 	Flags []string `json:"flags,omitempty"`
 
-	// ImageUri: The URI to pull the container image from. Note that all
-	// images referenced
+	// ImageUri: Required. The URI to pull the container image from. Note
+	// that all images referenced
 	// by actions in the pipeline are pulled before the first action runs.
 	// If
 	// multiple actions reference the same image, it is only pulled
 	// once,
 	// ensuring that the same image is used for all actions in a single
 	// pipeline.
+	//
+	// The image URI can be either a complete host and image specification
+	// (e.g.,
+	// quay.io/biocontainers/samtools), a library and image name
+	// (e.g.,
+	// google/cloud-sdk) or a bare image name ('bash') to pull from the
+	// default
+	// library.  No schema is required in any of these cases.
+	//
+	// If the specified image is not public, the service account specified
+	// for
+	// the Virtual Machine must have access to pull the images from GCR,
+	// or
+	// appropriate credentials must be specified in
+	// the
+	// google.genomics.v2alpha1.Action.credentials field.
 	ImageUri string `json:"imageUri,omitempty"`
 
 	// Labels: Labels to associate with the action. This field is provided
@@ -330,12 +403,14 @@ type Action struct {
 	// name
 	// must contain only upper and lowercase alphanumeric characters and
 	// hypens
-	// and cannot start with a hypen.
+	// and cannot start with a hyphen.
 	Name string `json:"name,omitempty"`
 
-	// PidNamespace: The PID namespace to run the action inside. If
-	// unspecified, a separate
-	// isolated namespace is used.
+	// PidNamespace: An optional identifier for a PID namespace to run the
+	// action inside.
+	// Multiple actions should use the same string to share a namespace.
+	// If
+	// unspecified, a separate isolated namespace is used.
 	PidNamespace string `json:"pidNamespace,omitempty"`
 
 	// PortMappings: A map of containers to host port mappings for this
@@ -397,6 +472,9 @@ type CheckInRequest struct {
 
 	// Event: A workflow specific event occurred.
 	Event googleapi.RawMessage `json:"event,omitempty"`
+
+	// Events: A list of timestamped events.
+	Events []*TimestampedEvent `json:"events,omitempty"`
 
 	// Result: The operation has finished with the given result.
 	Result *Status `json:"result,omitempty"`
@@ -686,7 +764,7 @@ type Disk struct {
 	// into
 	// actions. The name must contain only upper and lowercase
 	// alphanumeric
-	// characters and hypens and cannot start with a hypen.
+	// characters and hypens and cannot start with a hyphen.
 	Name string `json:"name,omitempty"`
 
 	// SizeGb: The size, in GB, of the disk to attach. If the size is
@@ -977,7 +1055,8 @@ type FailedEvent struct {
 	//   "UNAVAILABLE" - The service is currently unavailable.  This is most
 	// likely a
 	// transient condition, which can be corrected by retrying with
-	// a backoff.
+	// a backoff. Note that it is not always safe to retry
+	// non-idempotent operations.
 	//
 	// See the guidelines above for deciding between
 	// `FAILED_PRECONDITION`,
@@ -1008,63 +1087,6 @@ type FailedEvent struct {
 
 func (s *FailedEvent) MarshalJSON() ([]byte, error) {
 	type NoMethod FailedEvent
-	raw := NoMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
-}
-
-// ImportReadGroupSetsResponse: The read group set import response.
-type ImportReadGroupSetsResponse struct {
-	// ReadGroupSetIds: IDs of the read group sets that were created.
-	ReadGroupSetIds []string `json:"readGroupSetIds,omitempty"`
-
-	// ForceSendFields is a list of field names (e.g. "ReadGroupSetIds") to
-	// unconditionally include in API requests. By default, fields with
-	// empty values are omitted from API requests. However, any non-pointer,
-	// non-interface field appearing in ForceSendFields will be sent to the
-	// server regardless of whether the field is empty or not. This may be
-	// used to include empty fields in Patch requests.
-	ForceSendFields []string `json:"-"`
-
-	// NullFields is a list of field names (e.g. "ReadGroupSetIds") to
-	// include in API requests with the JSON null value. By default, fields
-	// with empty values are omitted from API requests. However, any field
-	// with an empty value appearing in NullFields will be sent to the
-	// server as null. It is an error if a field in this list has a
-	// non-empty value. This may be used to include null fields in Patch
-	// requests.
-	NullFields []string `json:"-"`
-}
-
-func (s *ImportReadGroupSetsResponse) MarshalJSON() ([]byte, error) {
-	type NoMethod ImportReadGroupSetsResponse
-	raw := NoMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
-}
-
-// ImportVariantsResponse: The variant data import response.
-type ImportVariantsResponse struct {
-	// CallSetIds: IDs of the call sets created during the import.
-	CallSetIds []string `json:"callSetIds,omitempty"`
-
-	// ForceSendFields is a list of field names (e.g. "CallSetIds") to
-	// unconditionally include in API requests. By default, fields with
-	// empty values are omitted from API requests. However, any non-pointer,
-	// non-interface field appearing in ForceSendFields will be sent to the
-	// server regardless of whether the field is empty or not. This may be
-	// used to include empty fields in Patch requests.
-	ForceSendFields []string `json:"-"`
-
-	// NullFields is a list of field names (e.g. "CallSetIds") to include in
-	// API requests with the JSON null value. By default, fields with empty
-	// values are omitted from API requests. However, any field with an
-	// empty value appearing in NullFields will be sent to the server as
-	// null. It is an error if a field in this list has a non-empty value.
-	// This may be used to include null fields in Patch requests.
-	NullFields []string `json:"-"`
-}
-
-func (s *ImportVariantsResponse) MarshalJSON() ([]byte, error) {
-	type NoMethod ImportVariantsResponse
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -1277,9 +1299,7 @@ type Operation struct {
 	// `operations/CJHU7Oi_ChDrveSpBRjfuL-qzoWAgEw`
 	Name string `json:"name,omitempty"`
 
-	// Response: If importing ReadGroupSets, an ImportReadGroupSetsResponse
-	// is returned. If importing Variants, an ImportVariantsResponse is
-	// returned. For pipelines and exports, an Empty response is returned.
+	// Response: An Empty object.
 	Response googleapi.RawMessage `json:"response,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -1581,7 +1601,7 @@ type RunPipelineRequest struct {
 	// see the appropriate resource message (for example, `VirtualMachine`).
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// Pipeline: The description of the pipeline to run.
+	// Pipeline: Required. The description of the pipeline to run.
 	Pipeline *Pipeline `json:"pipeline,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Labels") to
@@ -1695,7 +1715,8 @@ type ServiceAccount struct {
 
 	// Scopes: List of scopes to be enabled for this service account on the
 	// VM, in
-	// addition to the Cloud Genomics API scope.
+	// addition to the cloud-platform API scope that will be added by
+	// default.
 	Scopes []string `json:"scopes,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Email") to
@@ -1722,84 +1743,17 @@ func (s *ServiceAccount) MarshalJSON() ([]byte, error) {
 }
 
 // Status: The `Status` type defines a logical error model that is
-// suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -1836,6 +1790,39 @@ type Status struct {
 
 func (s *Status) MarshalJSON() ([]byte, error) {
 	type NoMethod Status
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// TimestampedEvent: An event that occured in the operation assigned to
+// the
+// worker and the time of occurance.
+type TimestampedEvent struct {
+	// Data: The event data.
+	Data googleapi.RawMessage `json:"data,omitempty"`
+
+	// Timestamp: The time when the event happened.
+	Timestamp string `json:"timestamp,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Data") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Data") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *TimestampedEvent) MarshalJSON() ([]byte, error) {
+	type NoMethod TimestampedEvent
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -1931,19 +1918,28 @@ type VirtualMachine struct {
 	// Disks: The list of disks to create and attach to the VM.
 	Disks []*Disk `json:"disks,omitempty"`
 
+	// EnableStackdriverMonitoring: Whether Stackdriver monitoring should be
+	// enabled on the VM.
+	EnableStackdriverMonitoring bool `json:"enableStackdriverMonitoring,omitempty"`
+
 	// Labels: Optional set of labels to apply to the VM and any attached
 	// disk resources.
-	// These labels must adhere to the name and value restrictions on VM
-	// labels
-	// imposed by Compute Engine.
+	// These labels must adhere to the [name and
+	// value
+	// restrictions](https://cloud.google.com/compute/docs/labeling-res
+	// ources) on
+	// VM labels imposed by Compute Engine.
+	//
+	// Labels keys with the prefix 'google-' are reserved for use by
+	// Google.
 	//
 	// Labels applied at creation time to the VM. Applied on a best-effort
 	// basis
 	// to attached disk resources shortly after VM creation.
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// MachineType: The machine type of the virtual machine to create. Must
-	// be the short name
+	// MachineType: Required. The machine type of the virtual machine to
+	// create. Must be the short name
 	// of a standard machine type (such as "n1-standard-1") or a custom
 	// machine
 	// type (such as "custom-1-4096", where "1" indicates the number of
@@ -2006,6 +2002,9 @@ func (s *VirtualMachine) MarshalJSON() ([]byte, error) {
 type WorkerAssignedEvent struct {
 	// Instance: The worker's instance name.
 	Instance string `json:"instance,omitempty"`
+
+	// MachineType: The machine type that was assigned for the worker.
+	MachineType string `json:"machineType,omitempty"`
 
 	// Zone: The zone the worker is running in.
 	Zone string `json:"zone,omitempty"`
@@ -2116,7 +2115,15 @@ type PipelinesRunCall struct {
 	header_            http.Header
 }
 
-// Run: Runs a pipeline.
+// Run: Runs a pipeline.  The returned Operation's metadata field will
+// contain a
+// google.genomics.v2alpha1.Metadata object describing the status of
+// the
+// pipeline execution.  The [response] field will contain
+// a
+// google.genomics.v2alpha1.RunPipelineResponse object if the
+// pipeline
+// completes successfully.
 //
 // **Note:** Before you can use this method, the Genomics Service
 // Agent
@@ -2169,6 +2176,7 @@ func (c *PipelinesRunCall) Header() http.Header {
 
 func (c *PipelinesRunCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2229,7 +2237,7 @@ func (c *PipelinesRunCall) Do(opts ...googleapi.CallOption) (*Operation, error) 
 	}
 	return ret, nil
 	// {
-	//   "description": "Runs a pipeline.\n\n**Note:** Before you can use this method, the Genomics Service Agent\nmust have access to your project. This is done automatically when the\nCloud Genomics API is first enabled, but if you delete this permission,\nor if you enabled the Cloud Genomics API before the v2alpha1 API\nlaunch, you must disable and re-enable the API to grant the Genomics\nService Agent the required permissions.\nAuthorization requires the following [Google\nIAM](https://cloud.google.com/iam/) permission:\n\n* `genomics.operations.create`\n\n[1]: /genomics/gsa",
+	//   "description": "Runs a pipeline.  The returned Operation's metadata field will contain a\ngoogle.genomics.v2alpha1.Metadata object describing the status of the\npipeline execution.  The [response] field will contain a\ngoogle.genomics.v2alpha1.RunPipelineResponse object if the pipeline\ncompletes successfully.\n\n**Note:** Before you can use this method, the Genomics Service Agent\nmust have access to your project. This is done automatically when the\nCloud Genomics API is first enabled, but if you delete this permission,\nor if you enabled the Cloud Genomics API before the v2alpha1 API\nlaunch, you must disable and re-enable the API to grant the Genomics\nService Agent the required permissions.\nAuthorization requires the following [Google\nIAM](https://cloud.google.com/iam/) permission:\n\n* `genomics.operations.create`\n\n[1]: /genomics/gsa",
 	//   "flatPath": "v2alpha1/pipelines:run",
 	//   "httpMethod": "POST",
 	//   "id": "genomics.pipelines.run",
@@ -2308,6 +2316,7 @@ func (c *ProjectsOperationsCancelCall) Header() http.Header {
 
 func (c *ProjectsOperationsCancelCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2464,6 +2473,7 @@ func (c *ProjectsOperationsGetCall) Header() http.Header {
 
 func (c *ProjectsOperationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2619,8 +2629,7 @@ func (c *ProjectsOperationsListCall) Filter(filter string) *ProjectsOperationsLi
 }
 
 // PageSize sets the optional parameter "pageSize": The maximum number
-// of results to return. If unspecified, defaults to
-// 256. The maximum value is 2048.
+// of results to return. The maximum value is 256.
 func (c *ProjectsOperationsListCall) PageSize(pageSize int64) *ProjectsOperationsListCall {
 	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
 	return c
@@ -2670,6 +2679,7 @@ func (c *ProjectsOperationsListCall) Header() http.Header {
 
 func (c *ProjectsOperationsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2752,7 +2762,7 @@ func (c *ProjectsOperationsListCall) Do(opts ...googleapi.CallOption) (*ListOper
 	//       "type": "string"
 	//     },
 	//     "pageSize": {
-	//       "description": "The maximum number of results to return. If unspecified, defaults to\n256. The maximum value is 2048.",
+	//       "description": "The maximum number of results to return. The maximum value is 256.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
@@ -2844,6 +2854,7 @@ func (c *WorkersCheckInCall) Header() http.Header {
 
 func (c *WorkersCheckInCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

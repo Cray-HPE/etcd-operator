@@ -37,8 +37,14 @@ func matchArgTypeInternal(pass *analysis.Pass, t printfArgType, typ types.Type, 
 			return true // probably a type check problem
 		}
 	}
+
+	// %w accepts only errors.
+	if t == argError {
+		return types.ConvertibleTo(typ, errorType)
+	}
+
 	// If the type implements fmt.Formatter, we have nothing to check.
-	if isFormatter(pass, typ) {
+	if isFormatter(typ) {
 		return true
 	}
 	// If we can use a string, might arg (dynamically) implement the Stringer or Error interface?
@@ -228,7 +234,7 @@ func matchStructArgType(pass *analysis.Pass, t printfArgType, typ *types.Struct,
 			return false
 		}
 		if t&argString != 0 && !typf.Exported() && isConvertibleToString(pass, typf.Type()) {
-			// Issue #17798: unexported Stringer or error cannot be properly fomatted.
+			// Issue #17798: unexported Stringer or error cannot be properly formatted.
 			return false
 		}
 	}

@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,39 @@
 //
 // This package is DEPRECATED. Use package cloud.google.com/go/oslogin/apiv1 instead.
 //
-// See https://cloud.google.com/compute/docs/oslogin/rest/
+// For product documentation, see: https://cloud.google.com/compute/docs/oslogin/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/oslogin/v1beta"
 //   ...
-//   osloginService, err := oslogin.New(oauthHttpClient)
+//   ctx := context.Background()
+//   osloginService, err := oslogin.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   osloginService, err := oslogin.NewService(ctx, option.WithScopes(oslogin.ComputeReadonlyScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   osloginService, err := oslogin.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   osloginService, err := oslogin.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package oslogin // import "google.golang.org/api/oslogin/v1beta"
 
 import (
@@ -29,8 +55,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -67,6 +95,35 @@ const (
 	ComputeReadonlyScope = "https://www.googleapis.com/auth/compute.readonly"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/cloud-platform.read-only",
+		"https://www.googleapis.com/auth/compute",
+		"https://www.googleapis.com/auth/compute.readonly",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -179,7 +236,7 @@ func (s *ImportSshPublicKeyResponse) MarshalJSON() ([]byte, error) {
 // virtual machine on
 // Google Compute Engine.
 type LoginProfile struct {
-	// Name: A unique user ID.
+	// Name: Required. A unique user ID.
 	Name string `json:"name,omitempty"`
 
 	// PosixAccounts: The list of POSIX accounts associated with the user.
@@ -230,6 +287,9 @@ type PosixAccount struct {
 
 	// HomeDirectory: The path to the home directory for this account.
 	HomeDirectory string `json:"homeDirectory,omitempty"`
+
+	// Name: Output only. The canonical resource name.
+	Name string `json:"name,omitempty"`
 
 	// OperatingSystemType: The operating system type where this account
 	// applies.
@@ -297,6 +357,9 @@ type SshPublicKey struct {
 	// target="_blank">RFC4253</a>
 	// section 6.6.
 	Key string `json:"key,omitempty"`
+
+	// Name: Output only. The canonical resource name.
+	Name string `json:"name,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
 	// server.
@@ -397,6 +460,7 @@ func (c *UsersGetLoginProfileCall) Header() http.Header {
 
 func (c *UsersGetLoginProfileCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -467,7 +531,7 @@ func (c *UsersGetLoginProfileCall) Do(opts ...googleapi.CallOption) (*LoginProfi
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The unique ID for the user in format `users/{user}`.",
+	//       "description": "Required. The unique ID for the user in format `users/{user}`.",
 	//       "location": "path",
 	//       "pattern": "^users/[^/]+$",
 	//       "required": true,
@@ -555,6 +619,7 @@ func (c *UsersImportSshPublicKeyCall) Header() http.Header {
 
 func (c *UsersImportSshPublicKeyCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -698,6 +763,7 @@ func (c *UsersProjectsDeleteCall) Header() http.Header {
 
 func (c *UsersProjectsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -765,7 +831,7 @@ func (c *UsersProjectsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, erro
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "A reference to the POSIX account to update. POSIX accounts are identified\nby the project ID they are associated with. A reference to the POSIX\naccount is in format `users/{user}/projects/{project}`.",
+	//       "description": "Required. A reference to the POSIX account to update. POSIX accounts are identified\nby the project ID they are associated with. A reference to the POSIX\naccount is in format `users/{user}/projects/{project}`.",
 	//       "location": "path",
 	//       "pattern": "^users/[^/]+/projects/[^/]+$",
 	//       "required": true,
@@ -828,6 +894,7 @@ func (c *UsersSshPublicKeysDeleteCall) Header() http.Header {
 
 func (c *UsersSshPublicKeysDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -895,7 +962,7 @@ func (c *UsersSshPublicKeysDeleteCall) Do(opts ...googleapi.CallOption) (*Empty,
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The fingerprint of the public key to update. Public keys are identified by\ntheir SHA-256 fingerprint. The fingerprint of the public key is in format\n`users/{user}/sshPublicKeys/{fingerprint}`.",
+	//       "description": "Required. The fingerprint of the public key to update. Public keys are identified by\ntheir SHA-256 fingerprint. The fingerprint of the public key is in format\n`users/{user}/sshPublicKeys/{fingerprint}`.",
 	//       "location": "path",
 	//       "pattern": "^users/[^/]+/sshPublicKeys/[^/]+$",
 	//       "required": true,
@@ -969,6 +1036,7 @@ func (c *UsersSshPublicKeysGetCall) Header() http.Header {
 
 func (c *UsersSshPublicKeysGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1039,7 +1107,7 @@ func (c *UsersSshPublicKeysGetCall) Do(opts ...googleapi.CallOption) (*SshPublic
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The fingerprint of the public key to retrieve. Public keys are identified\nby their SHA-256 fingerprint. The fingerprint of the public key is in\nformat `users/{user}/sshPublicKeys/{fingerprint}`.",
+	//       "description": "Required. The fingerprint of the public key to retrieve. Public keys are identified\nby their SHA-256 fingerprint. The fingerprint of the public key is in\nformat `users/{user}/sshPublicKeys/{fingerprint}`.",
 	//       "location": "path",
 	//       "pattern": "^users/[^/]+/sshPublicKeys/[^/]+$",
 	//       "required": true,
@@ -1113,6 +1181,7 @@ func (c *UsersSshPublicKeysPatchCall) Header() http.Header {
 
 func (c *UsersSshPublicKeysPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1185,7 +1254,7 @@ func (c *UsersSshPublicKeysPatchCall) Do(opts ...googleapi.CallOption) (*SshPubl
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The fingerprint of the public key to update. Public keys are identified by\ntheir SHA-256 fingerprint. The fingerprint of the public key is in format\n`users/{user}/sshPublicKeys/{fingerprint}`.",
+	//       "description": "Required. The fingerprint of the public key to update. Public keys are identified by\ntheir SHA-256 fingerprint. The fingerprint of the public key is in format\n`users/{user}/sshPublicKeys/{fingerprint}`.",
 	//       "location": "path",
 	//       "pattern": "^users/[^/]+/sshPublicKeys/[^/]+$",
 	//       "required": true,

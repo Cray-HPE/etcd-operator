@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,39 @@
 
 // Package tasks provides access to the Tasks API.
 //
-// See https://developers.google.com/google-apps/tasks/firstapp
+// For product documentation, see: https://developers.google.com/google-apps/tasks/firstapp
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/tasks/v1"
 //   ...
-//   tasksService, err := tasks.New(oauthHttpClient)
+//   ctx := context.Background()
+//   tasksService, err := tasks.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   tasksService, err := tasks.NewService(ctx, option.WithScopes(tasks.TasksReadonlyScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   tasksService, err := tasks.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   tasksService, err := tasks.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package tasks // import "google.golang.org/api/tasks/v1"
 
 import (
@@ -27,8 +53,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -59,6 +87,33 @@ const (
 	TasksReadonlyScope = "https://www.googleapis.com/auth/tasks.readonly"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/tasks",
+		"https://www.googleapis.com/auth/tasks.readonly",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -113,7 +168,10 @@ type Task struct {
 	// default if False.
 	Deleted bool `json:"deleted,omitempty"`
 
-	// Due: Due date of the task (as a RFC 3339 timestamp). Optional.
+	// Due: Due date of the task (as a RFC 3339 timestamp). Optional. The
+	// due date only records date information; the time portion of the
+	// timestamp is discarded when setting the due date. It isn't possible
+	// to read or write the time that a task is due via the API.
 	Due string `json:"due,omitempty"`
 
 	// Etag: ETag of the resource.
@@ -399,6 +457,7 @@ func (c *TasklistsDeleteCall) Header() http.Header {
 
 func (c *TasklistsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -509,6 +568,7 @@ func (c *TasklistsGetCall) Header() http.Header {
 
 func (c *TasklistsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -641,6 +701,7 @@ func (c *TasklistsInsertCall) Header() http.Header {
 
 func (c *TasklistsInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -735,7 +796,8 @@ func (r *TasklistsService) List() *TasklistsListCall {
 }
 
 // MaxResults sets the optional parameter "maxResults": Maximum number
-// of task lists returned on one page.  The default is 100.
+// of task lists returned on one page.  The default is 20 (max allowed:
+// 100).
 func (c *TasklistsListCall) MaxResults(maxResults int64) *TasklistsListCall {
 	c.urlParams_.Set("maxResults", fmt.Sprint(maxResults))
 	return c
@@ -785,6 +847,7 @@ func (c *TasklistsListCall) Header() http.Header {
 
 func (c *TasklistsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -848,7 +911,7 @@ func (c *TasklistsListCall) Do(opts ...googleapi.CallOption) (*TaskLists, error)
 	//   "id": "tasks.tasklists.list",
 	//   "parameters": {
 	//     "maxResults": {
-	//       "description": "Maximum number of task lists returned on one page. Optional. The default is 100.",
+	//       "description": "Maximum number of task lists returned on one page. Optional. The default is 20 (max allowed: 100).",
 	//       "format": "int64",
 	//       "location": "query",
 	//       "type": "string"
@@ -939,6 +1002,7 @@ func (c *TasklistsPatchCall) Header() http.Header {
 
 func (c *TasklistsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1076,6 +1140,7 @@ func (c *TasklistsUpdateCall) Header() http.Header {
 
 func (c *TasklistsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1213,6 +1278,7 @@ func (c *TasksClearCall) Header() http.Header {
 
 func (c *TasksClearCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1314,6 +1380,7 @@ func (c *TasksDeleteCall) Header() http.Header {
 
 func (c *TasksDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1434,6 +1501,7 @@ func (c *TasksGetCall) Header() http.Header {
 
 func (c *TasksGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1590,6 +1658,7 @@ func (c *TasksInsertCall) Header() http.Header {
 
 func (c *TasksInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1742,7 +1811,8 @@ func (c *TasksListCall) DueMin(dueMin string) *TasksListCall {
 }
 
 // MaxResults sets the optional parameter "maxResults": Maximum number
-// of task lists returned on one page.  The default is 100.
+// of task lists returned on one page.  The default is 20 (max allowed:
+// 100).
 func (c *TasksListCall) MaxResults(maxResults int64) *TasksListCall {
 	c.urlParams_.Set("maxResults", fmt.Sprint(maxResults))
 	return c
@@ -1824,6 +1894,7 @@ func (c *TasksListCall) Header() http.Header {
 
 func (c *TasksListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1913,7 +1984,7 @@ func (c *TasksListCall) Do(opts ...googleapi.CallOption) (*Tasks, error) {
 	//       "type": "string"
 	//     },
 	//     "maxResults": {
-	//       "description": "Maximum number of task lists returned on one page. Optional. The default is 100.",
+	//       "description": "Maximum number of task lists returned on one page. Optional. The default is 20 (max allowed: 100).",
 	//       "format": "int64",
 	//       "location": "query",
 	//       "type": "string"
@@ -2047,6 +2118,7 @@ func (c *TasksMoveCall) Header() http.Header {
 
 func (c *TasksMoveCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2197,6 +2269,7 @@ func (c *TasksPatchCall) Header() http.Header {
 
 func (c *TasksPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2344,6 +2417,7 @@ func (c *TasksUpdateCall) Header() http.Header {
 
 func (c *TasksUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

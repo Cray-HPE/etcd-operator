@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package cloudscheduler provides access to the Cloud Scheduler API.
 //
-// See https://cloud.google.com/scheduler/
+// For product documentation, see: https://cloud.google.com/scheduler/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/cloudscheduler/v1beta1"
 //   ...
-//   cloudschedulerService, err := cloudscheduler.New(oauthHttpClient)
+//   ctx := context.Background()
+//   cloudschedulerService, err := cloudscheduler.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   cloudschedulerService, err := cloudscheduler.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   cloudschedulerService, err := cloudscheduler.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package cloudscheduler // import "google.golang.org/api/cloudscheduler/v1beta1"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -56,6 +80,32 @@ const (
 	CloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -154,9 +204,10 @@ type AppEngineHttpTarget struct {
 	//   This header can be modified, but Cloud Scheduler will append
 	//   "AppEngine-Google; (+http://code.google.com/appengine)" to the
 	//   modified `User-Agent`.
+	// * `X-CloudScheduler`: This header will be set to true.
 	//
-	// If the job has an body, Cloud Scheduler sets the
-	// following headers:
+	// If the job has an body, Cloud Scheduler sets
+	// the following headers:
 	//
 	// * `Content-Type`: By default, the `Content-Type` header is set to
 	//   "application/octet-stream". The default can be overridden by
@@ -172,17 +223,10 @@ type AppEngineHttpTarget struct {
 	// overridden:
 	//
 	// * `X-Google-*`: For Google internal use only.
-	// * `X-AppEngine-*`: For Google internal use only. See
-	//   [Reading request
-	// headers](https://cloud.google.com/appengine/docs/python/taskqueue/push
-	// /creating-handlers#reading_request_headers).
+	// * `X-AppEngine-*`: For Google internal use only.
 	//
 	// In addition, some App Engine headers, which contain
-	// job-specific information, are also be sent to the job handler;
-	// see
-	// [request
-	// headers](https://cloud.google.comappengine/docs/standard/python/config
-	// /cron#securing_urls_for_cron).
+	// job-specific information, are also be sent to the job handler.
 	Headers map[string]string `json:"headers,omitempty"`
 
 	// HttpMethod: The HTTP method to use for the request. PATCH and OPTIONS
@@ -238,18 +282,22 @@ func (s *AppEngineHttpTarget) MarshalJSON() ([]byte, error) {
 // AppEngineRouting: App Engine Routing.
 //
 // For more information about services, versions, and instances see
-// [An Overview of App
-// Engine](https://cloud.google.com/appengine/docs/python/an-overview-of-
-// app-engine),
-// [Microservices Architecture on Google App
-// Engine](https://cloud.google.com/appengine/docs/python/microservices-o
-// n-app-engine),
-// [App Engine Standard request
-// routing](https://cloud.google.com/appengine/docs/standard/python/how-r
-// equests-are-routed), and
-// [App Engine Flex request
-// routing](https://cloud.google.com/appengine/docs/flexible/python/how-r
-// equests-are-routed).
+// [An Overview of
+// App
+// Engine](https://cloud.google.com/appengine/docs/python/an-overview
+// -of-app-engine),
+// [Microservices Architecture on Google
+// App
+// Engine](https://cloud.google.com/appengine/docs/python/microservic
+// es-on-app-engine),
+// [App Engine Standard
+// request
+// routing](https://cloud.google.com/appengine/docs/standard/pyth
+// on/how-requests-are-routed),
+// and [App Engine Flex
+// request
+// routing](https://cloud.google.com/appengine/docs/flexible/pyth
+// on/how-requests-are-routed).
 type AppEngineRouting struct {
 	// Host: Output only. The host that the job is sent to.
 	//
@@ -324,17 +372,20 @@ type AppEngineRouting struct {
 	// the job is attempted.
 	//
 	// Requests can only be sent to a specific instance if
-	// [manual scaling is used in App Engine
-	// Standard](https://cloud.google.com/appengine/docs/python/an-overview-o
-	// f-app-engine?hl=en_US#scaling_types_and_instance_classes).
+	// [manual scaling is used in App
+	// Engine
+	// Standard](https://cloud.google.com/appengine/docs/python/an-ove
+	// rview-of-app-engine?hl=en_US#scaling_types_and_instance_classes).
 	// App Engine Flex does not support instances. For more information,
 	// see
-	// [App Engine Standard request
-	// routing](https://cloud.google.com/appengine/docs/standard/python/how-r
-	// equests-are-routed) and
-	// [App Engine Flex request
-	// routing](https://cloud.google.com/appengine/docs/flexible/python/how-r
-	// equests-are-routed).
+	// [App Engine Standard
+	// request
+	// routing](https://cloud.google.com/appengine/docs/standard/pyth
+	// on/how-requests-are-routed)
+	// and [App Engine Flex
+	// request
+	// routing](https://cloud.google.com/appengine/docs/flexible/pyth
+	// on/how-requests-are-routed).
 	Instance string `json:"instance,omitempty"`
 
 	// Service: App service.
@@ -445,9 +496,35 @@ type HttpTarget struct {
 	//   "OPTIONS" - HTTP OPTIONS
 	HttpMethod string `json:"httpMethod,omitempty"`
 
-	// Uri: Required.
+	// OauthToken: If specified, an
+	// [OAuth
+	// token](https://developers.google.com/identity/protocols/OAuth2)
+	// will be generated and attached as an `Authorization` header in the
+	// HTTP
+	// request.
 	//
-	// The full URI path that the request will be sent to. This string
+	// This type of authorization should generally only be used when
+	// calling
+	// Google APIs hosted on *.googleapis.com.
+	OauthToken *OAuthToken `json:"oauthToken,omitempty"`
+
+	// OidcToken: If specified,
+	// an
+	// [OIDC](https://developers.google.com/identity/protocols/OpenIDConne
+	// ct)
+	// token will be generated and attached as an `Authorization` header in
+	// the
+	// HTTP request.
+	//
+	// This type of authorization can be used for many scenarios,
+	// including
+	// calling Cloud Run, or endpoints where you intend to validate the
+	// token
+	// yourself.
+	OidcToken *OidcToken `json:"oidcToken,omitempty"`
+
+	// Uri: Required. The full URI path that the request will be sent to.
+	// This string
 	// must begin with either "http://" or "https://". Some examples
 	// of
 	// valid values for uri are:
@@ -487,8 +564,29 @@ type Job struct {
 	// AppEngineHttpTarget: App Engine HTTP target.
 	AppEngineHttpTarget *AppEngineHttpTarget `json:"appEngineHttpTarget,omitempty"`
 
-	// Description: A human-readable description for the job. This string
-	// must not contain
+	// AttemptDeadline: The deadline for job attempts. If the request
+	// handler does not respond by
+	// this deadline then the request is cancelled and the attempt is marked
+	// as a
+	// `DEADLINE_EXCEEDED` failure. The failed attempt can be viewed
+	// in
+	// execution logs. Cloud Scheduler will retry the job according
+	// to the RetryConfig.
+	//
+	// The allowed duration for this deadline is:
+	//
+	// * For HTTP targets, between 15 seconds and 30 minutes.
+	// * For App Engine HTTP targets, between 15
+	//   seconds and 24 hours.
+	// * For PubSub targets, this field is ignored.
+	AttemptDeadline string `json:"attemptDeadline,omitempty"`
+
+	// Description: Optionally caller-specified in CreateJob
+	// or
+	// UpdateJob.
+	//
+	// A human-readable description for the job. This string must not
+	// contain
 	// more than 500 characters.
 	Description string `json:"description,omitempty"`
 
@@ -498,7 +596,10 @@ type Job struct {
 	// LastAttemptTime: Output only. The time the last job attempt started.
 	LastAttemptTime string `json:"lastAttemptTime,omitempty"`
 
-	// Name: The job name. For
+	// Name: Optionally caller-specified in CreateJob, after
+	// which it becomes output only.
+	//
+	// The job name. For
 	// example:
 	// `projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.
 	//
@@ -506,6 +607,7 @@ type Job struct {
 	//    hyphens (-), colons (:), or periods (.).
 	//    For more information, see
 	//    [Identifying
+	//
 	// projects](https://cloud.google.com/resource-manager/docs/creating-mana
 	// ging-projects#identifying_projects)
 	// * `LOCATION_ID` is the canonical ID for the job's location.
@@ -524,9 +626,17 @@ type Job struct {
 	// RetryConfig: Settings that determine the retry behavior.
 	RetryConfig *RetryConfig `json:"retryConfig,omitempty"`
 
-	// Schedule: Required.
+	// Schedule: Required, except when used with UpdateJob.
 	//
 	// Describes the schedule on which the job will be executed.
+	//
+	// The schedule can be either of the following types:
+	//
+	// * [Crontab](http://en.wikipedia.org/wiki/Cron#Overview)
+	// *
+	// English-like
+	// [schedule](https://cloud.google.com/scheduler/docs/config
+	// uring/cron-job-schedules)
 	//
 	// As a general rule, execution `n + 1` of a job will not begin
 	// until execution `n` has finished. Cloud Scheduler will never
@@ -541,16 +651,8 @@ type Job struct {
 	//
 	// If retry_count > 0 and a job attempt fails,
 	// the job will be tried a total of retry_count
-	// times, with exponential backoff, until the next scheduled
-	// start
+	// times, with exponential backoff, until the next scheduled start
 	// time.
-	//
-	// The schedule can be either of the following types:
-	//
-	// * [Crontab](http://en.wikipedia.org/wiki/Cron#Overview)
-	// * English-like
-	// [schedule](https://cloud.google.com/scheduler/docs/configuring/cron-jo
-	// b-schedules)
 	Schedule string `json:"schedule,omitempty"`
 
 	// ScheduleTime: Output only. The next time the job is scheduled. Note
@@ -760,6 +862,99 @@ func (s *Location) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// OAuthToken: Contains information needed for generating an
+// [OAuth
+// token](https://developers.google.com/identity/protocols/OAuth2).
+// This type of authorization should generally only be used when calling
+// Google
+// APIs hosted on *.googleapis.com.
+type OAuthToken struct {
+	// Scope: OAuth scope to be used for generating OAuth access token.
+	// If not specified,
+	// "https://www.googleapis.com/auth/cloud-platform"
+	// will be used.
+	Scope string `json:"scope,omitempty"`
+
+	// ServiceAccountEmail: [Service account
+	// email](https://cloud.google.com/iam/docs/service-accounts)
+	// to be used for generating OAuth token.
+	// The service account must be within the same project as the job. The
+	// caller
+	// must have iam.serviceAccounts.actAs permission for the service
+	// account.
+	ServiceAccountEmail string `json:"serviceAccountEmail,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Scope") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Scope") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *OAuthToken) MarshalJSON() ([]byte, error) {
+	type NoMethod OAuthToken
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// OidcToken: Contains information needed for generating an
+// [OpenID
+// Connect
+// token](https://developers.google.com/identity/protocols/OpenID
+// Connect).
+// This type of authorization can be used for many scenarios,
+// including
+// calling Cloud Run, or endpoints where you intend to validate the
+// token
+// yourself.
+type OidcToken struct {
+	// Audience: Audience to be used when generating OIDC token. If not
+	// specified, the URI
+	// specified in target will be used.
+	Audience string `json:"audience,omitempty"`
+
+	// ServiceAccountEmail: [Service account
+	// email](https://cloud.google.com/iam/docs/service-accounts)
+	// to be used for generating OIDC token.
+	// The service account must be within the same project as the job. The
+	// caller
+	// must have iam.serviceAccounts.actAs permission for the service
+	// account.
+	ServiceAccountEmail string `json:"serviceAccountEmail,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Audience") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Audience") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *OidcToken) MarshalJSON() ([]byte, error) {
+	type NoMethod OidcToken
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // PauseJobRequest: Request message for PauseJob.
 type PauseJobRequest struct {
 }
@@ -779,7 +974,9 @@ type PauseJobRequest struct {
 // limits</a>
 // for more information about message limits.
 type PubsubMessage struct {
-	// Attributes: Optional attributes for this message.
+	// Attributes: Attributes for this message. If this field is empty, the
+	// message must
+	// contain non-empty data.
 	Attributes map[string]string `json:"attributes,omitempty"`
 
 	// Data: The message data field. If this field is empty, the message
@@ -845,9 +1042,8 @@ type PubsubTarget struct {
 	// attribute.
 	Data string `json:"data,omitempty"`
 
-	// TopicName: Required.
-	//
-	// The name of the Cloud Pub/Sub topic to which messages will
+	// TopicName: Required. The name of the Cloud Pub/Sub topic to which
+	// messages will
 	// be published when a job is delivered. The topic name must be in
 	// the
 	// same format as required by
@@ -929,9 +1125,8 @@ type RetryConfig struct {
 	// MaxRetryDuration: The time limit for retrying a failed job, measured
 	// from time when an
 	// execution was first attempted. If specified with
-	// retry_count, the job will be retried until both limits
-	// are
-	// reached.
+	// retry_count, the job will be retried until both
+	// limits are reached.
 	//
 	// The default value for max_retry_duration is zero, which means
 	// retry
@@ -996,84 +1191,17 @@ type RunJobRequest struct {
 }
 
 // Status: The `Status` type defines a logical error model that is
-// suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -1169,6 +1297,7 @@ func (c *ProjectsLocationsGetCall) Header() http.Header {
 
 func (c *ProjectsLocationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1334,6 +1463,7 @@ func (c *ProjectsLocationsListCall) Header() http.Header {
 
 func (c *ProjectsLocationsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1505,6 +1635,7 @@ func (c *ProjectsLocationsJobsCreateCall) Header() http.Header {
 
 func (c *ProjectsLocationsJobsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1577,7 +1708,7 @@ func (c *ProjectsLocationsJobsCreateCall) Do(opts ...googleapi.CallOption) (*Job
 	//   ],
 	//   "parameters": {
 	//     "parent": {
-	//       "description": "Required.\n\nThe location name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID`.",
+	//       "description": "Required. The location name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+$",
 	//       "required": true,
@@ -1642,6 +1773,7 @@ func (c *ProjectsLocationsJobsDeleteCall) Header() http.Header {
 
 func (c *ProjectsLocationsJobsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1709,7 +1841,7 @@ func (c *ProjectsLocationsJobsDeleteCall) Do(opts ...googleapi.CallOption) (*Emp
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
+	//       "description": "Required. The job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/jobs/[^/]+$",
 	//       "required": true,
@@ -1782,6 +1914,7 @@ func (c *ProjectsLocationsJobsGetCall) Header() http.Header {
 
 func (c *ProjectsLocationsJobsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1852,7 +1985,7 @@ func (c *ProjectsLocationsJobsGetCall) Do(opts ...googleapi.CallOption) (*Job, e
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
+	//       "description": "Required. The job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/jobs/[^/]+$",
 	//       "required": true,
@@ -1952,6 +2085,7 @@ func (c *ProjectsLocationsJobsListCall) Header() http.Header {
 
 func (c *ProjectsLocationsJobsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2033,7 +2167,7 @@ func (c *ProjectsLocationsJobsListCall) Do(opts ...googleapi.CallOption) (*ListJ
 	//       "type": "string"
 	//     },
 	//     "parent": {
-	//       "description": "Required.\n\nThe location name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID`.",
+	//       "description": "Required. The location name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+$",
 	//       "required": true,
@@ -2134,6 +2268,7 @@ func (c *ProjectsLocationsJobsPatchCall) Header() http.Header {
 
 func (c *ProjectsLocationsJobsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2206,7 +2341,7 @@ func (c *ProjectsLocationsJobsPatchCall) Do(opts ...googleapi.CallOption) (*Job,
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.\n\n* `PROJECT_ID` can contain letters ([A-Za-z]), numbers ([0-9]),\n   hyphens (-), colons (:), or periods (.).\n   For more information, see\n   [Identifying projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects)\n* `LOCATION_ID` is the canonical ID for the job's location.\n   The list of available locations can be obtained by calling\n   ListLocations.\n   For more information, see https://cloud.google.com/about/locations/.\n* `JOB_ID` can contain only letters ([A-Za-z]), numbers ([0-9]),\n   hyphens (-), or underscores (_). The maximum length is 500 characters.",
+	//       "description": "Optionally caller-specified in CreateJob, after\nwhich it becomes output only.\n\nThe job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.\n\n* `PROJECT_ID` can contain letters ([A-Za-z]), numbers ([0-9]),\n   hyphens (-), colons (:), or periods (.).\n   For more information, see\n   [Identifying\n   projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects)\n* `LOCATION_ID` is the canonical ID for the job's location.\n   The list of available locations can be obtained by calling\n   ListLocations.\n   For more information, see https://cloud.google.com/about/locations/.\n* `JOB_ID` can contain only letters ([A-Za-z]), numbers ([0-9]),\n   hyphens (-), or underscores (_). The maximum length is 500 characters.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/jobs/[^/]+$",
 	//       "required": true,
@@ -2286,6 +2421,7 @@ func (c *ProjectsLocationsJobsPauseCall) Header() http.Header {
 
 func (c *ProjectsLocationsJobsPauseCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2358,7 +2494,7 @@ func (c *ProjectsLocationsJobsPauseCall) Do(opts ...googleapi.CallOption) (*Job,
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
+	//       "description": "Required. The job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/jobs/[^/]+$",
 	//       "required": true,
@@ -2432,6 +2568,7 @@ func (c *ProjectsLocationsJobsResumeCall) Header() http.Header {
 
 func (c *ProjectsLocationsJobsResumeCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2504,7 +2641,7 @@ func (c *ProjectsLocationsJobsResumeCall) Do(opts ...googleapi.CallOption) (*Job
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
+	//       "description": "Required. The job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/jobs/[^/]+$",
 	//       "required": true,
@@ -2575,6 +2712,7 @@ func (c *ProjectsLocationsJobsRunCall) Header() http.Header {
 
 func (c *ProjectsLocationsJobsRunCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2647,7 +2785,7 @@ func (c *ProjectsLocationsJobsRunCall) Do(opts ...googleapi.CallOption) (*Job, e
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required.\n\nThe job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
+	//       "description": "Required. The job name. For example:\n`projects/PROJECT_ID/locations/LOCATION_ID/jobs/JOB_ID`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/jobs/[^/]+$",
 	//       "required": true,

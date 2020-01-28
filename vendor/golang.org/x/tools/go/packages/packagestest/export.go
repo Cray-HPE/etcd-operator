@@ -8,6 +8,59 @@ Package packagestest creates temporary projects on disk for testing go tools on.
 By changing the exporter used, you can create projects for multiple build
 systems from the same description, and run the same tests on them in many
 cases.
+
+Example
+
+As an example of packagestest use, consider the following test that runs
+the 'go list' command on the specified modules:
+
+	// TestGoList exercises the 'go list' command in module mode and in GOPATH mode.
+	func TestGoList(t *testing.T) { packagestest.TestAll(t, testGoList) }
+	func testGoList(t *testing.T, x packagestest.Exporter) {
+		e := packagestest.Export(t, x, []packagestest.Module{
+			{
+				Name: "gopher.example/repoa",
+				Files: map[string]interface{}{
+					"a/a.go": "package a",
+				},
+			},
+			{
+				Name: "gopher.example/repob",
+				Files: map[string]interface{}{
+					"b/b.go": "package b",
+				},
+			},
+		})
+		defer e.Cleanup()
+
+		cmd := exec.Command("go", "list", "gopher.example/...")
+		cmd.Dir = e.Config.Dir
+		cmd.Env = e.Config.Env
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("'go list gopher.example/...' with %s mode layout:\n%s", x.Name(), out)
+	}
+
+TestGoList uses TestAll to exercise the 'go list' command with all
+exporters known to packagestest. Currently, packagestest includes
+exporters that produce module mode layouts and GOPATH mode layouts.
+Running the test with verbose output will print:
+
+	=== RUN   TestGoList
+	=== RUN   TestGoList/GOPATH
+	=== RUN   TestGoList/Modules
+	--- PASS: TestGoList (0.21s)
+	    --- PASS: TestGoList/GOPATH (0.03s)
+	        main_test.go:36: 'go list gopher.example/...' with GOPATH mode layout:
+	            gopher.example/repoa/a
+	            gopher.example/repob/b
+	    --- PASS: TestGoList/Modules (0.18s)
+	        main_test.go:36: 'go list gopher.example/...' with Modules mode layout:
+	            gopher.example/repoa/a
+	            gopher.example/repob/b
+
 */
 package packagestest
 
@@ -24,6 +77,8 @@ import (
 
 	"golang.org/x/tools/go/expect"
 	"golang.org/x/tools/go/packages"
+	"golang.org/x/tools/internal/span"
+	"golang.org/x/tools/internal/testenv"
 )
 
 var (
@@ -61,12 +116,13 @@ type Exported struct {
 	// Modules is the module description that was used to produce this exported data set.
 	Modules []Module
 
+	ExpectFileSet *token.FileSet // The file set used when parsing expectations
+
 	temp    string                       // the temporary directory that was exported to
 	primary string                       // the first non GOROOT module that was exported
 	written map[string]map[string]string // the full set of exported files
-	fset    *token.FileSet               // The file set used when parsing expectations
 	notes   []*expect.Note               // The list of expectations extracted from go source files
-	markers map[string]Range             // The set of markers extracted from go source files
+	markers map[string]span.Range        // The set of markers extracted from go source files
 }
 
 // Exporter implementations are responsible for converting from the generic description of some
@@ -125,6 +181,10 @@ func BenchmarkAll(b *testing.B, f func(*testing.B, Exporter)) {
 // debugging tests.
 func Export(t testing.TB, exporter Exporter, modules []Module) *Exported {
 	t.Helper()
+	if exporter == Modules {
+		testenv.NeedsTool(t, "go")
+	}
+
 	dirname := strings.Replace(t.Name(), "/", "_", -1)
 	dirname = strings.Replace(dirname, "#", "_", -1) // duplicate subtests get a #NNN suffix.
 	temp, err := ioutil.TempDir("", dirname)
@@ -134,16 +194,16 @@ func Export(t testing.TB, exporter Exporter, modules []Module) *Exported {
 	exported := &Exported{
 		Config: &packages.Config{
 			Dir:     temp,
-			Env:     append(os.Environ(), "GOPACKAGESDRIVER=off"),
+			Env:     append(os.Environ(), "GOPACKAGESDRIVER=off", "GOROOT="), // Clear GOROOT to work around #32849.
 			Overlay: make(map[string][]byte),
 			Tests:   true,
 			Mode:    packages.LoadImports,
 		},
-		Modules: modules,
-		temp:    temp,
-		primary: modules[0].Name,
-		written: map[string]map[string]string{},
-		fset:    token.NewFileSet(),
+		Modules:       modules,
+		temp:          temp,
+		primary:       modules[0].Name,
+		written:       map[string]map[string]string{},
+		ExpectFileSet: token.NewFileSet(),
 	}
 	defer func() {
 		if t.Failed() || t.Skipped() {
@@ -183,6 +243,7 @@ func Export(t testing.TB, exporter Exporter, modules []Module) *Exported {
 	if err := exporter.Finalize(exported); err != nil {
 		t.Fatal(err)
 	}
+	testenv.NeedsGoPackagesEnv(t, exported.Config.Env)
 	return exported
 }
 
@@ -232,7 +293,7 @@ func Copy(source string) Writer {
 		if !stat.Mode().IsRegular() {
 			// cannot copy non-regular files (e.g., directories,
 			// symlinks, devices, etc.)
-			return fmt.Errorf("Cannot copy non regular file %s", source)
+			return fmt.Errorf("cannot copy non regular file %s", source)
 		}
 		contents, err := ioutil.ReadFile(source)
 		if err != nil {
@@ -261,7 +322,7 @@ func MustCopyFileTree(root string) map[string]interface{} {
 		if err != nil {
 			return err
 		}
-		result[fragment] = Copy(path)
+		result[filepath.ToSlash(fragment)] = Copy(path)
 		return nil
 	}); err != nil {
 		log.Panic(fmt.Sprintf("MustCopyFileTree failed: %v", err))

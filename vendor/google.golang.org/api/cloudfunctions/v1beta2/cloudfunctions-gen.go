@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package cloudfunctions provides access to the Cloud Functions API.
 //
-// See https://cloud.google.com/functions
+// For product documentation, see: https://cloud.google.com/functions
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/cloudfunctions/v1beta2"
 //   ...
-//   cloudfunctionsService, err := cloudfunctions.New(oauthHttpClient)
+//   ctx := context.Background()
+//   cloudfunctionsService, err := cloudfunctions.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   cloudfunctionsService, err := cloudfunctions.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   cloudfunctionsService, err := cloudfunctions.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package cloudfunctions // import "google.golang.org/api/cloudfunctions/v1beta2"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -56,6 +80,32 @@ const (
 	CloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -127,7 +177,7 @@ type ProjectsLocationsFunctionsService struct {
 
 // CallFunctionRequest: Request for the `CallFunction` method.
 type CallFunctionRequest struct {
-	// Data: Input to be passed to the function.
+	// Data: Required. Input to be passed to the function.
 	Data string `json:"data,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Data") to
@@ -242,9 +292,7 @@ type CloudFunction struct {
 
 	// MaxInstances: The limit on the maximum number of function instances
 	// that may coexist at a
-	// given time. This feature is currently in alpha, available only
-	// for
-	// whitelisted users.
+	// given time.
 	MaxInstances int64 `json:"maxInstances,omitempty"`
 
 	// Name: A user-defined name of the function. Function names must be
@@ -275,17 +323,21 @@ type CloudFunction struct {
 	// See [the VPC
 	// documentation](https://cloud.google.com/compute/docs/vpc) for
 	// more information on connecting Cloud projects.
-	//
-	// This feature is currently in alpha, available only for whitelisted
-	// users.
 	Network string `json:"network,omitempty"`
 
-	// Runtime: The runtime in which the function is going to run. If empty,
-	// defaults to
-	// Node.js 6.
+	// Runtime: The runtime in which to run the function. Required when
+	// deploying a new
+	// function, optional when updating an existing function. For a
+	// complete
+	// list of possible choices, see the
+	// [`gcloud`
+	// command
+	// reference](/sdk/gcloud/reference/functions/deploy#--runtime).
 	Runtime string `json:"runtime,omitempty"`
 
-	// ServiceAccount: Output only. The service account of the function.
+	// ServiceAccount: The email of the function's service account. If
+	// empty, defaults to
+	// `{project_id}@appspot.gserviceaccount.com`.
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 
 	// SourceArchiveUrl: The Google Cloud Storage URL, starting with gs://,
@@ -348,9 +400,8 @@ type CloudFunction struct {
 	// Function.
 	UpdateTime string `json:"updateTime,omitempty"`
 
-	// VersionId: Output only.
-	// The version identifier of the Cloud Function. Each deployment
-	// attempt
+	// VersionId: Output only. The version identifier of the Cloud Function.
+	// Each deployment attempt
 	// results in a new version of a function being created.
 	VersionId int64 `json:"versionId,omitempty,string"`
 
@@ -369,9 +420,6 @@ type CloudFunction struct {
 	// See [the VPC
 	// documentation](https://cloud.google.com/compute/docs/vpc) for
 	// more information on connecting Cloud projects.
-	//
-	// This feature is currently in alpha, available only for whitelisted
-	// users.
 	VpcConnector string `json:"vpcConnector,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -647,6 +695,11 @@ type ListFunctionsResponse struct {
 	// to get more functions.
 	NextPageToken string `json:"nextPageToken,omitempty"`
 
+	// Unreachable: Locations that could not be reached. The response does
+	// not include any
+	// functions from these locations.
+	Unreachable []string `json:"unreachable,omitempty"`
+
 	// ServerResponse contains the HTTP response code and headers from the
 	// server.
 	googleapi.ServerResponse `json:"-"`
@@ -825,7 +878,8 @@ type Operation struct {
 	// service that
 	// originally returns it. If you use the default HTTP mapping,
 	// the
-	// `name` should have the format of `operations/some/unique/name`.
+	// `name` should be a resource name ending with
+	// `operations/{unique_id}`.
 	Name string `json:"name,omitempty"`
 
 	// Response: The normal response of the operation in case of success.
@@ -1050,84 +1104,17 @@ func (s *SourceRepository) MarshalJSON() ([]byte, error) {
 }
 
 // Status: The `Status` type defines a logical error model that is
-// suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -1227,6 +1214,7 @@ func (c *OperationsGetCall) Header() http.Header {
 
 func (c *OperationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1347,29 +1335,36 @@ func (r *OperationsService) List() *OperationsListCall {
 	return c
 }
 
-// Filter sets the optional parameter "filter": The standard list
-// filter.
+// Filter sets the optional parameter "filter": Required. A filter for
+// matching the requested operations.<br><br> The supported formats of
+// <b>filter</b> are:<br> To query for a specific function:
+// <code>project:*,location:*,function:*</code><br> To query for all of
+// the latest operations for a project:
+// <code>project:*,latest:true</code>
 func (c *OperationsListCall) Filter(filter string) *OperationsListCall {
 	c.urlParams_.Set("filter", filter)
 	return c
 }
 
-// Name sets the optional parameter "name": The name of the operation's
-// parent resource.
+// Name sets the optional parameter "name": Must not be set.
 func (c *OperationsListCall) Name(name string) *OperationsListCall {
 	c.urlParams_.Set("name", name)
 	return c
 }
 
-// PageSize sets the optional parameter "pageSize": The standard list
-// page size.
+// PageSize sets the optional parameter "pageSize": The maximum number
+// of records that should be returned.<br> Requested page size cannot
+// exceed 100. If not set, the default page size is 100.<br><br>
+// Pagination is only supported when querying for a specific function.
 func (c *OperationsListCall) PageSize(pageSize int64) *OperationsListCall {
 	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
 	return c
 }
 
-// PageToken sets the optional parameter "pageToken": The standard list
-// page token.
+// PageToken sets the optional parameter "pageToken": Token identifying
+// which result to start with, which is returned by a previous list
+// call.<br><br> Pagination is only supported when querying for a
+// specific function.
 func (c *OperationsListCall) PageToken(pageToken string) *OperationsListCall {
 	c.urlParams_.Set("pageToken", pageToken)
 	return c
@@ -1412,6 +1407,7 @@ func (c *OperationsListCall) Header() http.Header {
 
 func (c *OperationsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1477,23 +1473,23 @@ func (c *OperationsListCall) Do(opts ...googleapi.CallOption) (*ListOperationsRe
 	//   "parameterOrder": [],
 	//   "parameters": {
 	//     "filter": {
-	//       "description": "The standard list filter.",
+	//       "description": "Required. A filter for matching the requested operations.\u003cbr\u003e\u003cbr\u003e The supported formats of \u003cb\u003efilter\u003c/b\u003e are:\u003cbr\u003e To query for a specific function: \u003ccode\u003eproject:*,location:*,function:*\u003c/code\u003e\u003cbr\u003e To query for all of the latest operations for a project: \u003ccode\u003eproject:*,latest:true\u003c/code\u003e",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "name": {
-	//       "description": "The name of the operation's parent resource.",
+	//       "description": "Must not be set.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "pageSize": {
-	//       "description": "The standard list page size.",
+	//       "description": "The maximum number of records that should be returned.\u003cbr\u003e Requested page size cannot exceed 100. If not set, the default page size is 100.\u003cbr\u003e\u003cbr\u003e Pagination is only supported when querying for a specific function.",
 	//       "format": "int32",
 	//       "location": "query",
 	//       "type": "integer"
 	//     },
 	//     "pageToken": {
-	//       "description": "The standard list page token.",
+	//       "description": "Token identifying which result to start with, which is returned by a previous list call.\u003cbr\u003e\u003cbr\u003e Pagination is only supported when querying for a specific function.",
 	//       "location": "query",
 	//       "type": "string"
 	//     }
@@ -1607,6 +1603,7 @@ func (c *ProjectsLocationsListCall) Header() http.Header {
 
 func (c *ProjectsLocationsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1784,6 +1781,7 @@ func (c *ProjectsLocationsFunctionsCallCall) Header() http.Header {
 
 func (c *ProjectsLocationsFunctionsCallCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1856,7 +1854,7 @@ func (c *ProjectsLocationsFunctionsCallCall) Do(opts ...googleapi.CallOption) (*
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The name of the function to be called.",
+	//       "description": "Required. The name of the function to be called.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/functions/[^/]+$",
 	//       "required": true,
@@ -1927,6 +1925,7 @@ func (c *ProjectsLocationsFunctionsCreateCall) Header() http.Header {
 
 func (c *ProjectsLocationsFunctionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -1999,7 +1998,7 @@ func (c *ProjectsLocationsFunctionsCreateCall) Do(opts ...googleapi.CallOption) 
 	//   ],
 	//   "parameters": {
 	//     "location": {
-	//       "description": "The project and location in which the function should be created, specified\nin the format `projects/*/locations/*`",
+	//       "description": "Required. The project and location in which the function should be created, specified\nin the format `projects/*/locations/*`",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+$",
 	//       "required": true,
@@ -2068,6 +2067,7 @@ func (c *ProjectsLocationsFunctionsDeleteCall) Header() http.Header {
 
 func (c *ProjectsLocationsFunctionsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2135,7 +2135,7 @@ func (c *ProjectsLocationsFunctionsDeleteCall) Do(opts ...googleapi.CallOption) 
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The name of the function which should be deleted.",
+	//       "description": "Required. The name of the function which should be deleted.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/functions/[^/]+$",
 	//       "required": true,
@@ -2206,6 +2206,7 @@ func (c *ProjectsLocationsFunctionsGenerateDownloadUrlCall) Header() http.Header
 
 func (c *ProjectsLocationsFunctionsGenerateDownloadUrlCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2326,12 +2327,23 @@ type ProjectsLocationsFunctionsGenerateUploadUrlCall struct {
 //
 // * Source file type should be a zip file.
 // * Source file size should not exceed 100MB limit.
+// * No credentials should be attached - the signed URLs provide access
+// to the
+//   target bucket using internal service identity; if credentials were
+//   attached, the identity from the credentials would be used, but
+// that
+//   identity does not have permissions to upload files to the
+// URL.
 //
 // When making a HTTP PUT request, these two headers need to be
 // specified:
 //
 // * `content-type: application/zip`
 // * `x-goog-content-length-range: 0,104857600`
+//
+// And this header SHOULD NOT be specified:
+//
+// * `Authorization: Bearer YOUR_TOKEN`
 func (r *ProjectsLocationsFunctionsService) GenerateUploadUrl(parent string, generateuploadurlrequest *GenerateUploadUrlRequest) *ProjectsLocationsFunctionsGenerateUploadUrlCall {
 	c := &ProjectsLocationsFunctionsGenerateUploadUrlCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -2366,6 +2378,7 @@ func (c *ProjectsLocationsFunctionsGenerateUploadUrlCall) Header() http.Header {
 
 func (c *ProjectsLocationsFunctionsGenerateUploadUrlCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2429,7 +2442,7 @@ func (c *ProjectsLocationsFunctionsGenerateUploadUrlCall) Do(opts ...googleapi.C
 	}
 	return ret, nil
 	// {
-	//   "description": "Returns a signed URL for uploading a function source code.\nFor more information about the signed URL usage see:\nhttps://cloud.google.com/storage/docs/access-control/signed-urls\nOnce the function source code upload is complete, the used signed\nURL should be provided in CreateFunction or UpdateFunction request\nas a reference to the function source code.\n\nWhen uploading source code to the generated signed URL, please follow\nthese restrictions:\n\n* Source file type should be a zip file.\n* Source file size should not exceed 100MB limit.\n\nWhen making a HTTP PUT request, these two headers need to be specified:\n\n* `content-type: application/zip`\n* `x-goog-content-length-range: 0,104857600`",
+	//   "description": "Returns a signed URL for uploading a function source code.\nFor more information about the signed URL usage see:\nhttps://cloud.google.com/storage/docs/access-control/signed-urls\nOnce the function source code upload is complete, the used signed\nURL should be provided in CreateFunction or UpdateFunction request\nas a reference to the function source code.\n\nWhen uploading source code to the generated signed URL, please follow\nthese restrictions:\n\n* Source file type should be a zip file.\n* Source file size should not exceed 100MB limit.\n* No credentials should be attached - the signed URLs provide access to the\n  target bucket using internal service identity; if credentials were\n  attached, the identity from the credentials would be used, but that\n  identity does not have permissions to upload files to the URL.\n\nWhen making a HTTP PUT request, these two headers need to be specified:\n\n* `content-type: application/zip`\n* `x-goog-content-length-range: 0,104857600`\n\nAnd this header SHOULD NOT be specified:\n\n* `Authorization: Bearer YOUR_TOKEN`",
 	//   "flatPath": "v1beta2/projects/{projectsId}/locations/{locationsId}/functions:generateUploadUrl",
 	//   "httpMethod": "POST",
 	//   "id": "cloudfunctions.projects.locations.functions.generateUploadUrl",
@@ -2515,6 +2528,7 @@ func (c *ProjectsLocationsFunctionsGetCall) Header() http.Header {
 
 func (c *ProjectsLocationsFunctionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2585,7 +2599,7 @@ func (c *ProjectsLocationsFunctionsGetCall) Do(opts ...googleapi.CallOption) (*C
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The name of the function which details should be obtained.",
+	//       "description": "Required. The name of the function which details should be obtained.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/functions/[^/]+$",
 	//       "required": true,
@@ -2677,6 +2691,7 @@ func (c *ProjectsLocationsFunctionsListCall) Header() http.Header {
 
 func (c *ProjectsLocationsFunctionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2747,7 +2762,7 @@ func (c *ProjectsLocationsFunctionsListCall) Do(opts ...googleapi.CallOption) (*
 	//   ],
 	//   "parameters": {
 	//     "location": {
-	//       "description": "The project and location from which the function should be listed,\nspecified in the format `projects/*/locations/*`\nIf you want to list functions in all locations, use \"-\" in place of a\nlocation.",
+	//       "description": "Required. The project and location from which the function should be listed,\nspecified in the format `projects/*/locations/*`\nIf you want to list functions in all locations, use \"-\" in place of a\nlocation. When listing functions in all locations, if one or more\nlocation(s) are unreachable, the response will contain functions from all\nreachable locations along with the names of any unreachable locations.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+$",
 	//       "required": true,
@@ -2843,6 +2858,7 @@ func (c *ProjectsLocationsFunctionsUpdateCall) Header() http.Header {
 
 func (c *ProjectsLocationsFunctionsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2915,7 +2931,7 @@ func (c *ProjectsLocationsFunctionsUpdateCall) Do(opts ...googleapi.CallOption) 
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "The name of the function to be updated.",
+	//       "description": "Required. The name of the function to be updated.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/locations/[^/]+/functions/[^/]+$",
 	//       "required": true,

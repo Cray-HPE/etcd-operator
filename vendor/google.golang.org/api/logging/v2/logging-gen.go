@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,39 @@
 //
 // This package is DEPRECATED. Use package cloud.google.com/go/logging instead.
 //
-// See https://cloud.google.com/logging/docs/
+// For product documentation, see: https://cloud.google.com/logging/docs/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/logging/v2"
 //   ...
-//   loggingService, err := logging.New(oauthHttpClient)
+//   ctx := context.Background()
+//   loggingService, err := logging.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   loggingService, err := logging.NewService(ctx, option.WithScopes(logging.LoggingWriteScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   loggingService, err := logging.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   loggingService, err := logging.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package logging // import "google.golang.org/api/logging/v2"
 
 import (
@@ -29,8 +55,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -70,6 +98,36 @@ const (
 	LoggingWriteScope = "https://www.googleapis.com/auth/logging.write"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/cloud-platform.read-only",
+		"https://www.googleapis.com/auth/logging.admin",
+		"https://www.googleapis.com/auth/logging.read",
+		"https://www.googleapis.com/auth/logging.write",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -355,6 +413,42 @@ type SinksService struct {
 	s *Service
 }
 
+// BigQueryOptions: Options that change functionality of a sink
+// exporting data to BigQuery.
+type BigQueryOptions struct {
+	// UsePartitionedTables: Optional. Whether to use BigQuery's partition
+	// tables. By default, Logging creates dated tables based on the log
+	// entries' timestamps, e.g. syslog_20170523. With partitioned tables
+	// the date suffix is no longer present and special query syntax has to
+	// be used instead. In both cases, tables are sharded based on UTC
+	// timezone.
+	UsePartitionedTables bool `json:"usePartitionedTables,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "UsePartitionedTables") to unconditionally include in API requests.
+	// By default, fields with empty values are omitted from API requests.
+	// However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "UsePartitionedTables") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *BigQueryOptions) MarshalJSON() ([]byte, error) {
+	type NoMethod BigQueryOptions
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // BucketOptions: BucketOptions describes the bucket boundaries used to
 // create a histogram for the distribution. The buckets can be in a
 // linear sequence, an exponential sequence, or each bucket can be
@@ -573,7 +667,8 @@ type HttpRequest struct {
 	Status int64 `json:"status,omitempty"`
 
 	// UserAgent: The user agent sent by the client. Example: "Mozilla/4.0
-	// (compatible; MSIE 6.0; Windows 98; Q312461; .NET CLR 1.0.3705)".
+	// (compatible; MSIE 6.0; Windows 98; Q312461; .NET
+	// CLR 1.0.3705)".
 	UserAgent string `json:"userAgent,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "CacheFillBytes") to
@@ -736,7 +831,7 @@ func (s *ListExclusionsResponse) MarshalJSON() ([]byte, error) {
 // ListLogEntriesRequest: The parameters to ListLogEntries.
 type ListLogEntriesRequest struct {
 	// Filter: Optional. A filter that chooses which log entries to return.
-	// See Advanced Logs Filters. Only log entries that match the filter are
+	// See Advanced Logs Queries. Only log entries that match the filter are
 	// returned. An empty filter matches all log entries in the resources
 	// listed in resource_names. Referencing a parent resource that is not
 	// listed in resource_names will cause the filter to return no results.
@@ -767,9 +862,7 @@ type ListLogEntriesRequest struct {
 
 	// ProjectIds: Deprecated. Use resource_names instead. One or more
 	// project identifiers or project numbers from which to retrieve log
-	// entries. Example: "my-project-1A". If present, these project
-	// identifiers are converted to resource name format and added to the
-	// list of resources in resource_names.
+	// entries. Example: "my-project-1A".
 	ProjectIds []string `json:"projectIds,omitempty"`
 
 	// ResourceNames: Required. Names of one or more parent resources from
@@ -893,8 +986,9 @@ func (s *ListLogMetricsResponse) MarshalJSON() ([]byte, error) {
 // ListLogsResponse: Result returned from ListLogs.
 type ListLogsResponse struct {
 	// LogNames: A list of log names. For example,
-	// "projects/my-project/syslog" or
-	// "organizations/123/cloudresourcemanager.googleapis.com%2Factivity".
+	// "projects/my-project/logs/syslog" or
+	// "organizations/123/logs/cloudresourcemanager.googleapis.com%2Factivity
+	// ".
 	LogNames []string `json:"logNames,omitempty"`
 
 	// NextPageToken: If there might be more results than those appearing in
@@ -1040,7 +1134,7 @@ type LogEntry struct {
 	// "folders/[FOLDER_ID]/logs/[LOG_ID]"
 	// A project number may optionally be used in place of PROJECT_ID. The
 	// project number is translated to its corresponding PROJECT_ID
-	// internally  and the log_name field will contain PROJECT_ID in queries
+	// internally and the log_name field will contain PROJECT_ID in queries
 	// and exports.[LOG_ID] must be URL-encoded within log_name. Example:
 	// "organizations/1234567890/logs/cloudresourcemanager.googleapis.com%2Fa
 	// ctivity". [LOG_ID] must be less than 512 characters long and can only
@@ -1053,9 +1147,15 @@ type LogEntry struct {
 	// never return any results.
 	LogName string `json:"logName,omitempty"`
 
-	// Metadata: Output only. Additional metadata about the monitored
-	// resource. Only k8s_container, k8s_pod, and k8s_node
-	// MonitoredResources have this field populated.
+	// Metadata: Deprecated. Output only. Additional metadata about the
+	// monitored resource.Only k8s_container, k8s_pod, and k8s_node
+	// MonitoredResources have this field populated for GKE versions older
+	// than 1.12.6. For GKE versions 1.12.6 and above, the metadata field
+	// has been deprecated. The Kubernetes pod labels that used to be in
+	// metadata.userLabels will now be present in the labels field with a
+	// key prefix of k8s-pod/. The Stackdriver system labels that were
+	// present in the metadata.systemLabels field will no longer be
+	// available in the LogEntry.
 	Metadata *MonitoredResourceMetadata `json:"metadata,omitempty"`
 
 	// Operation: Optional. Information about an operation associated with
@@ -1064,17 +1164,20 @@ type LogEntry struct {
 
 	// ProtoPayload: The log entry payload, represented as a protocol
 	// buffer. Some Google Cloud Platform services use this field for their
-	// log entry payloads.
+	// log entry payloads.The following protocol buffer types are supported;
+	// user-defined types are not
+	// supported:"type.googleapis.com/google.cloud.audit.AuditLog"
+	// "type.googleapis.com/google.appengine.logging.v1.RequestLog"
 	ProtoPayload googleapi.RawMessage `json:"protoPayload,omitempty"`
 
 	// ReceiveTimestamp: Output only. The time the log entry was received by
 	// Logging.
 	ReceiveTimestamp string `json:"receiveTimestamp,omitempty"`
 
-	// Resource: Required. The primary monitored resource associated with
-	// this log entry. Example: a log entry that reports a database error
-	// would be associated with the monitored resource designating the
-	// particular database that reported the error.
+	// Resource: Required. The monitored resource that produced this log
+	// entry.Example: a log entry that reports a database error would be
+	// associated with the monitored resource designating the particular
+	// database that reported the error.
 	Resource *MonitoredResource `json:"resource,omitempty"`
 
 	// Severity: Optional. The severity of the log entry. The default value
@@ -1100,9 +1203,9 @@ type LogEntry struct {
 	SourceLocation *LogEntrySourceLocation `json:"sourceLocation,omitempty"`
 
 	// SpanId: Optional. The span ID within the trace associated with the
-	// log entry. For Trace spans, this is the same format that the Trace
-	// API v2 uses: a 16-character hexadecimal encoding of an 8-byte array,
-	// such as <code>"000000000000004a"</code>.
+	// log entry.For Trace spans, this is the same format that the Trace API
+	// v2 uses: a 16-character hexadecimal encoding of an 8-byte array, such
+	// as <code>"000000000000004a"</code>.
 	SpanId string `json:"spanId,omitempty"`
 
 	// TextPayload: The log entry payload, represented as a Unicode string
@@ -1129,7 +1232,7 @@ type LogEntry struct {
 	Trace string `json:"trace,omitempty"`
 
 	// TraceSampled: Optional. The sampling decision of the trace associated
-	// with the log entry. True means that the trace resource name in the
+	// with the log entry.True means that the trace resource name in the
 	// trace field was sampled for storage in a trace backend. False means
 	// that the trace was not sampled for storage when this log entry was
 	// written, or the sampling decision was unknown at the time. A
@@ -1246,39 +1349,48 @@ func (s *LogEntrySourceLocation) MarshalJSON() ([]byte, error) {
 }
 
 // LogExclusion: Specifies a set of log entries that are not to be
-// stored in Logging. If your project receives a large volume of logs,
-// you might be able to use exclusions to reduce your chargeable logs.
+// stored in Logging. If your GCP resource receives a large volume of
+// logs, you can use exclusions to reduce your chargeable logs.
 // Exclusions are processed after log sinks, so you can export log
-// entries before they are excluded. Audit log entries and log entries
-// from Amazon Web Services are never excluded.
+// entries before they are excluded. Note that organization-level and
+// folder-level exclusions don't apply to child resources, and that you
+// can't exclude audit log entries.
 type LogExclusion struct {
+	// CreateTime: Output only. The creation timestamp of the exclusion.This
+	// field may not be present for older exclusions.
+	CreateTime string `json:"createTime,omitempty"`
+
 	// Description: Optional. A description of this exclusion.
 	Description string `json:"description,omitempty"`
 
 	// Disabled: Optional. If set to True, then this exclusion is disabled
-	// and it does not exclude any log entries. You can use exclusions.patch
+	// and it does not exclude any log entries. You can update an exclusion
 	// to change the value of this field.
 	Disabled bool `json:"disabled,omitempty"`
 
 	// Filter: Required. An advanced logs filter that matches the log
 	// entries to be excluded. By using the sample function, you can exclude
 	// less than 100% of the matching log entries. For example, the
-	// following filter matches 99% of low-severity log entries from load
-	// balancers:"resource.type=http_load_balancer severity<ERROR
+	// following query matches 99% of low-severity log entries from Google
+	// Cloud Storage buckets:"resource.type=gcs_bucket severity<ERROR
 	// sample(insertId, 0.99)"
 	Filter string `json:"filter,omitempty"`
 
 	// Name: Required. A client-assigned identifier, such as
 	// "load-balancer-exclusion". Identifiers are limited to 100 characters
 	// and can include only letters, digits, underscores, hyphens, and
-	// periods.
+	// periods. First character has to be alphanumeric.
 	Name string `json:"name,omitempty"`
+
+	// UpdateTime: Output only. The last update timestamp of the
+	// exclusion.This field may not be present for older exclusions.
+	UpdateTime string `json:"updateTime,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
 	// server.
 	googleapi.ServerResponse `json:"-"`
 
-	// ForceSendFields is a list of field names (e.g. "Description") to
+	// ForceSendFields is a list of field names (e.g. "CreateTime") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
 	// non-interface field appearing in ForceSendFields will be sent to the
@@ -1286,10 +1398,10 @@ type LogExclusion struct {
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "Description") to include
-	// in API requests with the JSON null value. By default, fields with
-	// empty values are omitted from API requests. However, any field with
-	// an empty value appearing in NullFields will be sent to the server as
+	// NullFields is a list of field names (e.g. "CreateTime") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
 	// null. It is an error if a field in this list has a non-empty value.
 	// This may be used to include null fields in Patch requests.
 	NullFields []string `json:"-"`
@@ -1366,6 +1478,10 @@ type LogMetric struct {
 	// values.
 	BucketOptions *BucketOptions `json:"bucketOptions,omitempty"`
 
+	// CreateTime: Output only. The creation timestamp of the metric.This
+	// field may not be present for older metrics.
+	CreateTime string `json:"createTime,omitempty"`
+
 	// Description: Optional. A description of this metric, which is used in
 	// documentation. The maximum length of the description is 8000
 	// characters.
@@ -1421,6 +1537,10 @@ type LogMetric struct {
 	// API parameter, then the metric identifier must be URL-encoded.
 	// Example: "projects/my-project/metrics/nginx%2Frequests".
 	Name string `json:"name,omitempty"`
+
+	// UpdateTime: Output only. The last update timestamp of the metric.This
+	// field may not be present for older metrics.
+	UpdateTime string `json:"updateTime,omitempty"`
 
 	// ValueExtractor: Optional. A value_extractor is required when using a
 	// distribution logs-based metric to extract the values to record from a
@@ -1481,6 +1601,18 @@ func (s *LogMetric) MarshalJSON() ([]byte, error) {
 // which log entries are exported. The sink must be created within a
 // project, organization, billing account, or folder.
 type LogSink struct {
+	// BigqueryOptions: Optional. Options that affect sinks exporting data
+	// to BigQuery.
+	BigqueryOptions *BigQueryOptions `json:"bigqueryOptions,omitempty"`
+
+	// CreateTime: Output only. The creation timestamp of the sink.This
+	// field may not be present for older sinks.
+	CreateTime string `json:"createTime,omitempty"`
+
+	// Description: Optional. A description of this sink. The maximum length
+	// of the description is 8000 characters.
+	Description string `json:"description,omitempty"`
+
 	// Destination: Required. The export
 	// destination:
 	// "storage.googleapis.com/[GCS_BUCKET]"
@@ -1490,8 +1622,15 @@ type LogSink struct {
 	// /projects/[PROJECT_ID]/topics/[TOPIC_ID]"
 	// The sink's writer_identity, set when the sink is created, must have
 	// permission to write to the destination or else the log entries are
-	// not exported. For more information, see Exporting Logs With Sinks.
+	// not exported. For more information, see Exporting Logs with Sinks.
 	Destination string `json:"destination,omitempty"`
+
+	// Disabled: Optional. If set to True, then this sink is disabled and it
+	// does not export any log entries.
+	Disabled bool `json:"disabled,omitempty"`
+
+	// EndTime: Do not use. This field is ignored.
+	EndTime string `json:"endTime,omitempty"`
 
 	// Filter: Optional. An advanced logs filter. The only exported log
 	// entries are those that are in the resource owning the sink and that
@@ -1523,7 +1662,8 @@ type LogSink struct {
 	// the project. Example: "my-syslog-errors-to-pubsub". Sink identifiers
 	// are limited to 100 characters and can include only the following
 	// characters: upper and lower-case alphanumeric characters,
-	// underscores, hyphens, and periods.
+	// underscores, hyphens, and periods. First character has to be
+	// alphanumeric.
 	Name string `json:"name,omitempty"`
 
 	// OutputVersionFormat: Deprecated. The log entry format to use for this
@@ -1537,13 +1677,20 @@ type LogSink struct {
 	//   "V1" - LogEntry version 1 format.
 	OutputVersionFormat string `json:"outputVersionFormat,omitempty"`
 
+	// StartTime: Do not use. This field is ignored.
+	StartTime string `json:"startTime,omitempty"`
+
+	// UpdateTime: Output only. The last update timestamp of the sink.This
+	// field may not be present for older sinks.
+	UpdateTime string `json:"updateTime,omitempty"`
+
 	// WriterIdentity: Output only. An IAM identity&mdash;a service account
 	// or group&mdash;under which Logging writes the exported log entries to
 	// the sink's destination. This field is set by sinks.create and
-	// sinks.update, based on the setting of unique_writer_identity in those
+	// sinks.update based on the value of unique_writer_identity in those
 	// methods.Until you grant this identity write-access to the
 	// destination, log entry exports from this sink will fail. For more
-	// information, see Granting access for a resource. Consult the
+	// information, see Granting Access for a Resource. Consult the
 	// destination service's documentation to determine the appropriate IAM
 	// roles to assign to the identity.
 	WriterIdentity string `json:"writerIdentity,omitempty"`
@@ -1552,7 +1699,7 @@ type LogSink struct {
 	// server.
 	googleapi.ServerResponse `json:"-"`
 
-	// ForceSendFields is a list of field names (e.g. "Destination") to
+	// ForceSendFields is a list of field names (e.g. "BigqueryOptions") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
 	// non-interface field appearing in ForceSendFields will be sent to the
@@ -1560,12 +1707,13 @@ type LogSink struct {
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "Destination") to include
-	// in API requests with the JSON null value. By default, fields with
-	// empty values are omitted from API requests. However, any field with
-	// an empty value appearing in NullFields will be sent to the server as
-	// null. It is an error if a field in this list has a non-empty value.
-	// This may be used to include null fields in Patch requests.
+	// NullFields is a list of field names (e.g. "BigqueryOptions") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
 	NullFields []string `json:"-"`
 }
 
@@ -1598,6 +1746,39 @@ type MetricDescriptor struct {
 	// failed.
 	Labels []*LabelDescriptor `json:"labels,omitempty"`
 
+	// LaunchStage: Optional. The launch stage of the metric definition.
+	//
+	// Possible values:
+	//   "LAUNCH_STAGE_UNSPECIFIED" - Do not use this default value.
+	//   "EARLY_ACCESS" - Early Access features are limited to a closed
+	// group of testers. To use these features, you must sign up in advance
+	// and sign a Trusted Tester agreement (which includes confidentiality
+	// provisions). These features may be unstable, changed in
+	// backward-incompatible ways, and are not guaranteed to be released.
+	//   "ALPHA" - Alpha is a limited availability test for releases before
+	// they are cleared for widespread use. By Alpha, all significant design
+	// issues are resolved and we are in the process of verifying
+	// functionality. Alpha customers need to apply for access, agree to
+	// applicable terms, and have their projects whitelisted. Alpha releases
+	// don’t have to be feature complete, no SLAs are provided, and there
+	// are no technical support obligations, but they will be far enough
+	// along that customers can actually use them in test environments or
+	// for limited-use tests -- just like they would in normal production
+	// cases.
+	//   "BETA" - Beta is the point at which we are ready to open a release
+	// for any customer to use. There are no SLA or technical support
+	// obligations in a Beta release. Products will be complete from a
+	// feature perspective, but may have some open outstanding issues. Beta
+	// releases are suitable for limited production use cases.
+	//   "GA" - GA features are open to all developers and are considered
+	// stable and fully qualified for production use.
+	//   "DEPRECATED" - Deprecated features are scheduled to be shut down
+	// and removed. For more information, see the “Deprecation Policy”
+	// section of our Terms of Service (https://cloud.google.com/terms/) and
+	// the Google Cloud Platform Subject to the Deprecation Policy
+	// (https://cloud.google.com/terms/deprecation) documentation.
+	LaunchStage string `json:"launchStage,omitempty"`
+
 	// Metadata: Optional. Metadata which can be used to guide usage of the
 	// metric.
 	Metadata *MetricDescriptorMetadata `json:"metadata,omitempty"`
@@ -1616,6 +1797,13 @@ type MetricDescriptor struct {
 	// zero and sets a new start time for the following points.
 	MetricKind string `json:"metricKind,omitempty"`
 
+	// MonitoredResourceTypes: Read-only. If present, then a time series,
+	// which is identified partially by a metric type and a
+	// MonitoredResourceDescriptor, that is associated with this metric type
+	// can only be associated with one of the monitored resource types
+	// listed here.
+	MonitoredResourceTypes []string `json:"monitoredResourceTypes,omitempty"`
+
 	// Name: The resource name of the metric descriptor.
 	Name string `json:"name,omitempty"`
 
@@ -1632,39 +1820,18 @@ type MetricDescriptor struct {
 	//
 	Type string `json:"type,omitempty"`
 
-	// Unit: The unit in which the metric value is reported. It is only
-	// applicable if the value_type is INT64, DOUBLE, or DISTRIBUTION. The
-	// supported units are a subset of The Unified Code for Units of Measure
-	// (http://unitsofmeasure.org/ucum.html) standard:Basic units (UNIT)
-	// bit bit
-	// By byte
-	// s second
-	// min minute
-	// h hour
-	// d dayPrefixes (PREFIX)
-	// k kilo (10**3)
-	// M mega (10**6)
-	// G giga (10**9)
-	// T tera (10**12)
-	// P peta (10**15)
-	// E exa (10**18)
-	// Z zetta (10**21)
-	// Y yotta (10**24)
-	// m milli (10**-3)
-	// u micro (10**-6)
-	// n nano (10**-9)
-	// p pico (10**-12)
-	// f femto (10**-15)
-	// a atto (10**-18)
-	// z zepto (10**-21)
-	// y yocto (10**-24)
-	// Ki kibi (2**10)
-	// Mi mebi (2**20)
-	// Gi gibi (2**30)
-	// Ti tebi (2**40)GrammarThe grammar also includes these connectors:
-	// / division (as an infix operator, e.g. 1/s).
-	// . multiplication (as an infix operator, e.g. GBy.d)The grammar for a
-	// unit is as follows:
+	// Unit: Ki kibi (2^10)
+	// Mi mebi (2^20)
+	// Gi gibi (2^30)
+	// Ti tebi (2^40)
+	// Pi pebi (2^50)GrammarThe grammar also includes these connectors:
+	// / division or ratio (as an infix operator). For examples,
+	// kBy/{email} or MiBy/10ms (although you should almost never  have /s
+	// in a metric unit; rates should always be computed at  query time from
+	// the underlying cumulative or delta value).
+	// . multiplication or composition (as an infix operator). For
+	// examples, GBy.d or k{watt}.h.The grammar for a unit is as
+	// follows:
 	// Expression = Component { "." Component } { "/" Component }
 	// ;
 	//
@@ -1675,14 +1842,25 @@ type MetricDescriptor struct {
 	//
 	// Annotation = "{" NAME "}" ;
 	// Notes:
-	// Annotation is just a comment if it follows a UNIT and is  equivalent
-	// to 1 if it is used alone. For examples,  {requests}/s == 1/s,
-	// By{transmitted}/s == By/s.
+	// Annotation is just a comment if it follows a UNIT. If the annotation
+	// is used alone, then the unit is equivalent to 1. For examples,
+	// {request}/s == 1/s, By{transmitted}/s == By/s.
 	// NAME is a sequence of non-blank printable ASCII characters not
-	// containing '{' or '}'.
-	// 1 represents dimensionless value 1, such as in 1/s.
-	// % represents dimensionless value 1/100, and annotates values giving
-	// a percentage.
+	// containing { or }.
+	// 1 represents a unitary dimensionless  unit
+	// (https://en.wikipedia.org/wiki/Dimensionless_quantity) of 1, such  as
+	// in 1/s. It is typically used when none of the basic units are
+	// appropriate. For example, "new users per day" can be represented as
+	// 1/d or {new-users}/d (and a metric value 5 would mean "5 new  users).
+	// Alternatively, "thousands of page views per day" would be
+	// represented as 1000/d or k1/d or k{page_views}/d (and a metric  value
+	// of 5.3 would mean "5300 page views per day").
+	// % represents dimensionless value of 1/100, and annotates values
+	// giving  a percentage (so the metric values are typically in the range
+	// of 0..100,  and a metric value 3 means "3 percent").
+	// 10^2.% indicates a metric contains a ratio, typically in the range
+	// 0..1, that will be multiplied by 100 and displayed as a percentage
+	// (so a metric value 0.03 means "3 percent").
 	Unit string `json:"unit,omitempty"`
 
 	// ValueType: Whether the measurement is an integer, a floating-point
@@ -1732,7 +1910,8 @@ type MetricDescriptorMetadata struct {
 	// available to be read, excluding data loss due to errors.
 	IngestDelay string `json:"ingestDelay,omitempty"`
 
-	// LaunchStage: The launch stage of the metric definition.
+	// LaunchStage: Deprecated. Must use the MetricDescriptor.launch_stage
+	// instead.
 	//
 	// Possible values:
 	//   "LAUNCH_STAGE_UNSPECIFIED" - Do not use this default value.
@@ -1866,6 +2045,40 @@ type MonitoredResourceDescriptor struct {
 	// database is identified by values for the labels "database_id" and
 	// "zone".
 	Labels []*LabelDescriptor `json:"labels,omitempty"`
+
+	// LaunchStage: Optional. The launch stage of the monitored resource
+	// definition.
+	//
+	// Possible values:
+	//   "LAUNCH_STAGE_UNSPECIFIED" - Do not use this default value.
+	//   "EARLY_ACCESS" - Early Access features are limited to a closed
+	// group of testers. To use these features, you must sign up in advance
+	// and sign a Trusted Tester agreement (which includes confidentiality
+	// provisions). These features may be unstable, changed in
+	// backward-incompatible ways, and are not guaranteed to be released.
+	//   "ALPHA" - Alpha is a limited availability test for releases before
+	// they are cleared for widespread use. By Alpha, all significant design
+	// issues are resolved and we are in the process of verifying
+	// functionality. Alpha customers need to apply for access, agree to
+	// applicable terms, and have their projects whitelisted. Alpha releases
+	// don’t have to be feature complete, no SLAs are provided, and there
+	// are no technical support obligations, but they will be far enough
+	// along that customers can actually use them in test environments or
+	// for limited-use tests -- just like they would in normal production
+	// cases.
+	//   "BETA" - Beta is the point at which we are ready to open a release
+	// for any customer to use. There are no SLA or technical support
+	// obligations in a Beta release. Products will be complete from a
+	// feature perspective, but may have some open outstanding issues. Beta
+	// releases are suitable for limited production use cases.
+	//   "GA" - GA features are open to all developers and are considered
+	// stable and fully qualified for production use.
+	//   "DEPRECATED" - Deprecated features are scheduled to be shut down
+	// and removed. For more information, see the “Deprecation Policy”
+	// section of our Terms of Service (https://cloud.google.com/terms/) and
+	// the Google Cloud Platform Subject to the Deprecation Policy
+	// (https://cloud.google.com/terms/deprecation) documentation.
+	LaunchStage string `json:"launchStage,omitempty"`
 
 	// Name: Optional. The resource name of the monitored resource
 	// descriptor:
@@ -2336,6 +2549,7 @@ func (c *BillingAccountsExclusionsCreateCall) Header() http.Header {
 
 func (c *BillingAccountsExclusionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2474,6 +2688,7 @@ func (c *BillingAccountsExclusionsDeleteCall) Header() http.Header {
 
 func (c *BillingAccountsExclusionsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2615,6 +2830,7 @@ func (c *BillingAccountsExclusionsGetCall) Header() http.Header {
 
 func (c *BillingAccountsExclusionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2780,6 +2996,7 @@ func (c *BillingAccountsExclusionsListCall) Header() http.Header {
 
 func (c *BillingAccountsExclusionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2923,7 +3140,7 @@ func (r *BillingAccountsExclusionsService) Patch(name string, logexclusion *LogE
 }
 
 // UpdateMask sets the optional parameter "updateMask": Required. A
-// nonempty list of fields to change in the existing exclusion. New
+// non-empty list of fields to change in the existing exclusion. New
 // values for the fields are taken from the corresponding fields in the
 // LogExclusion included in this request. Fields not mentioned in
 // update_mask are not changed and are ignored in the request.For
@@ -2961,6 +3178,7 @@ func (c *BillingAccountsExclusionsPatchCall) Header() http.Header {
 
 func (c *BillingAccountsExclusionsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3040,7 +3258,7 @@ func (c *BillingAccountsExclusionsPatchCall) Do(opts ...googleapi.CallOption) (*
 	//       "type": "string"
 	//     },
 	//     "updateMask": {
-	//       "description": "Required. A nonempty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
+	//       "description": "Required. A non-empty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
 	//       "format": "google-fieldmask",
 	//       "location": "query",
 	//       "type": "string"
@@ -3073,7 +3291,8 @@ type BillingAccountsLogsDeleteCall struct {
 
 // Delete: Deletes all the log entries in a log. The log reappears if it
 // receives new entries. Log entries written shortly before the delete
-// operation might not be deleted.
+// operation might not be deleted. Entries received after the delete
+// operation with a timestamp before the operation will be deleted.
 func (r *BillingAccountsLogsService) Delete(logName string) *BillingAccountsLogsDeleteCall {
 	c := &BillingAccountsLogsDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.logName = logName
@@ -3107,6 +3326,7 @@ func (c *BillingAccountsLogsDeleteCall) Header() http.Header {
 
 func (c *BillingAccountsLogsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3165,7 +3385,7 @@ func (c *BillingAccountsLogsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted.",
+	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted. Entries received after the delete operation with a timestamp before the operation will be deleted.",
 	//   "flatPath": "v2/billingAccounts/{billingAccountsId}/logs/{logsId}",
 	//   "httpMethod": "DELETE",
 	//   "id": "logging.billingAccounts.logs.delete",
@@ -3268,6 +3488,7 @@ func (c *BillingAccountsLogsListCall) Header() http.Header {
 
 func (c *BillingAccountsLogsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3457,6 +3678,7 @@ func (c *BillingAccountsSinksCreateCall) Header() http.Header {
 
 func (c *BillingAccountsSinksCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3601,6 +3823,7 @@ func (c *BillingAccountsSinksDeleteCall) Header() http.Header {
 
 func (c *BillingAccountsSinksDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3742,6 +3965,7 @@ func (c *BillingAccountsSinksGetCall) Header() http.Header {
 
 func (c *BillingAccountsSinksGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3907,6 +4131,7 @@ func (c *BillingAccountsSinksListCall) Header() http.Header {
 
 func (c *BillingAccountsSinksListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4043,7 +4268,7 @@ type BillingAccountsSinksPatchCall struct {
 
 // Patch: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *BillingAccountsSinksService) Patch(sinkNameid string, logsink *LogSink) *BillingAccountsSinksPatchCall {
 	c := &BillingAccountsSinksPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -4110,6 +4335,7 @@ func (c *BillingAccountsSinksPatchCall) Header() http.Header {
 
 func (c *BillingAccountsSinksPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4173,7 +4399,7 @@ func (c *BillingAccountsSinksPatchCall) Do(opts ...googleapi.CallOption) (*LogSi
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/billingAccounts/{billingAccountsId}/sinks/{sinksId}",
 	//   "httpMethod": "PATCH",
 	//   "id": "logging.billingAccounts.sinks.patch",
@@ -4228,7 +4454,7 @@ type BillingAccountsSinksUpdateCall struct {
 
 // Update: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *BillingAccountsSinksService) Update(sinkNameid string, logsink *LogSink) *BillingAccountsSinksUpdateCall {
 	c := &BillingAccountsSinksUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -4295,6 +4521,7 @@ func (c *BillingAccountsSinksUpdateCall) Header() http.Header {
 
 func (c *BillingAccountsSinksUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4358,7 +4585,7 @@ func (c *BillingAccountsSinksUpdateCall) Do(opts ...googleapi.CallOption) (*LogS
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/billingAccounts/{billingAccountsId}/sinks/{sinksId}",
 	//   "httpMethod": "PUT",
 	//   "id": "logging.billingAccounts.sinks.update",
@@ -4446,6 +4673,7 @@ func (c *EntriesListCall) Header() http.Header {
 
 func (c *EntriesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4599,6 +4827,7 @@ func (c *EntriesWriteCall) Header() http.Header {
 
 func (c *EntriesWriteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4729,6 +4958,7 @@ func (c *ExclusionsCreateCall) Header() http.Header {
 
 func (c *ExclusionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4867,6 +5097,7 @@ func (c *ExclusionsDeleteCall) Header() http.Header {
 
 func (c *ExclusionsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5008,6 +5239,7 @@ func (c *ExclusionsGetCall) Header() http.Header {
 
 func (c *ExclusionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5173,6 +5405,7 @@ func (c *ExclusionsListCall) Header() http.Header {
 
 func (c *ExclusionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5316,7 +5549,7 @@ func (r *ExclusionsService) Patch(name string, logexclusion *LogExclusion) *Excl
 }
 
 // UpdateMask sets the optional parameter "updateMask": Required. A
-// nonempty list of fields to change in the existing exclusion. New
+// non-empty list of fields to change in the existing exclusion. New
 // values for the fields are taken from the corresponding fields in the
 // LogExclusion included in this request. Fields not mentioned in
 // update_mask are not changed and are ignored in the request.For
@@ -5354,6 +5587,7 @@ func (c *ExclusionsPatchCall) Header() http.Header {
 
 func (c *ExclusionsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5433,7 +5667,7 @@ func (c *ExclusionsPatchCall) Do(opts ...googleapi.CallOption) (*LogExclusion, e
 	//       "type": "string"
 	//     },
 	//     "updateMask": {
-	//       "description": "Required. A nonempty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
+	//       "description": "Required. A non-empty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
 	//       "format": "google-fieldmask",
 	//       "location": "query",
 	//       "type": "string"
@@ -5502,6 +5736,7 @@ func (c *FoldersExclusionsCreateCall) Header() http.Header {
 
 func (c *FoldersExclusionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5640,6 +5875,7 @@ func (c *FoldersExclusionsDeleteCall) Header() http.Header {
 
 func (c *FoldersExclusionsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5781,6 +6017,7 @@ func (c *FoldersExclusionsGetCall) Header() http.Header {
 
 func (c *FoldersExclusionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5946,6 +6183,7 @@ func (c *FoldersExclusionsListCall) Header() http.Header {
 
 func (c *FoldersExclusionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6089,7 +6327,7 @@ func (r *FoldersExclusionsService) Patch(name string, logexclusion *LogExclusion
 }
 
 // UpdateMask sets the optional parameter "updateMask": Required. A
-// nonempty list of fields to change in the existing exclusion. New
+// non-empty list of fields to change in the existing exclusion. New
 // values for the fields are taken from the corresponding fields in the
 // LogExclusion included in this request. Fields not mentioned in
 // update_mask are not changed and are ignored in the request.For
@@ -6127,6 +6365,7 @@ func (c *FoldersExclusionsPatchCall) Header() http.Header {
 
 func (c *FoldersExclusionsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6206,7 +6445,7 @@ func (c *FoldersExclusionsPatchCall) Do(opts ...googleapi.CallOption) (*LogExclu
 	//       "type": "string"
 	//     },
 	//     "updateMask": {
-	//       "description": "Required. A nonempty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
+	//       "description": "Required. A non-empty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
 	//       "format": "google-fieldmask",
 	//       "location": "query",
 	//       "type": "string"
@@ -6239,7 +6478,8 @@ type FoldersLogsDeleteCall struct {
 
 // Delete: Deletes all the log entries in a log. The log reappears if it
 // receives new entries. Log entries written shortly before the delete
-// operation might not be deleted.
+// operation might not be deleted. Entries received after the delete
+// operation with a timestamp before the operation will be deleted.
 func (r *FoldersLogsService) Delete(logName string) *FoldersLogsDeleteCall {
 	c := &FoldersLogsDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.logName = logName
@@ -6273,6 +6513,7 @@ func (c *FoldersLogsDeleteCall) Header() http.Header {
 
 func (c *FoldersLogsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6331,7 +6572,7 @@ func (c *FoldersLogsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, error)
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted.",
+	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted. Entries received after the delete operation with a timestamp before the operation will be deleted.",
 	//   "flatPath": "v2/folders/{foldersId}/logs/{logsId}",
 	//   "httpMethod": "DELETE",
 	//   "id": "logging.folders.logs.delete",
@@ -6434,6 +6675,7 @@ func (c *FoldersLogsListCall) Header() http.Header {
 
 func (c *FoldersLogsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6623,6 +6865,7 @@ func (c *FoldersSinksCreateCall) Header() http.Header {
 
 func (c *FoldersSinksCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6767,6 +7010,7 @@ func (c *FoldersSinksDeleteCall) Header() http.Header {
 
 func (c *FoldersSinksDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6908,6 +7152,7 @@ func (c *FoldersSinksGetCall) Header() http.Header {
 
 func (c *FoldersSinksGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7073,6 +7318,7 @@ func (c *FoldersSinksListCall) Header() http.Header {
 
 func (c *FoldersSinksListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7209,7 +7455,7 @@ type FoldersSinksPatchCall struct {
 
 // Patch: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *FoldersSinksService) Patch(sinkNameid string, logsink *LogSink) *FoldersSinksPatchCall {
 	c := &FoldersSinksPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -7276,6 +7522,7 @@ func (c *FoldersSinksPatchCall) Header() http.Header {
 
 func (c *FoldersSinksPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7339,7 +7586,7 @@ func (c *FoldersSinksPatchCall) Do(opts ...googleapi.CallOption) (*LogSink, erro
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/folders/{foldersId}/sinks/{sinksId}",
 	//   "httpMethod": "PATCH",
 	//   "id": "logging.folders.sinks.patch",
@@ -7394,7 +7641,7 @@ type FoldersSinksUpdateCall struct {
 
 // Update: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *FoldersSinksService) Update(sinkNameid string, logsink *LogSink) *FoldersSinksUpdateCall {
 	c := &FoldersSinksUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -7461,6 +7708,7 @@ func (c *FoldersSinksUpdateCall) Header() http.Header {
 
 func (c *FoldersSinksUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7524,7 +7772,7 @@ func (c *FoldersSinksUpdateCall) Do(opts ...googleapi.CallOption) (*LogSink, err
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/folders/{foldersId}/sinks/{sinksId}",
 	//   "httpMethod": "PUT",
 	//   "id": "logging.folders.sinks.update",
@@ -7578,7 +7826,8 @@ type LogsDeleteCall struct {
 
 // Delete: Deletes all the log entries in a log. The log reappears if it
 // receives new entries. Log entries written shortly before the delete
-// operation might not be deleted.
+// operation might not be deleted. Entries received after the delete
+// operation with a timestamp before the operation will be deleted.
 func (r *LogsService) Delete(logName string) *LogsDeleteCall {
 	c := &LogsDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.logName = logName
@@ -7612,6 +7861,7 @@ func (c *LogsDeleteCall) Header() http.Header {
 
 func (c *LogsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7670,7 +7920,7 @@ func (c *LogsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, error) {
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted.",
+	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted. Entries received after the delete operation with a timestamp before the operation will be deleted.",
 	//   "flatPath": "v2/{v2Id}/{v2Id1}/logs/{logsId}",
 	//   "httpMethod": "DELETE",
 	//   "id": "logging.logs.delete",
@@ -7773,6 +8023,7 @@ func (c *LogsListCall) Header() http.Header {
 
 func (c *LogsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7969,6 +8220,7 @@ func (c *MonitoredResourceDescriptorsListCall) Header() http.Header {
 
 func (c *MonitoredResourceDescriptorsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8130,6 +8382,7 @@ func (c *OrganizationsExclusionsCreateCall) Header() http.Header {
 
 func (c *OrganizationsExclusionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8268,6 +8521,7 @@ func (c *OrganizationsExclusionsDeleteCall) Header() http.Header {
 
 func (c *OrganizationsExclusionsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8409,6 +8663,7 @@ func (c *OrganizationsExclusionsGetCall) Header() http.Header {
 
 func (c *OrganizationsExclusionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8574,6 +8829,7 @@ func (c *OrganizationsExclusionsListCall) Header() http.Header {
 
 func (c *OrganizationsExclusionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8717,7 +8973,7 @@ func (r *OrganizationsExclusionsService) Patch(name string, logexclusion *LogExc
 }
 
 // UpdateMask sets the optional parameter "updateMask": Required. A
-// nonempty list of fields to change in the existing exclusion. New
+// non-empty list of fields to change in the existing exclusion. New
 // values for the fields are taken from the corresponding fields in the
 // LogExclusion included in this request. Fields not mentioned in
 // update_mask are not changed and are ignored in the request.For
@@ -8755,6 +9011,7 @@ func (c *OrganizationsExclusionsPatchCall) Header() http.Header {
 
 func (c *OrganizationsExclusionsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8834,7 +9091,7 @@ func (c *OrganizationsExclusionsPatchCall) Do(opts ...googleapi.CallOption) (*Lo
 	//       "type": "string"
 	//     },
 	//     "updateMask": {
-	//       "description": "Required. A nonempty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
+	//       "description": "Required. A non-empty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
 	//       "format": "google-fieldmask",
 	//       "location": "query",
 	//       "type": "string"
@@ -8867,7 +9124,8 @@ type OrganizationsLogsDeleteCall struct {
 
 // Delete: Deletes all the log entries in a log. The log reappears if it
 // receives new entries. Log entries written shortly before the delete
-// operation might not be deleted.
+// operation might not be deleted. Entries received after the delete
+// operation with a timestamp before the operation will be deleted.
 func (r *OrganizationsLogsService) Delete(logName string) *OrganizationsLogsDeleteCall {
 	c := &OrganizationsLogsDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.logName = logName
@@ -8901,6 +9159,7 @@ func (c *OrganizationsLogsDeleteCall) Header() http.Header {
 
 func (c *OrganizationsLogsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8959,7 +9218,7 @@ func (c *OrganizationsLogsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, 
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted.",
+	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted. Entries received after the delete operation with a timestamp before the operation will be deleted.",
 	//   "flatPath": "v2/organizations/{organizationsId}/logs/{logsId}",
 	//   "httpMethod": "DELETE",
 	//   "id": "logging.organizations.logs.delete",
@@ -9062,6 +9321,7 @@ func (c *OrganizationsLogsListCall) Header() http.Header {
 
 func (c *OrganizationsLogsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9251,6 +9511,7 @@ func (c *OrganizationsSinksCreateCall) Header() http.Header {
 
 func (c *OrganizationsSinksCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9395,6 +9656,7 @@ func (c *OrganizationsSinksDeleteCall) Header() http.Header {
 
 func (c *OrganizationsSinksDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9536,6 +9798,7 @@ func (c *OrganizationsSinksGetCall) Header() http.Header {
 
 func (c *OrganizationsSinksGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9701,6 +9964,7 @@ func (c *OrganizationsSinksListCall) Header() http.Header {
 
 func (c *OrganizationsSinksListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9837,7 +10101,7 @@ type OrganizationsSinksPatchCall struct {
 
 // Patch: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *OrganizationsSinksService) Patch(sinkNameid string, logsink *LogSink) *OrganizationsSinksPatchCall {
 	c := &OrganizationsSinksPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -9904,6 +10168,7 @@ func (c *OrganizationsSinksPatchCall) Header() http.Header {
 
 func (c *OrganizationsSinksPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9967,7 +10232,7 @@ func (c *OrganizationsSinksPatchCall) Do(opts ...googleapi.CallOption) (*LogSink
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/organizations/{organizationsId}/sinks/{sinksId}",
 	//   "httpMethod": "PATCH",
 	//   "id": "logging.organizations.sinks.patch",
@@ -10022,7 +10287,7 @@ type OrganizationsSinksUpdateCall struct {
 
 // Update: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *OrganizationsSinksService) Update(sinkNameid string, logsink *LogSink) *OrganizationsSinksUpdateCall {
 	c := &OrganizationsSinksUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -10089,6 +10354,7 @@ func (c *OrganizationsSinksUpdateCall) Header() http.Header {
 
 func (c *OrganizationsSinksUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10152,7 +10418,7 @@ func (c *OrganizationsSinksUpdateCall) Do(opts ...googleapi.CallOption) (*LogSin
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/organizations/{organizationsId}/sinks/{sinksId}",
 	//   "httpMethod": "PUT",
 	//   "id": "logging.organizations.sinks.update",
@@ -10242,6 +10508,7 @@ func (c *ProjectsExclusionsCreateCall) Header() http.Header {
 
 func (c *ProjectsExclusionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10380,6 +10647,7 @@ func (c *ProjectsExclusionsDeleteCall) Header() http.Header {
 
 func (c *ProjectsExclusionsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10521,6 +10789,7 @@ func (c *ProjectsExclusionsGetCall) Header() http.Header {
 
 func (c *ProjectsExclusionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10686,6 +10955,7 @@ func (c *ProjectsExclusionsListCall) Header() http.Header {
 
 func (c *ProjectsExclusionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10829,7 +11099,7 @@ func (r *ProjectsExclusionsService) Patch(name string, logexclusion *LogExclusio
 }
 
 // UpdateMask sets the optional parameter "updateMask": Required. A
-// nonempty list of fields to change in the existing exclusion. New
+// non-empty list of fields to change in the existing exclusion. New
 // values for the fields are taken from the corresponding fields in the
 // LogExclusion included in this request. Fields not mentioned in
 // update_mask are not changed and are ignored in the request.For
@@ -10867,6 +11137,7 @@ func (c *ProjectsExclusionsPatchCall) Header() http.Header {
 
 func (c *ProjectsExclusionsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10946,7 +11217,7 @@ func (c *ProjectsExclusionsPatchCall) Do(opts ...googleapi.CallOption) (*LogExcl
 	//       "type": "string"
 	//     },
 	//     "updateMask": {
-	//       "description": "Required. A nonempty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
+	//       "description": "Required. A non-empty list of fields to change in the existing exclusion. New values for the fields are taken from the corresponding fields in the LogExclusion included in this request. Fields not mentioned in update_mask are not changed and are ignored in the request.For example, to change the filter and description of an exclusion, specify an update_mask of \"filter,description\".",
 	//       "format": "google-fieldmask",
 	//       "location": "query",
 	//       "type": "string"
@@ -10979,7 +11250,8 @@ type ProjectsLogsDeleteCall struct {
 
 // Delete: Deletes all the log entries in a log. The log reappears if it
 // receives new entries. Log entries written shortly before the delete
-// operation might not be deleted.
+// operation might not be deleted. Entries received after the delete
+// operation with a timestamp before the operation will be deleted.
 func (r *ProjectsLogsService) Delete(logName string) *ProjectsLogsDeleteCall {
 	c := &ProjectsLogsDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.logName = logName
@@ -11013,6 +11285,7 @@ func (c *ProjectsLogsDeleteCall) Header() http.Header {
 
 func (c *ProjectsLogsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11071,7 +11344,7 @@ func (c *ProjectsLogsDeleteCall) Do(opts ...googleapi.CallOption) (*Empty, error
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted.",
+	//   "description": "Deletes all the log entries in a log. The log reappears if it receives new entries. Log entries written shortly before the delete operation might not be deleted. Entries received after the delete operation with a timestamp before the operation will be deleted.",
 	//   "flatPath": "v2/projects/{projectsId}/logs/{logsId}",
 	//   "httpMethod": "DELETE",
 	//   "id": "logging.projects.logs.delete",
@@ -11174,6 +11447,7 @@ func (c *ProjectsLogsListCall) Header() http.Header {
 
 func (c *ProjectsLogsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11343,6 +11617,7 @@ func (c *ProjectsMetricsCreateCall) Header() http.Header {
 
 func (c *ProjectsMetricsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11482,6 +11757,7 @@ func (c *ProjectsMetricsDeleteCall) Header() http.Header {
 
 func (c *ProjectsMetricsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11624,6 +11900,7 @@ func (c *ProjectsMetricsGetCall) Header() http.Header {
 
 func (c *ProjectsMetricsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11789,6 +12066,7 @@ func (c *ProjectsMetricsListCall) Header() http.Header {
 
 func (c *ProjectsMetricsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11958,6 +12236,7 @@ func (c *ProjectsMetricsUpdateCall) Header() http.Header {
 
 func (c *ProjectsMetricsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -12119,6 +12398,7 @@ func (c *ProjectsSinksCreateCall) Header() http.Header {
 
 func (c *ProjectsSinksCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -12263,6 +12543,7 @@ func (c *ProjectsSinksDeleteCall) Header() http.Header {
 
 func (c *ProjectsSinksDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -12404,6 +12685,7 @@ func (c *ProjectsSinksGetCall) Header() http.Header {
 
 func (c *ProjectsSinksGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -12569,6 +12851,7 @@ func (c *ProjectsSinksListCall) Header() http.Header {
 
 func (c *ProjectsSinksListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -12705,7 +12988,7 @@ type ProjectsSinksPatchCall struct {
 
 // Patch: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *ProjectsSinksService) Patch(sinkNameid string, logsink *LogSink) *ProjectsSinksPatchCall {
 	c := &ProjectsSinksPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -12772,6 +13055,7 @@ func (c *ProjectsSinksPatchCall) Header() http.Header {
 
 func (c *ProjectsSinksPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -12835,7 +13119,7 @@ func (c *ProjectsSinksPatchCall) Do(opts ...googleapi.CallOption) (*LogSink, err
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/projects/{projectsId}/sinks/{sinksId}",
 	//   "httpMethod": "PATCH",
 	//   "id": "logging.projects.sinks.patch",
@@ -12890,7 +13174,7 @@ type ProjectsSinksUpdateCall struct {
 
 // Update: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *ProjectsSinksService) Update(sinkNameid string, logsink *LogSink) *ProjectsSinksUpdateCall {
 	c := &ProjectsSinksUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -12957,6 +13241,7 @@ func (c *ProjectsSinksUpdateCall) Header() http.Header {
 
 func (c *ProjectsSinksUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -13020,7 +13305,7 @@ func (c *ProjectsSinksUpdateCall) Do(opts ...googleapi.CallOption) (*LogSink, er
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/projects/{projectsId}/sinks/{sinksId}",
 	//   "httpMethod": "PUT",
 	//   "id": "logging.projects.sinks.update",
@@ -13128,6 +13413,7 @@ func (c *SinksCreateCall) Header() http.Header {
 
 func (c *SinksCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -13272,6 +13558,7 @@ func (c *SinksDeleteCall) Header() http.Header {
 
 func (c *SinksDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -13413,6 +13700,7 @@ func (c *SinksGetCall) Header() http.Header {
 
 func (c *SinksGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -13578,6 +13866,7 @@ func (c *SinksListCall) Header() http.Header {
 
 func (c *SinksListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -13714,7 +14003,7 @@ type SinksUpdateCall struct {
 
 // Update: Updates a sink. This method replaces the following fields in
 // the existing sink with values from the new sink: destination, and
-// filter. The updated sink might also have a new writer_identity; see
+// filter.The updated sink might also have a new writer_identity; see
 // the unique_writer_identity field.
 func (r *SinksService) Update(sinkNameid string, logsink *LogSink) *SinksUpdateCall {
 	c := &SinksUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
@@ -13781,6 +14070,7 @@ func (c *SinksUpdateCall) Header() http.Header {
 
 func (c *SinksUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -13844,7 +14134,7 @@ func (c *SinksUpdateCall) Do(opts ...googleapi.CallOption) (*LogSink, error) {
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter. The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
+	//   "description": "Updates a sink. This method replaces the following fields in the existing sink with values from the new sink: destination, and filter.The updated sink might also have a new writer_identity; see the unique_writer_identity field.",
 	//   "flatPath": "v2/{v2Id}/{v2Id1}/sinks/{sinksId}",
 	//   "httpMethod": "PUT",
 	//   "id": "logging.sinks.update",

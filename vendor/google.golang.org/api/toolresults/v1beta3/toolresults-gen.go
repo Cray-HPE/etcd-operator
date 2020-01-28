@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,35 @@
 
 // Package toolresults provides access to the Cloud Tool Results API.
 //
-// See https://firebase.google.com/docs/test-lab/
+// For product documentation, see: https://firebase.google.com/docs/test-lab/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/toolresults/v1beta3"
 //   ...
-//   toolresultsService, err := toolresults.New(oauthHttpClient)
+//   ctx := context.Background()
+//   toolresultsService, err := toolresults.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   toolresultsService, err := toolresults.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   toolresultsService, err := toolresults.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package toolresults // import "google.golang.org/api/toolresults/v1beta3"
 
 import (
@@ -27,8 +49,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -56,6 +80,32 @@ const (
 	CloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -107,6 +157,7 @@ type ProjectsHistoriesService struct {
 func NewProjectsHistoriesExecutionsService(s *Service) *ProjectsHistoriesExecutionsService {
 	rs := &ProjectsHistoriesExecutionsService{s: s}
 	rs.Clusters = NewProjectsHistoriesExecutionsClustersService(s)
+	rs.Environments = NewProjectsHistoriesExecutionsEnvironmentsService(s)
 	rs.Steps = NewProjectsHistoriesExecutionsStepsService(s)
 	return rs
 }
@@ -115,6 +166,8 @@ type ProjectsHistoriesExecutionsService struct {
 	s *Service
 
 	Clusters *ProjectsHistoriesExecutionsClustersService
+
+	Environments *ProjectsHistoriesExecutionsEnvironmentsService
 
 	Steps *ProjectsHistoriesExecutionsStepsService
 }
@@ -128,10 +181,20 @@ type ProjectsHistoriesExecutionsClustersService struct {
 	s *Service
 }
 
+func NewProjectsHistoriesExecutionsEnvironmentsService(s *Service) *ProjectsHistoriesExecutionsEnvironmentsService {
+	rs := &ProjectsHistoriesExecutionsEnvironmentsService{s: s}
+	return rs
+}
+
+type ProjectsHistoriesExecutionsEnvironmentsService struct {
+	s *Service
+}
+
 func NewProjectsHistoriesExecutionsStepsService(s *Service) *ProjectsHistoriesExecutionsStepsService {
 	rs := &ProjectsHistoriesExecutionsStepsService{s: s}
 	rs.PerfMetricsSummary = NewProjectsHistoriesExecutionsStepsPerfMetricsSummaryService(s)
 	rs.PerfSampleSeries = NewProjectsHistoriesExecutionsStepsPerfSampleSeriesService(s)
+	rs.TestCases = NewProjectsHistoriesExecutionsStepsTestCasesService(s)
 	rs.Thumbnails = NewProjectsHistoriesExecutionsStepsThumbnailsService(s)
 	return rs
 }
@@ -142,6 +205,8 @@ type ProjectsHistoriesExecutionsStepsService struct {
 	PerfMetricsSummary *ProjectsHistoriesExecutionsStepsPerfMetricsSummaryService
 
 	PerfSampleSeries *ProjectsHistoriesExecutionsStepsPerfSampleSeriesService
+
+	TestCases *ProjectsHistoriesExecutionsStepsTestCasesService
 
 	Thumbnails *ProjectsHistoriesExecutionsStepsThumbnailsService
 }
@@ -173,6 +238,15 @@ func NewProjectsHistoriesExecutionsStepsPerfSampleSeriesSamplesService(s *Servic
 }
 
 type ProjectsHistoriesExecutionsStepsPerfSampleSeriesSamplesService struct {
+	s *Service
+}
+
+func NewProjectsHistoriesExecutionsStepsTestCasesService(s *Service) *ProjectsHistoriesExecutionsStepsTestCasesService {
+	rs := &ProjectsHistoriesExecutionsStepsTestCasesService{s: s}
+	return rs
+}
+
+type ProjectsHistoriesExecutionsStepsTestCasesService struct {
 	s *Service
 }
 
@@ -691,7 +765,7 @@ func (s *CPUInfo) UnmarshalJSON(data []byte) error {
 // end.nanos - start.nanos;
 //
 // if (duration.seconds  0) { duration.seconds += 1; duration.nanos -=
-// 1000000000; } else if (durations.seconds > 0 && duration.nanos < 0) {
+// 1000000000; } else if (duration.seconds > 0 && duration.nanos < 0) {
 // duration.seconds -= 1; duration.nanos += 1000000000; }
 //
 // Example 2: Compute Timestamp from Timestamp + Duration in pseudo
@@ -755,6 +829,116 @@ type Duration struct {
 
 func (s *Duration) MarshalJSON() ([]byte, error) {
 	type NoMethod Duration
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// Environment: An Environment represents the set of test runs (Steps)
+// from the parent Execution that are configured with the same set of
+// dimensions (Model, Version, Locale, and Orientation). Multiple such
+// runs occur particularly because of features like sharding (splitting
+// up a test suite to run in parallel across devices) and reruns
+// (running a test multiple times to check for different outcomes).
+type Environment struct {
+	// CompletionTime: Output only. The time when the Environment status was
+	// set to complete.
+	//
+	// This value will be set automatically when state transitions to
+	// COMPLETE.
+	CompletionTime *Timestamp `json:"completionTime,omitempty"`
+
+	// CreationTime: Output only. The time when the Environment was created.
+	CreationTime *Timestamp `json:"creationTime,omitempty"`
+
+	// DimensionValue: Dimension values describing the environment.
+	// Dimension values always consist of "Model", "Version", "Locale", and
+	// "Orientation".
+	//
+	// - In response: always set - In create request: always set - In update
+	// request: never set
+	DimensionValue []*EnvironmentDimensionValueEntry `json:"dimensionValue,omitempty"`
+
+	// DisplayName: A short human-readable name to display in the UI.
+	// Maximum of 100 characters. For example: Nexus 5, API 27.
+	DisplayName string `json:"displayName,omitempty"`
+
+	// EnvironmentId: Output only. An Environment id.
+	EnvironmentId string `json:"environmentId,omitempty"`
+
+	// EnvironmentResult: Merged result of the environment.
+	EnvironmentResult *MergedResult `json:"environmentResult,omitempty"`
+
+	// ExecutionId: Output only. An Execution id.
+	ExecutionId string `json:"executionId,omitempty"`
+
+	// HistoryId: Output only. A History id.
+	HistoryId string `json:"historyId,omitempty"`
+
+	// ProjectId: Output only. A Project id.
+	ProjectId string `json:"projectId,omitempty"`
+
+	// ResultsStorage: The location where output files are stored in the
+	// user bucket.
+	ResultsStorage *ResultsStorage `json:"resultsStorage,omitempty"`
+
+	// ShardSummaries: Output only. Summaries of shards.
+	//
+	// Only one shard will present unless sharding feature is enabled in
+	// TestExecutionService.
+	ShardSummaries []*ShardSummary `json:"shardSummaries,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "CompletionTime") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CompletionTime") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *Environment) MarshalJSON() ([]byte, error) {
+	type NoMethod Environment
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type EnvironmentDimensionValueEntry struct {
+	Key string `json:"key,omitempty"`
+
+	Value string `json:"value,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Key") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Key") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *EnvironmentDimensionValueEntry) MarshalJSON() ([]byte, error) {
+	type NoMethod EnvironmentDimensionValueEntry
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -866,6 +1050,7 @@ func (s *Execution) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// FailureDetail: Details for an outcome with a FAILURE outcome summary.
 type FailureDetail struct {
 	// Crashed: If the failure was severe because the system (app) under
 	// test crashed.
@@ -1146,12 +1331,18 @@ func (s *Image) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// InconclusiveDetail: Details for an outcome with an INCONCLUSIVE
+// outcome summary.
 type InconclusiveDetail struct {
 	// AbortedByUser: If the end user aborted the test execution before a
 	// pass or fail could be determined. For example, the user pressed
 	// ctrl-c which sent a kill signal to the test runner while the test was
 	// running.
 	AbortedByUser bool `json:"abortedByUser,omitempty"`
+
+	// HasErrorLogs: If results are being provided to the user in certain
+	// cases of infrastructure failures
+	HasErrorLogs bool `json:"hasErrorLogs,omitempty"`
 
 	// InfrastructureFailure: If the test runner could not determine success
 	// or failure because the test depends on a component other than the
@@ -1180,6 +1371,108 @@ type InconclusiveDetail struct {
 
 func (s *InconclusiveDetail) MarshalJSON() ([]byte, error) {
 	type NoMethod InconclusiveDetail
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// IndividualOutcome: Step Id and outcome of each individual step that
+// was run as a group with other steps with the same configuration.
+type IndividualOutcome struct {
+	// MultistepNumber: Unique int given to each step. Ranges from
+	// 0(inclusive) to total number of steps(exclusive). The primary step is
+	// 0.
+	MultistepNumber int64 `json:"multistepNumber,omitempty"`
+
+	// Possible values:
+	//   "failure"
+	//   "flaky"
+	//   "inconclusive"
+	//   "skipped"
+	//   "success"
+	//   "unset"
+	OutcomeSummary string `json:"outcomeSummary,omitempty"`
+
+	// RunDuration: How long it took for this step to run.
+	RunDuration *Duration `json:"runDuration,omitempty"`
+
+	StepId string `json:"stepId,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "MultistepNumber") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "MultistepNumber") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *IndividualOutcome) MarshalJSON() ([]byte, error) {
+	type NoMethod IndividualOutcome
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// ListEnvironmentsResponse: Response message for
+// EnvironmentService.ListEnvironments.
+type ListEnvironmentsResponse struct {
+	// Environments: Environments.
+	//
+	// Always set.
+	Environments []*Environment `json:"environments,omitempty"`
+
+	// ExecutionId: A Execution id
+	//
+	// Always set.
+	ExecutionId string `json:"executionId,omitempty"`
+
+	// HistoryId: A History id.
+	//
+	// Always set.
+	HistoryId string `json:"historyId,omitempty"`
+
+	// NextPageToken: A continuation token to resume the query at the next
+	// item.
+	//
+	// Will only be set if there are more Environments to fetch.
+	NextPageToken string `json:"nextPageToken,omitempty"`
+
+	// ProjectId: A Project id.
+	//
+	// Always set.
+	ProjectId string `json:"projectId,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "Environments") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Environments") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ListEnvironmentsResponse) MarshalJSON() ([]byte, error) {
+	type NoMethod ListEnvironmentsResponse
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -1452,6 +1745,41 @@ func (s *ListStepsResponse) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// ListTestCasesResponse: Response message for
+// StepService.ListTestCases.
+type ListTestCasesResponse struct {
+	NextPageToken string `json:"nextPageToken,omitempty"`
+
+	// TestCases: List of test cases.
+	TestCases []*TestCase `json:"testCases,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "NextPageToken") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "NextPageToken") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ListTestCasesResponse) MarshalJSON() ([]byte, error) {
+	type NoMethod ListTestCasesResponse
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 type MemoryInfo struct {
 	// MemoryCapInKibibyte: Maximum memory that can be allocated to the
 	// process in KiB
@@ -1480,6 +1808,102 @@ type MemoryInfo struct {
 
 func (s *MemoryInfo) MarshalJSON() ([]byte, error) {
 	type NoMethod MemoryInfo
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// MergedResult: Merged test result for environment.
+//
+// If the environment has only one step (no reruns or shards), then the
+// merged result is the same as the step result. If the environment has
+// multiple shards and/or reruns, then the results of shards and reruns
+// that belong to the same environment are merged into one environment
+// result.
+type MergedResult struct {
+	// Outcome: Outcome of the resource
+	Outcome *Outcome `json:"outcome,omitempty"`
+
+	// State: State of the resource
+	//
+	// Possible values:
+	//   "complete"
+	//   "inProgress"
+	//   "pending"
+	//   "unknownState"
+	State string `json:"state,omitempty"`
+
+	// TestSuiteOverviews: The combined and rolled-up result of each test
+	// suite that was run as part of this environment.
+	//
+	// Combining: When the test cases from a suite are run in different
+	// steps (sharding), the results are added back together in one
+	// overview. (e.g., if shard1 has 2 failures and shard2 has 1 failure
+	// than the overview failure_count = 3).
+	//
+	// Rollup: When test cases from the same suite are run multiple times
+	// (flaky), the results are combined (e.g., if testcase1.run1 fails,
+	// testcase1.run2 passes, and both testcase2.run1 and testcase2.run2
+	// fail then the overview flaky_count = 1 and failure_count = 1).
+	TestSuiteOverviews []*TestSuiteOverview `json:"testSuiteOverviews,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Outcome") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Outcome") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *MergedResult) MarshalJSON() ([]byte, error) {
+	type NoMethod MergedResult
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// MultiStep: Details when multiple steps are run with the same
+// configuration as a group.
+type MultiStep struct {
+	// MultistepNumber: Unique int given to each step. Ranges from
+	// 0(inclusive) to total number of steps(exclusive). The primary step is
+	// 0.
+	MultistepNumber int64 `json:"multistepNumber,omitempty"`
+
+	// PrimaryStep: Present if it is a primary (original) step.
+	PrimaryStep *PrimaryStep `json:"primaryStep,omitempty"`
+
+	// PrimaryStepId: Step Id of the primary (original) step, which might be
+	// this step.
+	PrimaryStepId string `json:"primaryStepId,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "MultistepNumber") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "MultistepNumber") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *MultiStep) MarshalJSON() ([]byte, error) {
+	type NoMethod MultiStep
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -1526,6 +1950,7 @@ type Outcome struct {
 	//
 	// Possible values:
 	//   "failure"
+	//   "flaky"
 	//   "inconclusive"
 	//   "skipped"
 	//   "success"
@@ -1652,7 +2077,7 @@ func (s *PerfMetricsSummary) MarshalJSON() ([]byte, error) {
 // PerfSample: Resource representing a single performance measure or
 // data point
 type PerfSample struct {
-	// SampleTime: Timestamp of collection
+	// SampleTime: Timestamp of collection.
 	SampleTime *Timestamp `json:"sampleTime,omitempty"`
 
 	// Value: Value observed
@@ -1745,6 +2170,48 @@ func (s *PerfSampleSeries) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// PrimaryStep: Stores rollup test status of multiple steps that were
+// run as a group and outcome of each individual step.
+type PrimaryStep struct {
+	// IndividualOutcome: Step Id and outcome of each individual step.
+	IndividualOutcome []*IndividualOutcome `json:"individualOutcome,omitempty"`
+
+	// RollUp: Rollup test status of multiple steps that were run with the
+	// same configuration as a group.
+	//
+	// Possible values:
+	//   "failure"
+	//   "flaky"
+	//   "inconclusive"
+	//   "skipped"
+	//   "success"
+	//   "unset"
+	RollUp string `json:"rollUp,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "IndividualOutcome")
+	// to unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "IndividualOutcome") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *PrimaryStep) MarshalJSON() ([]byte, error) {
+	type NoMethod PrimaryStep
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // ProjectSettings: Per-project settings for the Tool Results service.
 type ProjectSettings struct {
 	// DefaultBucket: The name of the Google Cloud Storage bucket to which
@@ -1819,6 +2286,38 @@ type PublishXunitXmlFilesRequest struct {
 
 func (s *PublishXunitXmlFilesRequest) MarshalJSON() ([]byte, error) {
 	type NoMethod PublishXunitXmlFilesRequest
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// ResultsStorage: The storage for test results.
+type ResultsStorage struct {
+	// ResultsStoragePath: The root directory for test results.
+	ResultsStoragePath *FileReference `json:"resultsStoragePath,omitempty"`
+
+	// XunitXmlFile: The path to the Xunit XML file.
+	XunitXmlFile *FileReference `json:"xunitXmlFile,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ResultsStoragePath")
+	// to unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ResultsStoragePath") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ResultsStorage) MarshalJSON() ([]byte, error) {
+	type NoMethod ResultsStorage
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -1907,6 +2406,35 @@ func (s *ScreenshotCluster) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// ShardSummary: Result summary for a shard in an environment.
+type ShardSummary struct {
+	// ShardResult: Merged result of the shard.
+	ShardResult *MergedResult `json:"shardResult,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ShardResult") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ShardResult") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *ShardSummary) MarshalJSON() ([]byte, error) {
+	type NoMethod ShardSummary
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// SkippedDetail: Details for an outcome with a SKIPPED outcome summary.
 type SkippedDetail struct {
 	// IncompatibleAppVersion: If the App doesn't support the specific API
 	// level.
@@ -2005,60 +2533,13 @@ func (s *StackTrace) MarshalJSON() ([]byte, error) {
 
 // Status: The `Status` type defines a logical error model that is
 // suitable for different programming environments, including REST APIs
-// and RPC APIs. It is used by [gRPC](https://github.com/grpc). The
-// error model is designed to be:
+// and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each
+// `Status` message contains three pieces of data: error code, error
+// message, and error details.
 //
-// - Simple to use and understand for most users - Flexible enough to
-// meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message, and error details. The error code should be an enum value of
-// [google.rpc.Code][], but it may accept additional error codes if
-// needed. The error message should be a developer-facing English
-// message that helps developers *understand* and *resolve* the error.
-// If a localized user-facing error message is needed, put the localized
-// message in the error details or localize it in the client. The
-// optional error details may contain arbitrary information about the
-// error. There is a predefined set of error detail types in the package
-// `google.rpc` that can be used for common error conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it is not necessarily the actual wire format. When the
-// `Status` message is exposed in different client libraries and
-// different wire protocols, it can be mapped differently. For example,
-// it will likely be mapped to some exceptions in Java, but more likely
-// mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety of
-// environments, either with or without APIs, to provide a consistent
-// developer experience across different environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client, it may embed the `Status` in the normal response to indicate
-// the partial errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the `Status` message should be used directly inside batch
-// response, one for each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation results in its response, the status of those operations
-// should be represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could be used directly after any stripping needed for
-// security/privacy reasons.
+// You can find out more about this error model and how to work with it
+// in the [API Design
+// Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// [google.rpc.Code][].
@@ -2116,6 +2597,8 @@ func (s *Status) MarshalJSON() ([]byte, error) {
 //
 // A Step can be updated until its state is set to COMPLETE at which
 // points it becomes immutable.
+//
+// Next tag: 27
 type Step struct {
 	// CompletionTime: The time when the step status was set to
 	// complete.
@@ -2208,6 +2691,16 @@ type Step struct {
 	// request: optional; any new key/value pair will be added to the map,
 	// and any new value for an existing key will update that key's value
 	Labels []*StepLabelsEntry `json:"labels,omitempty"`
+
+	// MultiStep: Details when multiple steps are run with the same
+	// configuration as a group. These details can be used identify which
+	// group this step is part of. It also identifies the groups 'primary
+	// step' which indexes all the group members.
+	//
+	// - In response: present if previously set. - In create request:
+	// optional, set iff this step was performed more than once. - In update
+	// request: optional
+	MultiStep *MultiStep `json:"multiStep,omitempty"`
 
 	// Name: A short human-readable name to display in the UI. Maximum of
 	// 100 characters. For example: Clean build
@@ -2366,6 +2859,8 @@ func (s *StepLabelsEntry) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// SuccessDetail: Details for an outcome with a SUCCESS outcome summary.
+// LINT.IfChange
 type SuccessDetail struct {
 	// OtherNativeCrash: If a native process other than the app crashed.
 	OtherNativeCrash bool `json:"otherNativeCrash,omitempty"`
@@ -2390,6 +2885,88 @@ type SuccessDetail struct {
 
 func (s *SuccessDetail) MarshalJSON() ([]byte, error) {
 	type NoMethod SuccessDetail
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+type TestCase struct {
+	// ElapsedTime: The elapsed run time of the test case.
+	//
+	// Required.
+	ElapsedTime *Duration `json:"elapsedTime,omitempty"`
+
+	// EndTime: The end time of the test case.
+	//
+	// Optional.
+	EndTime *Timestamp `json:"endTime,omitempty"`
+
+	// SkippedMessage: Why the test case was skipped.
+	//
+	// Present only for skipped test case
+	SkippedMessage string `json:"skippedMessage,omitempty"`
+
+	// StackTraces: The stack trace details if the test case failed or
+	// encountered an error.
+	//
+	// The maximum size of the stack traces is 100KiB, beyond which the
+	// stack track will be truncated.
+	//
+	// Zero if the test case passed.
+	StackTraces []*StackTrace `json:"stackTraces,omitempty"`
+
+	// StartTime: The start time of the test case.
+	//
+	// Optional.
+	StartTime *Timestamp `json:"startTime,omitempty"`
+
+	// Status: The status of the test case.
+	//
+	// Required.
+	//
+	// Possible values:
+	//   "error"
+	//   "failed"
+	//   "flaky"
+	//   "passed"
+	//   "skipped"
+	Status string `json:"status,omitempty"`
+
+	// TestCaseId: A unique identifier within a Step for this Test Case.
+	TestCaseId string `json:"testCaseId,omitempty"`
+
+	// TestCaseReference: Test case reference, e.g. name, class name and
+	// test suite name.
+	//
+	// Required.
+	TestCaseReference *TestCaseReference `json:"testCaseReference,omitempty"`
+
+	// ToolOutputs: References to opaque files of any format output by the
+	// tool execution.
+	ToolOutputs []*ToolOutputReference `json:"toolOutputs,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "ElapsedTime") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ElapsedTime") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *TestCase) MarshalJSON() ([]byte, error) {
+	type NoMethod TestCase
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -2536,8 +3113,10 @@ type TestIssue struct {
 	// Possible values:
 	//   "anr"
 	//   "availableDeepLinks"
+	//   "blankScreen"
 	//   "compatibleWithOrchestrator"
 	//   "completeRoboScriptExecution"
+	//   "crashDialogError"
 	//   "encounteredLoginScreen"
 	//   "encounteredNonAndroidUiWidgetScreen"
 	//   "failedToInstall"
@@ -2549,13 +3128,17 @@ type TestIssue struct {
 	//   "iosException"
 	//   "launcherActivityNotFound"
 	//   "nativeCrash"
+	//   "nonSdkApiUsageReport"
 	//   "nonSdkApiUsageViolation"
+	//   "overlappingUiElements"
 	//   "performedGoogleLogin"
 	//   "performedMonkeyActions"
 	//   "startActivityNotFound"
+	//   "uiElementsTooDeep"
 	//   "unspecifiedType"
 	//   "unusedRoboDirective"
 	//   "usedRoboDirective"
+	//   "usedRoboIgnoreDirective"
 	Type string `json:"type,omitempty"`
 
 	// Warning: Warning message with additional details of the issue. Should
@@ -2592,6 +3175,9 @@ func (s *TestIssue) MarshalJSON() ([]byte, error) {
 // is also being used in ExecutionService in a read only mode for the
 // corresponding step.
 type TestSuiteOverview struct {
+	// ElapsedTime: Elapsed time of test suite.
+	ElapsedTime *Duration `json:"elapsedTime,omitempty"`
+
 	// ErrorCount: Number of test cases in error, typically set by the
 	// service by parsing the xml_source.
 	//
@@ -2603,6 +3189,13 @@ type TestSuiteOverview struct {
 	//
 	// - In create/response: always set - In update request: never
 	FailureCount int64 `json:"failureCount,omitempty"`
+
+	// FlakyCount: Number of flaky test cases, set by the service by rolling
+	// up flaky test attempts.
+	//
+	// Present only for rollup test suite overview at environment level. A
+	// step cannot have flaky test cases.
+	FlakyCount int64 `json:"flakyCount,omitempty"`
 
 	// Name: The name of the test suite.
 	//
@@ -2631,7 +3224,7 @@ type TestSuiteOverview struct {
 	// - In create/response: optional - In update request: never
 	XmlSource *FileReference `json:"xmlSource,omitempty"`
 
-	// ForceSendFields is a list of field names (e.g. "ErrorCount") to
+	// ForceSendFields is a list of field names (e.g. "ElapsedTime") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
 	// non-interface field appearing in ForceSendFields will be sent to the
@@ -2639,10 +3232,10 @@ type TestSuiteOverview struct {
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "ErrorCount") to include in
-	// API requests with the JSON null value. By default, fields with empty
-	// values are omitted from API requests. However, any field with an
-	// empty value appearing in NullFields will be sent to the server as
+	// NullFields is a list of field names (e.g. "ElapsedTime") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
 	// null. It is an error if a field in this list has a non-empty value.
 	// This may be used to include null fields in Patch requests.
 	NullFields []string `json:"-"`
@@ -3089,6 +3682,7 @@ func (c *ProjectsGetSettingsCall) Header() http.Header {
 
 func (c *ProjectsGetSettingsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3246,6 +3840,7 @@ func (c *ProjectsInitializeSettingsCall) Header() http.Header {
 
 func (c *ProjectsInitializeSettingsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3393,6 +3988,7 @@ func (c *ProjectsHistoriesCreateCall) Header() http.Header {
 
 func (c *ProjectsHistoriesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3552,6 +4148,7 @@ func (c *ProjectsHistoriesGetCall) Header() http.Header {
 
 func (c *ProjectsHistoriesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3736,6 +4333,7 @@ func (c *ProjectsHistoriesListCall) Header() http.Header {
 
 func (c *ProjectsHistoriesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3925,6 +4523,7 @@ func (c *ProjectsHistoriesExecutionsCreateCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4094,6 +4693,7 @@ func (c *ProjectsHistoriesExecutionsGetCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4280,6 +4880,7 @@ func (c *ProjectsHistoriesExecutionsListCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4474,6 +5075,7 @@ func (c *ProjectsHistoriesExecutionsPatchCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4647,6 +5249,7 @@ func (c *ProjectsHistoriesExecutionsClustersGetCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsClustersGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4821,6 +5424,7 @@ func (c *ProjectsHistoriesExecutionsClustersListCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsClustersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4920,6 +5524,403 @@ func (c *ProjectsHistoriesExecutionsClustersListCall) Do(opts ...googleapi.CallO
 
 }
 
+// method id "toolresults.projects.histories.executions.environments.get":
+
+type ProjectsHistoriesExecutionsEnvironmentsGetCall struct {
+	s             *Service
+	projectId     string
+	historyId     string
+	executionId   string
+	environmentId string
+	urlParams_    gensupport.URLParams
+	ifNoneMatch_  string
+	ctx_          context.Context
+	header_       http.Header
+}
+
+// Get: Gets an Environment.
+//
+// May return any of the following canonical error codes:
+//
+// - PERMISSION_DENIED - if the user is not authorized to read project -
+// INVALID_ARGUMENT - if the request is malformed - NOT_FOUND - if the
+// Environment does not exist
+func (r *ProjectsHistoriesExecutionsEnvironmentsService) Get(projectId string, historyId string, executionId string, environmentId string) *ProjectsHistoriesExecutionsEnvironmentsGetCall {
+	c := &ProjectsHistoriesExecutionsEnvironmentsGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.historyId = historyId
+	c.executionId = executionId
+	c.environmentId = environmentId
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsHistoriesExecutionsEnvironmentsGetCall) Fields(s ...googleapi.Field) *ProjectsHistoriesExecutionsEnvironmentsGetCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *ProjectsHistoriesExecutionsEnvironmentsGetCall) IfNoneMatch(entityTag string) *ProjectsHistoriesExecutionsEnvironmentsGetCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsHistoriesExecutionsEnvironmentsGetCall) Context(ctx context.Context) *ProjectsHistoriesExecutionsEnvironmentsGetCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsHistoriesExecutionsEnvironmentsGetCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsHistoriesExecutionsEnvironmentsGetCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "{projectId}/histories/{historyId}/executions/{executionId}/environments/{environmentId}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId":     c.projectId,
+		"historyId":     c.historyId,
+		"executionId":   c.executionId,
+		"environmentId": c.environmentId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "toolresults.projects.histories.executions.environments.get" call.
+// Exactly one of *Environment or error will be non-nil. Any non-2xx
+// status code is an error. Response headers are in either
+// *Environment.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *ProjectsHistoriesExecutionsEnvironmentsGetCall) Do(opts ...googleapi.CallOption) (*Environment, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &Environment{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Gets an Environment.\n\nMay return any of the following canonical error codes:\n\n- PERMISSION_DENIED - if the user is not authorized to read project - INVALID_ARGUMENT - if the request is malformed - NOT_FOUND - if the Environment does not exist",
+	//   "httpMethod": "GET",
+	//   "id": "toolresults.projects.histories.executions.environments.get",
+	//   "parameterOrder": [
+	//     "projectId",
+	//     "historyId",
+	//     "executionId",
+	//     "environmentId"
+	//   ],
+	//   "parameters": {
+	//     "environmentId": {
+	//       "description": "Required. An Environment id.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "executionId": {
+	//       "description": "Required. An Execution id.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "historyId": {
+	//       "description": "Required. A History id.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "projectId": {
+	//       "description": "Required. A Project id.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "{projectId}/histories/{historyId}/executions/{executionId}/environments/{environmentId}",
+	//   "response": {
+	//     "$ref": "Environment"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
+	// }
+
+}
+
+// method id "toolresults.projects.histories.executions.environments.list":
+
+type ProjectsHistoriesExecutionsEnvironmentsListCall struct {
+	s            *Service
+	projectId    string
+	historyId    string
+	executionId  string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// List: Lists Environments for a given Execution.
+//
+// The Environments are sorted by display name.
+//
+// May return any of the following canonical error codes:
+//
+// - PERMISSION_DENIED - if the user is not authorized to read project -
+// INVALID_ARGUMENT - if the request is malformed - NOT_FOUND - if the
+// containing Execution does not exist
+func (r *ProjectsHistoriesExecutionsEnvironmentsService) List(projectId string, historyId string, executionId string) *ProjectsHistoriesExecutionsEnvironmentsListCall {
+	c := &ProjectsHistoriesExecutionsEnvironmentsListCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.historyId = historyId
+	c.executionId = executionId
+	return c
+}
+
+// PageSize sets the optional parameter "pageSize": The maximum number
+// of Environments to fetch.
+//
+// Default value: 25. The server will use this default if the field is
+// not set or has a value of 0.
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) PageSize(pageSize int64) *ProjectsHistoriesExecutionsEnvironmentsListCall {
+	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
+	return c
+}
+
+// PageToken sets the optional parameter "pageToken": A continuation
+// token to resume the query at the next item.
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) PageToken(pageToken string) *ProjectsHistoriesExecutionsEnvironmentsListCall {
+	c.urlParams_.Set("pageToken", pageToken)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) Fields(s ...googleapi.Field) *ProjectsHistoriesExecutionsEnvironmentsListCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) IfNoneMatch(entityTag string) *ProjectsHistoriesExecutionsEnvironmentsListCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) Context(ctx context.Context) *ProjectsHistoriesExecutionsEnvironmentsListCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "{projectId}/histories/{historyId}/executions/{executionId}/environments")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId":   c.projectId,
+		"historyId":   c.historyId,
+		"executionId": c.executionId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "toolresults.projects.histories.executions.environments.list" call.
+// Exactly one of *ListEnvironmentsResponse or error will be non-nil.
+// Any non-2xx status code is an error. Response headers are in either
+// *ListEnvironmentsResponse.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) Do(opts ...googleapi.CallOption) (*ListEnvironmentsResponse, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &ListEnvironmentsResponse{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Lists Environments for a given Execution.\n\nThe Environments are sorted by display name.\n\nMay return any of the following canonical error codes:\n\n- PERMISSION_DENIED - if the user is not authorized to read project - INVALID_ARGUMENT - if the request is malformed - NOT_FOUND - if the containing Execution does not exist",
+	//   "httpMethod": "GET",
+	//   "id": "toolresults.projects.histories.executions.environments.list",
+	//   "parameterOrder": [
+	//     "projectId",
+	//     "historyId",
+	//     "executionId"
+	//   ],
+	//   "parameters": {
+	//     "executionId": {
+	//       "description": "Required. An Execution id.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "historyId": {
+	//       "description": "Required. A History id.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "pageSize": {
+	//       "description": "The maximum number of Environments to fetch.\n\nDefault value: 25. The server will use this default if the field is not set or has a value of 0.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
+	//     },
+	//     "pageToken": {
+	//       "description": "A continuation token to resume the query at the next item.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "projectId": {
+	//       "description": "Required. A Project id.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "{projectId}/histories/{historyId}/executions/{executionId}/environments",
+	//   "response": {
+	//     "$ref": "ListEnvironmentsResponse"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
+	// }
+
+}
+
+// Pages invokes f for each page of results.
+// A non-nil error returned from f will halt the iteration.
+// The provided context supersedes any context provided to the Context method.
+func (c *ProjectsHistoriesExecutionsEnvironmentsListCall) Pages(ctx context.Context, f func(*ListEnvironmentsResponse) error) error {
+	c.ctx_ = ctx
+	defer c.PageToken(c.urlParams_.Get("pageToken")) // reset paging to original point
+	for {
+		x, err := c.Do()
+		if err != nil {
+			return err
+		}
+		if err := f(x); err != nil {
+			return err
+		}
+		if x.NextPageToken == "" {
+			return nil
+		}
+		c.PageToken(x.NextPageToken)
+	}
+}
+
 // method id "toolresults.projects.histories.executions.steps.create":
 
 type ProjectsHistoriesExecutionsStepsCreateCall struct {
@@ -4989,6 +5990,7 @@ func (c *ProjectsHistoriesExecutionsStepsCreateCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsStepsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5064,19 +6066,19 @@ func (c *ProjectsHistoriesExecutionsStepsCreateCall) Do(opts ...googleapi.CallOp
 	//   ],
 	//   "parameters": {
 	//     "executionId": {
-	//       "description": "A Execution id.\n\nRequired.",
+	//       "description": "Required. An Execution id.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "historyId": {
-	//       "description": "A History id.\n\nRequired.",
+	//       "description": "Required. A History id.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     },
 	//     "projectId": {
-	//       "description": "A Project id.\n\nRequired.",
+	//       "description": "Required. A Project id.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -5168,6 +6170,7 @@ func (c *ProjectsHistoriesExecutionsStepsGetCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsStepsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5342,6 +6345,7 @@ func (c *ProjectsHistoriesExecutionsStepsGetPerfMetricsSummaryCall) Header() htt
 
 func (c *ProjectsHistoriesExecutionsStepsGetPerfMetricsSummaryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5540,6 +6544,7 @@ func (c *ProjectsHistoriesExecutionsStepsListCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsStepsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5746,6 +6751,7 @@ func (c *ProjectsHistoriesExecutionsStepsPatchCall) Header() http.Header {
 
 func (c *ProjectsHistoriesExecutionsStepsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5926,6 +6932,7 @@ func (c *ProjectsHistoriesExecutionsStepsPublishXunitXmlFilesCall) Header() http
 
 func (c *ProjectsHistoriesExecutionsStepsPublishXunitXmlFilesCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6097,6 +7104,7 @@ func (c *ProjectsHistoriesExecutionsStepsPerfMetricsSummaryCreateCall) Header() 
 
 func (c *ProjectsHistoriesExecutionsStepsPerfMetricsSummaryCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6268,6 +7276,7 @@ func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesCreateCall) Header() ht
 
 func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6449,6 +7458,7 @@ func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesGetCall) Header() http.
 
 func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6649,6 +7659,7 @@ func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesListCall) Header() http
 
 func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6842,6 +7853,7 @@ func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesSamplesBatchCreateCall)
 
 func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesSamplesBatchCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7053,6 +8065,7 @@ func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesSamplesListCall) Header
 
 func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesSamplesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7203,6 +8216,423 @@ func (c *ProjectsHistoriesExecutionsStepsPerfSampleSeriesSamplesListCall) Pages(
 	}
 }
 
+// method id "toolresults.projects.histories.executions.steps.testCases.get":
+
+type ProjectsHistoriesExecutionsStepsTestCasesGetCall struct {
+	s            *Service
+	projectId    string
+	historyId    string
+	executionId  string
+	stepId       string
+	testCaseId   string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// Get: Gets details of a Test Case for a Step. Experimental test cases
+// API. Still in active development.
+//
+// May return any of the following canonical error codes:
+//
+// - PERMISSION_DENIED - if the user is not authorized to write to
+// project - INVALID_ARGUMENT - if the request is malformed - NOT_FOUND
+// - if the containing Test Case does not exist
+func (r *ProjectsHistoriesExecutionsStepsTestCasesService) Get(projectId string, historyId string, executionId string, stepId string, testCaseId string) *ProjectsHistoriesExecutionsStepsTestCasesGetCall {
+	c := &ProjectsHistoriesExecutionsStepsTestCasesGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.historyId = historyId
+	c.executionId = executionId
+	c.stepId = stepId
+	c.testCaseId = testCaseId
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesGetCall) Fields(s ...googleapi.Field) *ProjectsHistoriesExecutionsStepsTestCasesGetCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesGetCall) IfNoneMatch(entityTag string) *ProjectsHistoriesExecutionsStepsTestCasesGetCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesGetCall) Context(ctx context.Context) *ProjectsHistoriesExecutionsStepsTestCasesGetCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesGetCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsHistoriesExecutionsStepsTestCasesGetCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "{projectId}/histories/{historyId}/executions/{executionId}/steps/{stepId}/testCases/{testCaseId}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId":   c.projectId,
+		"historyId":   c.historyId,
+		"executionId": c.executionId,
+		"stepId":      c.stepId,
+		"testCaseId":  c.testCaseId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "toolresults.projects.histories.executions.steps.testCases.get" call.
+// Exactly one of *TestCase or error will be non-nil. Any non-2xx status
+// code is an error. Response headers are in either
+// *TestCase.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
+// to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesGetCall) Do(opts ...googleapi.CallOption) (*TestCase, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &TestCase{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Gets details of a Test Case for a Step. Experimental test cases API. Still in active development.\n\nMay return any of the following canonical error codes:\n\n- PERMISSION_DENIED - if the user is not authorized to write to project - INVALID_ARGUMENT - if the request is malformed - NOT_FOUND - if the containing Test Case does not exist",
+	//   "httpMethod": "GET",
+	//   "id": "toolresults.projects.histories.executions.steps.testCases.get",
+	//   "parameterOrder": [
+	//     "projectId",
+	//     "historyId",
+	//     "executionId",
+	//     "stepId",
+	//     "testCaseId"
+	//   ],
+	//   "parameters": {
+	//     "executionId": {
+	//       "description": "A Execution id\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "historyId": {
+	//       "description": "A History id.\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "projectId": {
+	//       "description": "A Project id.\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "stepId": {
+	//       "description": "A Step id. Note: This step must include a TestExecutionStep.\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "testCaseId": {
+	//       "description": "A Test Case id.\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "{projectId}/histories/{historyId}/executions/{executionId}/steps/{stepId}/testCases/{testCaseId}",
+	//   "response": {
+	//     "$ref": "TestCase"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
+	// }
+
+}
+
+// method id "toolresults.projects.histories.executions.steps.testCases.list":
+
+type ProjectsHistoriesExecutionsStepsTestCasesListCall struct {
+	s            *Service
+	projectId    string
+	historyId    string
+	executionId  string
+	stepId       string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// List: Lists Test Cases attached to a Step. Experimental test cases
+// API. Still in active development.
+//
+// May return any of the following canonical error codes:
+//
+// - PERMISSION_DENIED - if the user is not authorized to write to
+// project - INVALID_ARGUMENT - if the request is malformed - NOT_FOUND
+// - if the containing Step does not exist
+func (r *ProjectsHistoriesExecutionsStepsTestCasesService) List(projectId string, historyId string, executionId string, stepId string) *ProjectsHistoriesExecutionsStepsTestCasesListCall {
+	c := &ProjectsHistoriesExecutionsStepsTestCasesListCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.historyId = historyId
+	c.executionId = executionId
+	c.stepId = stepId
+	return c
+}
+
+// PageSize sets the optional parameter "pageSize": The maximum number
+// of TestCases to fetch.
+//
+// Default value: 100. The server will use this default if the field is
+// not set or has a value of 0.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) PageSize(pageSize int64) *ProjectsHistoriesExecutionsStepsTestCasesListCall {
+	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
+	return c
+}
+
+// PageToken sets the optional parameter "pageToken": A continuation
+// token to resume the query at the next item.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) PageToken(pageToken string) *ProjectsHistoriesExecutionsStepsTestCasesListCall {
+	c.urlParams_.Set("pageToken", pageToken)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) Fields(s ...googleapi.Field) *ProjectsHistoriesExecutionsStepsTestCasesListCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) IfNoneMatch(entityTag string) *ProjectsHistoriesExecutionsStepsTestCasesListCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) Context(ctx context.Context) *ProjectsHistoriesExecutionsStepsTestCasesListCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "{projectId}/histories/{historyId}/executions/{executionId}/steps/{stepId}/testCases")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId":   c.projectId,
+		"historyId":   c.historyId,
+		"executionId": c.executionId,
+		"stepId":      c.stepId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "toolresults.projects.histories.executions.steps.testCases.list" call.
+// Exactly one of *ListTestCasesResponse or error will be non-nil. Any
+// non-2xx status code is an error. Response headers are in either
+// *ListTestCasesResponse.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) Do(opts ...googleapi.CallOption) (*ListTestCasesResponse, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &ListTestCasesResponse{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Lists Test Cases attached to a Step. Experimental test cases API. Still in active development.\n\nMay return any of the following canonical error codes:\n\n- PERMISSION_DENIED - if the user is not authorized to write to project - INVALID_ARGUMENT - if the request is malformed - NOT_FOUND - if the containing Step does not exist",
+	//   "httpMethod": "GET",
+	//   "id": "toolresults.projects.histories.executions.steps.testCases.list",
+	//   "parameterOrder": [
+	//     "projectId",
+	//     "historyId",
+	//     "executionId",
+	//     "stepId"
+	//   ],
+	//   "parameters": {
+	//     "executionId": {
+	//       "description": "A Execution id\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "historyId": {
+	//       "description": "A History id.\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "pageSize": {
+	//       "description": "The maximum number of TestCases to fetch.\n\nDefault value: 100. The server will use this default if the field is not set or has a value of 0.\n\nOptional.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
+	//     },
+	//     "pageToken": {
+	//       "description": "A continuation token to resume the query at the next item.\n\nOptional.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "projectId": {
+	//       "description": "A Project id.\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "stepId": {
+	//       "description": "A Step id. Note: This step must include a TestExecutionStep.\n\nRequired.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "{projectId}/histories/{historyId}/executions/{executionId}/steps/{stepId}/testCases",
+	//   "response": {
+	//     "$ref": "ListTestCasesResponse"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform"
+	//   ]
+	// }
+
+}
+
+// Pages invokes f for each page of results.
+// A non-nil error returned from f will halt the iteration.
+// The provided context supersedes any context provided to the Context method.
+func (c *ProjectsHistoriesExecutionsStepsTestCasesListCall) Pages(ctx context.Context, f func(*ListTestCasesResponse) error) error {
+	c.ctx_ = ctx
+	defer c.PageToken(c.urlParams_.Get("pageToken")) // reset paging to original point
+	for {
+		x, err := c.Do()
+		if err != nil {
+			return err
+		}
+		if err := f(x); err != nil {
+			return err
+		}
+		if x.NextPageToken == "" {
+			return nil
+		}
+		c.PageToken(x.NextPageToken)
+	}
+}
+
 // method id "toolresults.projects.histories.executions.steps.thumbnails.list":
 
 type ProjectsHistoriesExecutionsStepsThumbnailsListCall struct {
@@ -7287,6 +8717,7 @@ func (c *ProjectsHistoriesExecutionsStepsThumbnailsListCall) Header() http.Heade
 
 func (c *ProjectsHistoriesExecutionsStepsThumbnailsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,39 @@
 //
 // This package is DEPRECATED. Use package cloud.google.com/go/datastore instead.
 //
-// See https://cloud.google.com/datastore/
+// For product documentation, see: https://cloud.google.com/datastore/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/datastore/v1"
 //   ...
-//   datastoreService, err := datastore.New(oauthHttpClient)
+//   ctx := context.Background()
+//   datastoreService, err := datastore.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   datastoreService, err := datastore.NewService(ctx, option.WithScopes(datastore.DatastoreScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   datastoreService, err := datastore.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   datastoreService, err := datastore.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package datastore // import "google.golang.org/api/datastore/v1"
 
 import (
@@ -29,8 +55,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -61,6 +89,33 @@ const (
 	DatastoreScope = "https://www.googleapis.com/auth/datastore"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/datastore",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -120,8 +175,8 @@ type ProjectsOperationsService struct {
 
 // AllocateIdsRequest: The request for Datastore.AllocateIds.
 type AllocateIdsRequest struct {
-	// Keys: A list of keys with incomplete key paths for which to allocate
-	// IDs.
+	// Keys: Required. A list of keys with incomplete key paths for which to
+	// allocate IDs.
 	// No key may be reserved/read-only.
 	Keys []*Key `json:"keys,omitempty"`
 
@@ -283,8 +338,10 @@ type CommitRequest struct {
 	//   "MODE_UNSPECIFIED" - Unspecified. This value must not be used.
 	//   "TRANSACTIONAL" - Transactional: The mutations are either all
 	// applied, or none are applied.
-	// Learn about transactions
-	// [here](https://cloud.google.com/datastore/docs/concepts/transactions).
+	// Learn about
+	// transactions
+	// [here](https://cloud.google.com/datastore/docs/concepts/t
+	// ransactions).
 	//   "NON_TRANSACTIONAL" - Non-transactional: The mutations may not
 	// apply as all or none.
 	Mode string `json:"mode,omitempty"`
@@ -749,7 +806,7 @@ type GoogleDatastoreAdminV1ExportEntitiesRequest struct {
 	// Labels: Client-assigned labels.
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// OutputUrlPrefix: Location for the export metadata and data
+	// OutputUrlPrefix: Required. Location for the export metadata and data
 	// files.
 	//
 	// The full resource URL of the external storage location. Currently,
@@ -896,8 +953,8 @@ type GoogleDatastoreAdminV1ImportEntitiesRequest struct {
 	// specified then all entities from the export are imported.
 	EntityFilter *GoogleDatastoreAdminV1EntityFilter `json:"entityFilter,omitempty"`
 
-	// InputUrl: The full resource URL of the external storage location.
-	// Currently, only
+	// InputUrl: Required. The full resource URL of the external storage
+	// location. Currently, only
 	// Google Cloud Storage is supported. So input_url should be of the
 	// form:
 	// `gs://BUCKET_NAME[/NAMESPACE_PATH]/OVERALL_EXPORT_METADATA_FILE`
@@ -949,9 +1006,8 @@ func (s *GoogleDatastoreAdminV1ImportEntitiesRequest) MarshalJSON() ([]byte, err
 
 // GoogleDatastoreAdminV1Index: A minimal index definition.
 type GoogleDatastoreAdminV1Index struct {
-	// Ancestor: The index's ancestor mode.  Must not be
+	// Ancestor: Required. The index's ancestor mode.  Must not be
 	// ANCESTOR_MODE_UNSPECIFIED.
-	// Required.
 	//
 	// Possible values:
 	//   "ANCESTOR_MODE_UNSPECIFIED" - The ancestor mode is unspecified.
@@ -959,25 +1015,20 @@ type GoogleDatastoreAdminV1Index struct {
 	//   "ALL_ANCESTORS" - Include all the entity's ancestors in the index.
 	Ancestor string `json:"ancestor,omitempty"`
 
-	// IndexId: The resource ID of the index.
-	// Output only.
+	// IndexId: Output only. The resource ID of the index.
 	IndexId string `json:"indexId,omitempty"`
 
-	// Kind: The entity kind to which this index applies.
-	// Required.
+	// Kind: Required. The entity kind to which this index applies.
 	Kind string `json:"kind,omitempty"`
 
-	// ProjectId: Project ID.
-	// Output only.
+	// ProjectId: Output only. Project ID.
 	ProjectId string `json:"projectId,omitempty"`
 
-	// Properties: An ordered sequence of property names and their index
-	// attributes.
-	// Required.
+	// Properties: Required. An ordered sequence of property names and their
+	// index attributes.
 	Properties []*GoogleDatastoreAdminV1IndexedProperty `json:"properties,omitempty"`
 
-	// State: The state of the index.
-	// Output only.
+	// State: Output only. The state of the index.
 	//
 	// Possible values:
 	//   "STATE_UNSPECIFIED" - The state is unspecified.
@@ -1067,9 +1118,8 @@ func (s *GoogleDatastoreAdminV1IndexOperationMetadata) MarshalJSON() ([]byte, er
 
 // GoogleDatastoreAdminV1IndexedProperty: A property of an index.
 type GoogleDatastoreAdminV1IndexedProperty struct {
-	// Direction: The indexed property's direction.  Must not be
+	// Direction: Required. The indexed property's direction.  Must not be
 	// DIRECTION_UNSPECIFIED.
-	// Required.
 	//
 	// Possible values:
 	//   "DIRECTION_UNSPECIFIED" - The direction is unspecified.
@@ -1081,8 +1131,7 @@ type GoogleDatastoreAdminV1IndexedProperty struct {
 	// descending order and also query by <, >, <=, >=, and =.
 	Direction string `json:"direction,omitempty"`
 
-	// Name: The property name to index.
-	// Required.
+	// Name: Required. The property name to index.
 	Name string `json:"name,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Direction") to
@@ -1540,7 +1589,8 @@ type GoogleLongrunningOperation struct {
 	// service that
 	// originally returns it. If you use the default HTTP mapping,
 	// the
-	// `name` should have the format of `operations/some/unique/name`.
+	// `name` should be a resource name ending with
+	// `operations/{unique_id}`.
 	Name string `json:"name,omitempty"`
 
 	// Response: The normal response of the operation in case of success.
@@ -1587,9 +1637,10 @@ func (s *GoogleLongrunningOperation) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GqlQuery: A [GQL
-// query](https://cloud.google.com/datastore/docs/apis/gql/gql_reference)
-// .
+// GqlQuery: A
+// [GQL
+// query](https://cloud.google.com/datastore/docs/apis/gql/gql_refer
+// ence).
 type GqlQuery struct {
 	// AllowLiterals: When false, the query string must not contain any
 	// literals and instead must
@@ -1827,7 +1878,7 @@ func (s *LatLng) UnmarshalJSON(data []byte) error {
 
 // LookupRequest: The request for Datastore.Lookup.
 type LookupRequest struct {
-	// Keys: Keys of entities to look up.
+	// Keys: Required. Keys of entities to look up.
 	Keys []*Key `json:"keys,omitempty"`
 
 	// ReadOptions: The options for this lookup request.
@@ -2251,9 +2302,10 @@ type Query struct {
 	// EndCursor: An ending point for the query results. Query cursors
 	// are
 	// returned in query result batches and
-	// [can only be used to limit the same
-	// query](https://cloud.google.com/datastore/docs/concepts/queries#cursor
-	// s_limits_and_offsets).
+	// [can only be used to limit the
+	// same
+	// query](https://cloud.google.com/datastore/docs/concepts/queries#c
+	// ursors_limits_and_offsets).
 	EndCursor string `json:"endCursor,omitempty"`
 
 	// Filter: The filter to apply.
@@ -2287,9 +2339,10 @@ type Query struct {
 	// StartCursor: A starting point for the query results. Query cursors
 	// are
 	// returned in query result batches and
-	// [can only be used to continue the same
-	// query](https://cloud.google.com/datastore/docs/concepts/queries#cursor
-	// s_limits_and_offsets).
+	// [can only be used to continue the
+	// same
+	// query](https://cloud.google.com/datastore/docs/concepts/queries#c
+	// ursors_limits_and_offsets).
 	StartCursor string `json:"startCursor,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "DistinctOn") to
@@ -2483,8 +2536,8 @@ type ReserveIdsRequest struct {
 	// make the request.
 	DatabaseId string `json:"databaseId,omitempty"`
 
-	// Keys: A list of keys with complete key paths whose numeric IDs should
-	// not be
+	// Keys: Required. A list of keys with complete key paths whose numeric
+	// IDs should not be
 	// auto-allocated.
 	Keys []*Key `json:"keys,omitempty"`
 
@@ -2520,7 +2573,7 @@ type ReserveIdsResponse struct {
 
 // RollbackRequest: The request for Datastore.Rollback.
 type RollbackRequest struct {
-	// Transaction: The transaction identifier, returned by a call
+	// Transaction: Required. The transaction identifier, returned by a call
 	// to
 	// Datastore.BeginTransaction.
 	Transaction string `json:"transaction,omitempty"`
@@ -2635,84 +2688,17 @@ func (s *RunQueryResponse) MarshalJSON() ([]byte, error) {
 }
 
 // Status: The `Status` type defines a logical error model that is
-// suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -2942,6 +2928,7 @@ func (c *ProjectsAllocateIdsCall) Header() http.Header {
 
 func (c *ProjectsAllocateIdsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3014,7 +3001,7 @@ func (c *ProjectsAllocateIdsCall) Do(opts ...googleapi.CallOption) (*AllocateIds
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3081,6 +3068,7 @@ func (c *ProjectsBeginTransactionCall) Header() http.Header {
 
 func (c *ProjectsBeginTransactionCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3153,7 +3141,7 @@ func (c *ProjectsBeginTransactionCall) Do(opts ...googleapi.CallOption) (*BeginT
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3222,6 +3210,7 @@ func (c *ProjectsCommitCall) Header() http.Header {
 
 func (c *ProjectsCommitCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3294,7 +3283,7 @@ func (c *ProjectsCommitCall) Do(opts ...googleapi.CallOption) (*CommitResponse, 
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3375,6 +3364,7 @@ func (c *ProjectsExportCall) Header() http.Header {
 
 func (c *ProjectsExportCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3447,7 +3437,7 @@ func (c *ProjectsExportCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunnin
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "Project ID against which to make the request.",
+	//       "description": "Required. Project ID against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3523,6 +3513,7 @@ func (c *ProjectsImportCall) Header() http.Header {
 
 func (c *ProjectsImportCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3595,7 +3586,7 @@ func (c *ProjectsImportCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunnin
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "Project ID against which to make the request.",
+	//       "description": "Required. Project ID against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3662,6 +3653,7 @@ func (c *ProjectsLookupCall) Header() http.Header {
 
 func (c *ProjectsLookupCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3734,7 +3726,7 @@ func (c *ProjectsLookupCall) Do(opts ...googleapi.CallOption) (*LookupResponse, 
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3803,6 +3795,7 @@ func (c *ProjectsReserveIdsCall) Header() http.Header {
 
 func (c *ProjectsReserveIdsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3875,7 +3868,7 @@ func (c *ProjectsReserveIdsCall) Do(opts ...googleapi.CallOption) (*ReserveIdsRe
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -3942,6 +3935,7 @@ func (c *ProjectsRollbackCall) Header() http.Header {
 
 func (c *ProjectsRollbackCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4014,7 +4008,7 @@ func (c *ProjectsRollbackCall) Do(opts ...googleapi.CallOption) (*RollbackRespon
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -4081,6 +4075,7 @@ func (c *ProjectsRunQueryCall) Header() http.Header {
 
 func (c *ProjectsRunQueryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4153,7 +4148,7 @@ func (c *ProjectsRunQueryCall) Do(opts ...googleapi.CallOption) (*RunQueryRespon
 	//   ],
 	//   "parameters": {
 	//     "projectId": {
-	//       "description": "The ID of the project against which to make the request.",
+	//       "description": "Required. The ID of the project against which to make the request.",
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
@@ -4165,6 +4160,317 @@ func (c *ProjectsRunQueryCall) Do(opts ...googleapi.CallOption) (*RunQueryRespon
 	//   },
 	//   "response": {
 	//     "$ref": "RunQueryResponse"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/datastore"
+	//   ]
+	// }
+
+}
+
+// method id "datastore.projects.indexes.create":
+
+type ProjectsIndexesCreateCall struct {
+	s                           *Service
+	projectId                   string
+	googledatastoreadminv1index *GoogleDatastoreAdminV1Index
+	urlParams_                  gensupport.URLParams
+	ctx_                        context.Context
+	header_                     http.Header
+}
+
+// Create: Creates the specified index.
+// A newly created index's initial state is `CREATING`. On completion of
+// the
+// returned google.longrunning.Operation, the state will be `READY`.
+// If the index already exists, the call will return an
+// `ALREADY_EXISTS`
+// status.
+//
+// During index creation, the process could result in an error, in
+// which
+// case the index will move to the `ERROR` state. The process can be
+// recovered
+// by fixing the data that caused the error, removing the index
+// with
+// delete, then
+// re-creating the index with create.
+//
+// Indexes with a single property cannot be created.
+func (r *ProjectsIndexesService) Create(projectId string, googledatastoreadminv1index *GoogleDatastoreAdminV1Index) *ProjectsIndexesCreateCall {
+	c := &ProjectsIndexesCreateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.googledatastoreadminv1index = googledatastoreadminv1index
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsIndexesCreateCall) Fields(s ...googleapi.Field) *ProjectsIndexesCreateCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsIndexesCreateCall) Context(ctx context.Context) *ProjectsIndexesCreateCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsIndexesCreateCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsIndexesCreateCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.googledatastoreadminv1index)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/projects/{projectId}/indexes")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId": c.projectId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "datastore.projects.indexes.create" call.
+// Exactly one of *GoogleLongrunningOperation or error will be non-nil.
+// Any non-2xx status code is an error. Response headers are in either
+// *GoogleLongrunningOperation.ServerResponse.Header or (if a response
+// was returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsIndexesCreateCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunningOperation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleLongrunningOperation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Creates the specified index.\nA newly created index's initial state is `CREATING`. On completion of the\nreturned google.longrunning.Operation, the state will be `READY`.\nIf the index already exists, the call will return an `ALREADY_EXISTS`\nstatus.\n\nDuring index creation, the process could result in an error, in which\ncase the index will move to the `ERROR` state. The process can be recovered\nby fixing the data that caused the error, removing the index with\ndelete, then\nre-creating the index with create.\n\nIndexes with a single property cannot be created.",
+	//   "flatPath": "v1/projects/{projectId}/indexes",
+	//   "httpMethod": "POST",
+	//   "id": "datastore.projects.indexes.create",
+	//   "parameterOrder": [
+	//     "projectId"
+	//   ],
+	//   "parameters": {
+	//     "projectId": {
+	//       "description": "Project ID against which to make the request.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/projects/{projectId}/indexes",
+	//   "request": {
+	//     "$ref": "GoogleDatastoreAdminV1Index"
+	//   },
+	//   "response": {
+	//     "$ref": "GoogleLongrunningOperation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/datastore"
+	//   ]
+	// }
+
+}
+
+// method id "datastore.projects.indexes.delete":
+
+type ProjectsIndexesDeleteCall struct {
+	s          *Service
+	projectId  string
+	indexId    string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Delete: Deletes an existing index.
+// An index can only be deleted if it is in a `READY` or `ERROR` state.
+// On
+// successful execution of the request, the index will be in a
+// `DELETING`
+// state. And on completion of the
+// returned google.longrunning.Operation, the index will be
+// removed.
+//
+// During index deletion, the process could result in an error, in
+// which
+// case the index will move to the `ERROR` state. The process can be
+// recovered
+// by fixing the data that caused the error, followed by calling
+// delete again.
+func (r *ProjectsIndexesService) Delete(projectId string, indexId string) *ProjectsIndexesDeleteCall {
+	c := &ProjectsIndexesDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.indexId = indexId
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsIndexesDeleteCall) Fields(s ...googleapi.Field) *ProjectsIndexesDeleteCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsIndexesDeleteCall) Context(ctx context.Context) *ProjectsIndexesDeleteCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsIndexesDeleteCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsIndexesDeleteCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v1/projects/{projectId}/indexes/{indexId}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("DELETE", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId": c.projectId,
+		"indexId":   c.indexId,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "datastore.projects.indexes.delete" call.
+// Exactly one of *GoogleLongrunningOperation or error will be non-nil.
+// Any non-2xx status code is an error. Response headers are in either
+// *GoogleLongrunningOperation.ServerResponse.Header or (if a response
+// was returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsIndexesDeleteCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunningOperation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleLongrunningOperation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Deletes an existing index.\nAn index can only be deleted if it is in a `READY` or `ERROR` state. On\nsuccessful execution of the request, the index will be in a `DELETING`\nstate. And on completion of the\nreturned google.longrunning.Operation, the index will be removed.\n\nDuring index deletion, the process could result in an error, in which\ncase the index will move to the `ERROR` state. The process can be recovered\nby fixing the data that caused the error, followed by calling\ndelete again.",
+	//   "flatPath": "v1/projects/{projectId}/indexes/{indexId}",
+	//   "httpMethod": "DELETE",
+	//   "id": "datastore.projects.indexes.delete",
+	//   "parameterOrder": [
+	//     "projectId",
+	//     "indexId"
+	//   ],
+	//   "parameters": {
+	//     "indexId": {
+	//       "description": "The resource ID of the index to delete.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "projectId": {
+	//       "description": "Project ID against which to make the request.",
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v1/projects/{projectId}/indexes/{indexId}",
+	//   "response": {
+	//     "$ref": "GoogleLongrunningOperation"
 	//   },
 	//   "scopes": [
 	//     "https://www.googleapis.com/auth/cloud-platform",
@@ -4231,6 +4537,7 @@ func (c *ProjectsIndexesGetCall) Header() http.Header {
 
 func (c *ProjectsIndexesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4407,6 +4714,7 @@ func (c *ProjectsIndexesListCall) Header() http.Header {
 
 func (c *ProjectsIndexesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4594,6 +4902,7 @@ func (c *ProjectsOperationsCancelCall) Header() http.Header {
 
 func (c *ProjectsOperationsCancelCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4730,6 +5039,7 @@ func (c *ProjectsOperationsDeleteCall) Header() http.Header {
 
 func (c *ProjectsOperationsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4875,6 +5185,7 @@ func (c *ProjectsOperationsGetCall) Header() http.Header {
 
 func (c *ProjectsOperationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5056,6 +5367,7 @@ func (c *ProjectsOperationsListCall) Header() http.Header {
 
 func (c *ProjectsOperationsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

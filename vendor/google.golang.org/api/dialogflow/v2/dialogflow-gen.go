@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,39 @@
 //
 // This package is DEPRECATED. Use package cloud.google.com/go/dialogflow/apiv2 instead.
 //
-// See https://cloud.google.com/dialogflow-enterprise/
+// For product documentation, see: https://cloud.google.com/dialogflow/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/dialogflow/v2"
 //   ...
-//   dialogflowService, err := dialogflow.New(oauthHttpClient)
+//   ctx := context.Background()
+//   dialogflowService, err := dialogflow.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   dialogflowService, err := dialogflow.NewService(ctx, option.WithScopes(dialogflow.DialogflowScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   dialogflowService, err := dialogflow.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   dialogflowService, err := dialogflow.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package dialogflow // import "google.golang.org/api/dialogflow/v2"
 
 import (
@@ -29,8 +55,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -61,6 +89,33 @@ const (
 	DialogflowScope = "https://www.googleapis.com/auth/dialogflow"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/dialogflow",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -87,7 +142,8 @@ func (s *Service) userAgent() string {
 
 func NewProjectsService(s *Service) *ProjectsService {
 	rs := &ProjectsService{s: s}
-	rs.Agent = NewProjectsAgentService(s)
+	rs.Agent_ = NewProjectsAgentService(s)
+	rs.Locations = NewProjectsLocationsService(s)
 	rs.Operations = NewProjectsOperationsService(s)
 	return rs
 }
@@ -95,7 +151,9 @@ func NewProjectsService(s *Service) *ProjectsService {
 type ProjectsService struct {
 	s *Service
 
-	Agent *ProjectsAgentService
+	Agent_ *ProjectsAgentService
+
+	Locations *ProjectsLocationsService
 
 	Operations *ProjectsOperationsService
 }
@@ -181,6 +239,27 @@ type ProjectsAgentSessionsEntityTypesService struct {
 	s *Service
 }
 
+func NewProjectsLocationsService(s *Service) *ProjectsLocationsService {
+	rs := &ProjectsLocationsService{s: s}
+	rs.Operations = NewProjectsLocationsOperationsService(s)
+	return rs
+}
+
+type ProjectsLocationsService struct {
+	s *Service
+
+	Operations *ProjectsLocationsOperationsService
+}
+
+func NewProjectsLocationsOperationsService(s *Service) *ProjectsLocationsOperationsService {
+	rs := &ProjectsLocationsOperationsService{s: s}
+	return rs
+}
+
+type ProjectsLocationsOperationsService struct {
+	s *Service
+}
+
 func NewProjectsOperationsService(s *Service) *ProjectsOperationsService {
 	rs := &ProjectsOperationsService{s: s}
 	return rs
@@ -192,10 +271,27 @@ type ProjectsOperationsService struct {
 
 // GoogleCloudDialogflowV2Agent: Represents a conversational agent.
 type GoogleCloudDialogflowV2Agent struct {
+	// ApiVersion: Optional. API version displayed in Dialogflow console. If
+	// not specified,
+	// V2 API is assumed. Clients are free to query different service
+	// endpoints
+	// for different API versions. However, bots connectors and webhook
+	// calls will
+	// follow the specified API version.
+	//
+	// Possible values:
+	//   "API_VERSION_UNSPECIFIED" - Not specified.
+	//   "API_VERSION_V1" - Legacy V1 API.
+	//   "API_VERSION_V2" - V2 API.
+	//   "API_VERSION_V2_BETA_1" - V2beta1 API.
+	ApiVersion string `json:"apiVersion,omitempty"`
+
 	// AvatarUri: Optional. The URI of the agent's avatar.
 	// Avatars are used throughout the Dialogflow console and in the
 	// self-hosted
-	// [Web Demo](https://dialogflow.com/docs/integrations/web-demo)
+	// [Web
+	// Demo](https://cloud.google.com/dialogflow/docs/integr
+	// ations/web-demo)
 	// integration.
 	AvatarUri string `json:"avatarUri,omitempty"`
 
@@ -205,7 +301,7 @@ type GoogleCloudDialogflowV2Agent struct {
 	// machine
 	// learning classification threshold. If the returned score value is
 	// less than
-	// the threshold value, then a fallback intent is be triggered or, if
+	// the threshold value, then a fallback intent will be triggered or, if
 	// there
 	// are no fallback intents defined, no intent will be triggered. The
 	// score
@@ -215,11 +311,14 @@ type GoogleCloudDialogflowV2Agent struct {
 	ClassificationThreshold float64 `json:"classificationThreshold,omitempty"`
 
 	// DefaultLanguageCode: Required. The default language of the agent as a
-	// language tag. See
-	// [Language Support](https://dialogflow.com/docs/reference/language)
-	// for a
-	// list of the currently supported language codes.
-	// This field cannot be set by the `Update` method.
+	// language tag.
+	// See
+	// [Language
+	// Support](https://cloud.google.com/dialogflow/docs/refere
+	// nce/language)
+	// for a list of the currently supported language codes. This field
+	// cannot be
+	// set by the `Update` method.
 	DefaultLanguageCode string `json:"defaultLanguageCode,omitempty"`
 
 	// Description: Optional. The description of this agent.
@@ -256,6 +355,17 @@ type GoogleCloudDialogflowV2Agent struct {
 	// `default_language_code`).
 	SupportedLanguageCodes []string `json:"supportedLanguageCodes,omitempty"`
 
+	// Tier: Optional. The agent tier. If not specified, TIER_STANDARD is
+	// assumed.
+	//
+	// Possible values:
+	//   "TIER_UNSPECIFIED" - Not specified. This value should never be
+	// used.
+	//   "TIER_STANDARD" - Standard tier.
+	//   "TIER_ENTERPRISE" - Enterprise tier (Essentials).
+	//   "TIER_ENTERPRISE_PLUS" - Enterprise tier (Plus).
+	Tier string `json:"tier,omitempty"`
+
 	// TimeZone: Required. The time zone of this agent from the
 	// [time zone database](https://www.iana.org/time-zones),
 	// e.g.,
@@ -266,7 +376,7 @@ type GoogleCloudDialogflowV2Agent struct {
 	// server.
 	googleapi.ServerResponse `json:"-"`
 
-	// ForceSendFields is a list of field names (e.g. "AvatarUri") to
+	// ForceSendFields is a list of field names (e.g. "ApiVersion") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
 	// non-interface field appearing in ForceSendFields will be sent to the
@@ -274,7 +384,7 @@ type GoogleCloudDialogflowV2Agent struct {
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "AvatarUri") to include in
+	// NullFields is a list of field names (e.g. "ApiVersion") to include in
 	// API requests with the JSON null value. By default, fields with empty
 	// values are omitted from API requests. However, any field with an
 	// empty value appearing in NullFields will be sent to the server as
@@ -303,6 +413,62 @@ func (s *GoogleCloudDialogflowV2Agent) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// GoogleCloudDialogflowV2AnnotatedMessagePart: Represents a part of a
+// message possibly annotated with an entity. The part
+// can be an entity or purely a part of the message between two entities
+// or
+// message start/end.
+type GoogleCloudDialogflowV2AnnotatedMessagePart struct {
+	// EntityType: The [Dialogflow system
+	// entity
+	// type](https://cloud.google.com/dialogflow/docs/reference/system
+	// -entities)
+	// of this message part. If this is empty, Dialogflow could not annotate
+	// the
+	// phrase part with a system entity.
+	EntityType string `json:"entityType,omitempty"`
+
+	// FormattedValue: The [Dialogflow system entity formatted
+	// value
+	// ](https://cloud.google.com/dialogflow/docs/reference/system-enti
+	// ties) of
+	// this message part. For example for a system entity of
+	// type
+	// `@sys.unit-currency`, this may contain:
+	// <pre>
+	// {
+	//   "amount": 5,
+	//   "currency": "USD"
+	// }
+	// </pre>
+	FormattedValue interface{} `json:"formattedValue,omitempty"`
+
+	// Text: A part of a message possibly annotated with an entity.
+	Text string `json:"text,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "EntityType") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "EntityType") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2AnnotatedMessagePart) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2AnnotatedMessagePart
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2BatchCreateEntitiesRequest: The request
 // message for EntityTypes.BatchCreateEntities.
 type GoogleCloudDialogflowV2BatchCreateEntitiesRequest struct {
@@ -311,13 +477,14 @@ type GoogleCloudDialogflowV2BatchCreateEntitiesRequest struct {
 
 	// LanguageCode: Optional. The language of entity synonyms defined in
 	// `entities`. If not
-	// specified, the agent's default language is used.
-	// [More than a
-	// dozen
-	// languages](https://dialogflow.com/docs/reference/language) are
-	// supported.
-	// Note: languages must be enabled in the agent, before they can be
+	// specified, the agent's default language is
 	// used.
+	// [Many
+	// languages](https://cloud.google.com/dialogflow/docs/refere
+	// nce/language)
+	// are supported. Note: languages must be enabled in the agent before
+	// they can
+	// be used.
 	LanguageCode string `json:"languageCode,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Entities") to
@@ -355,13 +522,14 @@ type GoogleCloudDialogflowV2BatchDeleteEntitiesRequest struct {
 
 	// LanguageCode: Optional. The language of entity synonyms defined in
 	// `entities`. If not
-	// specified, the agent's default language is used.
-	// [More than a
-	// dozen
-	// languages](https://dialogflow.com/docs/reference/language) are
-	// supported.
-	// Note: languages must be enabled in the agent, before they can be
+	// specified, the agent's default language is
 	// used.
+	// [Many
+	// languages](https://cloud.google.com/dialogflow/docs/refere
+	// nce/language)
+	// are supported. Note: languages must be enabled in the agent before
+	// they can
+	// be used.
 	LanguageCode string `json:"languageCode,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "EntityValues") to
@@ -458,13 +626,14 @@ type GoogleCloudDialogflowV2BatchUpdateEntitiesRequest struct {
 
 	// LanguageCode: Optional. The language of entity synonyms defined in
 	// `entities`. If not
-	// specified, the agent's default language is used.
-	// [More than a
-	// dozen
-	// languages](https://dialogflow.com/docs/reference/language) are
-	// supported.
-	// Note: languages must be enabled in the agent, before they can be
+	// specified, the agent's default language is
 	// used.
+	// [Many
+	// languages](https://cloud.google.com/dialogflow/docs/refere
+	// nce/language)
+	// are supported. Note: languages must be enabled in the agent before
+	// they can
+	// be used.
 	LanguageCode string `json:"languageCode,omitempty"`
 
 	// UpdateMask: Optional. The mask to control which fields get updated.
@@ -511,13 +680,14 @@ type GoogleCloudDialogflowV2BatchUpdateEntityTypesRequest struct {
 
 	// LanguageCode: Optional. The language of entity synonyms defined in
 	// `entity_types`. If not
-	// specified, the agent's default language is used.
-	// [More than a
-	// dozen
-	// languages](https://dialogflow.com/docs/reference/language) are
-	// supported.
-	// Note: languages must be enabled in the agent, before they can be
+	// specified, the agent's default language is
 	// used.
+	// [Many
+	// languages](https://cloud.google.com/dialogflow/docs/refere
+	// nce/language)
+	// are supported. Note: languages must be enabled in the agent before
+	// they can
+	// be used.
 	LanguageCode string `json:"languageCode,omitempty"`
 
 	// UpdateMask: Optional. The mask to control which fields get updated.
@@ -603,12 +773,13 @@ type GoogleCloudDialogflowV2BatchUpdateIntentsRequest struct {
 	// and rich messages
 	// defined in `intents`. If not specified, the agent's default language
 	// is
-	// used. [More than a
-	// dozen
-	// languages](https://dialogflow.com/docs/reference/language) are
-	// supported.
-	// Note: languages must be enabled in the agent, before they can be
 	// used.
+	// [Many
+	// languages](https://cloud.google.com/dialogflow/docs/reference/la
+	// nguage)
+	// are supported. Note: languages must be enabled in the agent before
+	// they can
+	// be used.
 	LanguageCode string `json:"languageCode,omitempty"`
 
 	// UpdateMask: Optional. The mask to control which fields get updated.
@@ -673,7 +844,7 @@ type GoogleCloudDialogflowV2Context struct {
 	// after which the
 	// context expires. If set to `0` (the default) the context
 	// expires
-	// immediately. Contexts expire automatically after 20 minutes even if
+	// immediately. Contexts expire automatically after 20 minutes if
 	// there
 	// are no matching queries.
 	LifespanCount int64 `json:"lifespanCount,omitempty"`
@@ -690,9 +861,11 @@ type GoogleCloudDialogflowV2Context struct {
 
 	// Parameters: Optional. The collection of parameters associated with
 	// this context.
-	// Refer to [this
-	// doc](https://dialogflow.com/docs/actions-and-parameters) for
-	// syntax.
+	// Refer to
+	// [this
+	// doc](https://cloud.google.com/dialogflow/docs/intents-actions-pa
+	// rameters)
+	// for syntax.
 	Parameters googleapi.RawMessage `json:"parameters,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -722,6 +895,79 @@ func (s *GoogleCloudDialogflowV2Context) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2ConversationEvent: Represents a notification
+// sent to Cloud Pub/Sub subscribers for conversation
+// lifecycle events.
+type GoogleCloudDialogflowV2ConversationEvent struct {
+	// Conversation: The unique identifier of the conversation this
+	// notification
+	// refers to.
+	// Format: `projects/<Project ID>/conversations/<Conversation ID>`.
+	Conversation string `json:"conversation,omitempty"`
+
+	// ErrorStatus: More detailed information about an error. Only set for
+	// type
+	// UNRECOVERABLE_ERROR_IN_PHONE_CALL.
+	ErrorStatus *GoogleRpcStatus `json:"errorStatus,omitempty"`
+
+	// NewMessagePayload: Payload of NEW_MESSAGE event.
+	NewMessagePayload *GoogleCloudDialogflowV2Message `json:"newMessagePayload,omitempty"`
+
+	// Type: The type of the event that this notification refers to.
+	//
+	// Possible values:
+	//   "TYPE_UNSPECIFIED" - Type not set.
+	//   "CONVERSATION_STARTED" - A new conversation has been opened. This
+	// is fired when a telephone call
+	// is answered, or a conversation is created via the API.
+	//   "CONVERSATION_FINISHED" - An existing conversation has closed. This
+	// is fired when a telephone call
+	// is terminated, or a conversation is closed via the API.
+	//   "HUMAN_INTERVENTION_NEEDED" - An existing conversation has received
+	// notification from Dialogflow that
+	// human intervention is required.
+	//   "NEW_MESSAGE" - An existing conversation has received a new
+	// message, either from API or
+	// telephony. It is configured
+	// in
+	// ConversationProfile.new_message_event_notification_config
+	//   "UNRECOVERABLE_ERROR" - Unrecoverable error during a telephone
+	// call.
+	//
+	// In general non-recoverable errors only occur if something
+	// was
+	// misconfigured in the ConversationProfile corresponding to the call.
+	// After
+	// a non-recoverable error, Dialogflow may stop responding.
+	//
+	// We don't fire this event:
+	// * in an API call because we can directly return the error, or,
+	// * when we can recover from an error.
+	Type string `json:"type,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Conversation") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Conversation") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2ConversationEvent) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2ConversationEvent
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2DetectIntentRequest: The request to detect
 // user's intent.
 type GoogleCloudDialogflowV2DetectIntentRequest struct {
@@ -731,6 +977,13 @@ type GoogleCloudDialogflowV2DetectIntentRequest struct {
 	// config.
 	// A single request can contain up to 1 minute of speech audio data.
 	InputAudio string `json:"inputAudio,omitempty"`
+
+	// OutputAudioConfig: Optional. Instructs the speech synthesizer how to
+	// generate the output
+	// audio. If this field is not set and agent-level speech synthesizer is
+	// not
+	// configured, no output audio is generated.
+	OutputAudioConfig *GoogleCloudDialogflowV2OutputAudioConfig `json:"outputAudioConfig,omitempty"`
 
 	// QueryInput: Required. The input specification. It can be set to:
 	//
@@ -772,6 +1025,23 @@ func (s *GoogleCloudDialogflowV2DetectIntentRequest) MarshalJSON() ([]byte, erro
 // GoogleCloudDialogflowV2DetectIntentResponse: The message returned
 // from the DetectIntent method.
 type GoogleCloudDialogflowV2DetectIntentResponse struct {
+	// OutputAudio: The audio data bytes encoded as specified in the
+	// request.
+	// Note: The output audio is generated based on the values of default
+	// platform
+	// text responses found in the `query_result.fulfillment_messages`
+	// field. If
+	// multiple default text responses exist, they will be concatenated
+	// when
+	// generating audio. If no default platform text responses exist,
+	// the
+	// generated audio content will be empty.
+	OutputAudio string `json:"outputAudio,omitempty"`
+
+	// OutputAudioConfig: The config used by the speech synthesizer to
+	// generate the output audio.
+	OutputAudioConfig *GoogleCloudDialogflowV2OutputAudioConfig `json:"outputAudioConfig,omitempty"`
+
 	// QueryResult: The selected results of the conversational query or
 	// event processing.
 	// See `alternative_query_results` for additional potential results.
@@ -790,7 +1060,7 @@ type GoogleCloudDialogflowV2DetectIntentResponse struct {
 	// server.
 	googleapi.ServerResponse `json:"-"`
 
-	// ForceSendFields is a list of field names (e.g. "QueryResult") to
+	// ForceSendFields is a list of field names (e.g. "OutputAudio") to
 	// unconditionally include in API requests. By default, fields with
 	// empty values are omitted from API requests. However, any non-pointer,
 	// non-interface field appearing in ForceSendFields will be sent to the
@@ -798,7 +1068,7 @@ type GoogleCloudDialogflowV2DetectIntentResponse struct {
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
 
-	// NullFields is a list of field names (e.g. "QueryResult") to include
+	// NullFields is a list of field names (e.g. "OutputAudio") to include
 	// in API requests with the JSON null value. By default, fields with
 	// empty values are omitted from API requests. However, any field with
 	// an empty value appearing in NullFields will be sent to the server as
@@ -833,8 +1103,12 @@ type GoogleCloudDialogflowV2EntityType struct {
 	// DisplayName: Required. The name of the entity type.
 	DisplayName string `json:"displayName,omitempty"`
 
-	// Entities: Optional. The collection of entities associated with the
-	// entity type.
+	// EnableFuzzyExtraction: Optional. Enables fuzzy entity extraction
+	// during classification.
+	EnableFuzzyExtraction bool `json:"enableFuzzyExtraction,omitempty"`
+
+	// Entities: Optional. The collection of entity entries associated with
+	// the entity type.
 	Entities []*GoogleCloudDialogflowV2EntityTypeEntity `json:"entities,omitempty"`
 
 	// Kind: Required. Indicates the kind of entity type.
@@ -850,13 +1124,16 @@ type GoogleCloudDialogflowV2EntityType struct {
 	// values. However, list entity types can contain references to other
 	// entity
 	// types (with or without aliases).
+	//   "KIND_REGEXP" - Regexp entity types allow to specify regular
+	// expressions in entries
+	// values.
 	Kind string `json:"kind,omitempty"`
 
-	// Name: Required for all methods except `create` (`create` populates
-	// the name
-	// automatically.
-	// The unique identifier of the entity type. Format:
-	// `projects/<Project ID>/agent/entityTypes/<Entity Type ID>`.
+	// Name: The unique identifier of the entity type.
+	// Required for EntityTypes.UpdateEntityType
+	// and
+	// EntityTypes.BatchUpdateEntityTypes methods.
+	// Format: `projects/<Project ID>/agent/entityTypes/<Entity Type ID>`.
 	Name string `json:"name,omitempty"`
 
 	// ServerResponse contains the HTTP response code and headers from the
@@ -916,21 +1193,36 @@ func (s *GoogleCloudDialogflowV2EntityTypeBatch) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GoogleCloudDialogflowV2EntityTypeEntity: Optional. Represents an
-// entity.
+// GoogleCloudDialogflowV2EntityTypeEntity: An **entity entry** for an
+// associated entity type.
 type GoogleCloudDialogflowV2EntityTypeEntity struct {
-	// Synonyms: Required. A collection of synonyms. For `KIND_LIST` entity
-	// types this
-	// must contain exactly one synonym equal to `value`.
+	// Synonyms: Required. A collection of value synonyms. For example, if
+	// the entity type
+	// is *vegetable*, and `value` is *scallions*, a synonym could be
+	// *green
+	// onions*.
+	//
+	// For `KIND_LIST` entity types:
+	//
+	// *   This collection must contain exactly one synonym equal to
+	// `value`.
 	Synonyms []string `json:"synonyms,omitempty"`
 
-	// Value: Required.
+	// Value: Required. The primary value associated with this entity
+	// entry.
+	// For example, if the entity type is *vegetable*, the value could
+	// be
+	// *scallions*.
+	//
 	// For `KIND_MAP` entity types:
-	//   A canonical name to be used in place of synonyms.
+	//
+	// *   A canonical value to be used in place of synonyms.
+	//
 	// For `KIND_LIST` entity types:
-	//   A string that can contain references to other entity types (with
+	//
+	// *   A string that can contain references to other entity types (with
 	// or
-	//   without aliases).
+	//     without aliases).
 	Value string `json:"value,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Synonyms") to
@@ -959,20 +1251,21 @@ func (s *GoogleCloudDialogflowV2EntityTypeEntity) MarshalJSON() ([]byte, error) 
 // GoogleCloudDialogflowV2EventInput: Events allow for matching intents
 // by event name instead of the natural
 // language input. For instance, input `<event: { name:
-// “welcome_event”,
-// parameters: { name: “Sam” } }>` can trigger a personalized
-// welcome response.
+// "welcome_event",
+// parameters: { name: "Sam" } }>` can trigger a personalized welcome
+// response.
 // The parameter `name` may be used by the agent in the
 // response:
-// `“Hello #welcome_event.name! What can I do for you today?”`.
+// "Hello #welcome_event.name! What can I do for you today?".
 type GoogleCloudDialogflowV2EventInput struct {
 	// LanguageCode: Required. The language of this query. See
 	// [Language
-	// Support](https://dialogflow.com/docs/languages) for a list of
-	// the
-	// currently supported language codes. Note that queries in the same
-	// session
-	// do not necessarily need to specify the same language.
+	// Support](https://cloud.google.com/dialogflow/docs/reference/
+	// language)
+	// for a list of the currently supported language codes. Note that
+	// queries in
+	// the same session do not necessarily need to specify the same
+	// language.
 	LanguageCode string `json:"languageCode,omitempty"`
 
 	// Name: Required. The unique identifier of the event.
@@ -1008,8 +1301,8 @@ func (s *GoogleCloudDialogflowV2EventInput) MarshalJSON() ([]byte, error) {
 // GoogleCloudDialogflowV2ExportAgentRequest: The request message for
 // Agents.ExportAgent.
 type GoogleCloudDialogflowV2ExportAgentRequest struct {
-	// AgentUri: Optional. The
-	// [Google Cloud Storage](https://cloud.google.com/storage/docs/)
+	// AgentUri: Required. The [Google Cloud
+	// Storage](https://cloud.google.com/storage/docs/)
 	// URI to export the agent to.
 	// The format of this URI must be `gs://<bucket-name>/<object-name>`.
 	// If left unspecified, the serialized agent is returned inline.
@@ -1041,24 +1334,7 @@ func (s *GoogleCloudDialogflowV2ExportAgentRequest) MarshalJSON() ([]byte, error
 // GoogleCloudDialogflowV2ExportAgentResponse: The response message for
 // Agents.ExportAgent.
 type GoogleCloudDialogflowV2ExportAgentResponse struct {
-	// AgentContent: The exported agent.
-	//
-	// Example for how to export an agent to a zip file via a command
-	// line:
-	// <pre>curl \
-	//
-	// 'https://dialogflow.googleapis.com/v2/projects/&lt;project_name&gt;/ag
-	// ent:export'\
-	//   -X POST \
-	//   -H 'Authorization: Bearer '$(gcloud auth application-default
-	//   print-access-token) \
-	//   -H 'Accept: application/json' \
-	//   -H 'Content-Type: application/json' \
-	//   --compressed \
-	//   --data-binary '{}' \
-	// | grep agentContent | sed -e 's/.*"agentContent": "\([^"]*\)".*/\1/'
-	// \
-	// | base64 --decode > &lt;agent zip file&gt;</pre>
+	// AgentContent: Zip compressed raw byte content for agent.
 	AgentContent string `json:"agentContent,omitempty"`
 
 	// AgentUri: The URI to a file containing the exported agent. This field
@@ -1092,22 +1368,7 @@ func (s *GoogleCloudDialogflowV2ExportAgentResponse) MarshalJSON() ([]byte, erro
 // GoogleCloudDialogflowV2ImportAgentRequest: The request message for
 // Agents.ImportAgent.
 type GoogleCloudDialogflowV2ImportAgentRequest struct {
-	// AgentContent: The agent to import.
-	//
-	// Example for how to import an agent via the command line:
-	// <pre>curl \
-	//
-	// 'https://dialogflow.googleapis.com/v2/projects/&lt;project_name&gt;/ag
-	// ent:import\
-	//    -X POST \
-	//    -H 'Authorization: Bearer '$(gcloud auth application-default
-	//    print-access-token) \
-	//    -H 'Accept: application/json' \
-	//    -H 'Content-Type: application/json' \
-	//    --compressed \
-	//    --data-binary "{
-	//       'agentContent': '$(cat &lt;agent zip file&gt; | base64 -w 0)'
-	//    }"</pre>
+	// AgentContent: Zip compressed raw byte content for agent.
 	AgentContent string `json:"agentContent,omitempty"`
 
 	// AgentUri: The URI to a Google Cloud Storage file containing the agent
@@ -1198,21 +1459,63 @@ type GoogleCloudDialogflowV2InputAudioConfig struct {
 	// Dialogflow does not do
 	// translations. See
 	// [Language
-	// Support](https://dialogflow.com/docs/languages) for a list of
-	// the
-	// currently supported language codes. Note that queries in the same
-	// session
-	// do not necessarily need to specify the same language.
+	// Support](https://cloud.google.com/dialogflow/docs/reference/
+	// language)
+	// for a list of the currently supported language codes. Note that
+	// queries in
+	// the same session do not necessarily need to specify the same
+	// language.
 	LanguageCode string `json:"languageCode,omitempty"`
 
-	// PhraseHints: Optional. The collection of phrase hints which are used
-	// to boost accuracy
-	// of speech recognition.
-	// Refer to
-	// [Cloud Speech
-	// API
-	// documentation](https://cloud.google.com/speech-to-text/docs/basics
-	// #phrase-hints)
+	// ModelVariant: Optional. Which variant of the Speech model to use.
+	//
+	// Possible values:
+	//   "SPEECH_MODEL_VARIANT_UNSPECIFIED" - No model variant specified. In
+	// this case Dialogflow defaults to
+	// USE_BEST_AVAILABLE.
+	//   "USE_BEST_AVAILABLE" - Use the best available variant of the
+	// Speech
+	// model that the caller is eligible for.
+	//
+	// Please see the
+	// [Dialogflow
+	// docs](https://cloud.google.com/dialogflow/docs/data-loggin
+	// g) for
+	// how to make your project eligible for enhanced models.
+	//   "USE_STANDARD" - Use standard model variant even if an enhanced
+	// model is available.  See the
+	// [Cloud
+	// Speech
+	// documentation](https://cloud.google.com/speech-to-text/docs/enh
+	// anced-models)
+	// for details about enhanced models.
+	//   "USE_ENHANCED" - Use an enhanced model variant:
+	//
+	// * If an enhanced variant does not exist for the given
+	//   model and request language, Dialogflow falls
+	//   back to the standard variant.
+	//
+	//   The [Cloud Speech
+	//
+	// documentation](https://cloud.google.com/speech-to-text/docs/enhanced-m
+	// odels)
+	//   describes which models have enhanced variants.
+	//
+	// * If the API caller isn't eligible for enhanced models, Dialogflow
+	// returns
+	//   an error. Please see the [Dialogflow
+	//   docs](https://cloud.google.com/dialogflow/docs/data-logging)
+	//   for how to make your project eligible.
+	ModelVariant string `json:"modelVariant,omitempty"`
+
+	// PhraseHints: Optional. A list of strings containing words and phrases
+	// that the speech
+	// recognizer should recognize with higher likelihood.
+	//
+	// See [the Cloud
+	// Speech
+	// documentation](https://cloud.google.com/speech-to-text/docs/bas
+	// ics#phrase-hints)
 	// for more details.
 	PhraseHints []string `json:"phraseHints,omitempty"`
 
@@ -1225,6 +1528,24 @@ type GoogleCloudDialogflowV2InputAudioConfig struct {
 	// ) for
 	// more details.
 	SampleRateHertz int64 `json:"sampleRateHertz,omitempty"`
+
+	// SingleUtterance: Optional. If `false` (default), recognition does not
+	// cease until the
+	// client closes the stream.
+	// If `true`, the recognizer will detect a single spoken utterance in
+	// input
+	// audio. Recognition ceases when it detects the audio's voice
+	// has
+	// stopped or paused. In this case, once a detected intent is received,
+	// the
+	// client should close the stream and start a new request with a new
+	// stream as
+	// needed.
+	// Note: This setting is relevant only for streaming methods.
+	// Note: When specified, InputAudioConfig.single_utterance takes
+	// precedence
+	// over StreamingDetectIntentRequest.single_utterance.
+	SingleUtterance bool `json:"singleUtterance,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "AudioEncoding") to
 	// unconditionally include in API requests. By default, fields with
@@ -1260,8 +1581,9 @@ type GoogleCloudDialogflowV2Intent struct {
 	Action string `json:"action,omitempty"`
 
 	// DefaultResponsePlatforms: Optional. The list of platforms for which
-	// the first response will be
-	// taken from among the messages assigned to the DEFAULT_PLATFORM.
+	// the first responses will be
+	// copied from the messages in PLATFORM_UNSPECIFIED (i.e. default
+	// platform).
 	//
 	// Possible values:
 	//   "PLATFORM_UNSPECIFIED" - Not specified.
@@ -1340,6 +1662,7 @@ type GoogleCloudDialogflowV2Intent struct {
 	//     "intent": "actions.intent.OPTION"
 	//   }
 	// }</pre>
+	//   "GOOGLE_HANGOUTS" - Google Hangouts.
 	DefaultResponsePlatforms []string `json:"defaultResponsePlatforms,omitempty"`
 
 	// DisplayName: Required. The name of this intent.
@@ -1376,17 +1699,17 @@ type GoogleCloudDialogflowV2Intent struct {
 
 	// MlDisabled: Optional. Indicates whether Machine Learning is disabled
 	// for the intent.
-	// Note: If `ml_diabled` setting is set to true, then this intent is
+	// Note: If `ml_disabled` setting is set to true, then this intent is
 	// not
 	// taken into account during inference in `ML ONLY` match mode.
 	// Also,
 	// auto-markup in the UI is turned off.
 	MlDisabled bool `json:"mlDisabled,omitempty"`
 
-	// Name: Required for all methods except `create` (`create` populates
-	// the name
-	// automatically.
-	// The unique identifier of this intent.
+	// Name: The unique identifier of this intent.
+	// Required for Intents.UpdateIntent and
+	// Intents.BatchUpdateIntents
+	// methods.
 	// Format: `projects/<Project ID>/agent/intents/<Intent ID>`.
 	Name string `json:"name,omitempty"`
 
@@ -1418,11 +1741,13 @@ type GoogleCloudDialogflowV2Intent struct {
 
 	// Priority: Optional. The priority of this intent. Higher numbers
 	// represent higher
-	// priorities. If this is zero or unspecified, we use the
-	// default
-	// priority 500000.
+	// priorities.
 	//
-	// Negative numbers mean that the intent is disabled.
+	// - If the supplied value is unspecified or 0, the service
+	//   translates the value to 500,000, which corresponds to the
+	//   `Normal` priority in the console.
+	// - If the supplied value is negative, the intent is ignored
+	//   in runtime detect intent requests.
 	Priority int64 `json:"priority,omitempty"`
 
 	// ResetContexts: Optional. Indicates whether to delete all contexts in
@@ -1439,8 +1764,8 @@ type GoogleCloudDialogflowV2Intent struct {
 	// Format: `projects/<Project ID>/agent/intents/<Intent ID>`.
 	RootFollowupIntentName string `json:"rootFollowupIntentName,omitempty"`
 
-	// TrainingPhrases: Optional. The collection of examples/templates that
-	// the agent is
+	// TrainingPhrases: Optional. The collection of examples that the agent
+	// is
 	// trained on.
 	TrainingPhrases []*GoogleCloudDialogflowV2IntentTrainingPhrase `json:"trainingPhrases,omitempty"`
 
@@ -1556,6 +1881,9 @@ type GoogleCloudDialogflowV2IntentMessage struct {
 	// BasicCard: The basic card response for Actions on Google.
 	BasicCard *GoogleCloudDialogflowV2IntentMessageBasicCard `json:"basicCard,omitempty"`
 
+	// BrowseCarouselCard: Browse carousel card for Actions on Google.
+	BrowseCarouselCard *GoogleCloudDialogflowV2IntentMessageBrowseCarouselCard `json:"browseCarouselCard,omitempty"`
+
 	// Card: The card response.
 	Card *GoogleCloudDialogflowV2IntentMessageCard `json:"card,omitempty"`
 
@@ -1571,6 +1899,9 @@ type GoogleCloudDialogflowV2IntentMessage struct {
 
 	// ListSelect: The list card response for Actions on Google.
 	ListSelect *GoogleCloudDialogflowV2IntentMessageListSelect `json:"listSelect,omitempty"`
+
+	// MediaContent: The media content card for Actions on Google.
+	MediaContent *GoogleCloudDialogflowV2IntentMessageMediaContent `json:"mediaContent,omitempty"`
 
 	// Payload: Returns a response containing a custom, platform-specific
 	// payload.
@@ -1658,6 +1989,7 @@ type GoogleCloudDialogflowV2IntentMessage struct {
 	//     "intent": "actions.intent.OPTION"
 	//   }
 	// }</pre>
+	//   "GOOGLE_HANGOUTS" - Google Hangouts.
 	Platform string `json:"platform,omitempty"`
 
 	// QuickReplies: The quick replies response.
@@ -1669,6 +2001,9 @@ type GoogleCloudDialogflowV2IntentMessage struct {
 
 	// Suggestions: The suggestion chips for Actions on Google.
 	Suggestions *GoogleCloudDialogflowV2IntentMessageSuggestions `json:"suggestions,omitempty"`
+
+	// TableCard: Table card for Actions on Google.
+	TableCard *GoogleCloudDialogflowV2IntentMessageTableCard `json:"tableCard,omitempty"`
 
 	// Text: The text response.
 	Text *GoogleCloudDialogflowV2IntentMessageText `json:"text,omitempty"`
@@ -1800,6 +2135,158 @@ func (s *GoogleCloudDialogflowV2IntentMessageBasicCardButtonOpenUriAction) Marsh
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2IntentMessageBrowseCarouselCard: Browse
+// Carousel Card for Actions on
+// Google.
+// https://developers.google.com/actions/assistant/responses#brow
+// sing_carousel
+type GoogleCloudDialogflowV2IntentMessageBrowseCarouselCard struct {
+	// ImageDisplayOptions: Optional. Settings for displaying the image.
+	// Applies to every image in
+	// items.
+	//
+	// Possible values:
+	//   "IMAGE_DISPLAY_OPTIONS_UNSPECIFIED" - Fill the gaps between the
+	// image and the image container with gray
+	// bars.
+	//   "GRAY" - Fill the gaps between the image and the image container
+	// with gray
+	// bars.
+	//   "WHITE" - Fill the gaps between the image and the image container
+	// with white
+	// bars.
+	//   "CROPPED" - Image is scaled such that the image width and height
+	// match or exceed
+	// the container dimensions. This may crop the top and bottom of
+	// the
+	// image if the scaled image height is greater than the
+	// container
+	// height, or crop the left and right of the image if the scaled
+	// image
+	// width is greater than the container width. This is similar to
+	// "Zoom
+	// Mode" on a widescreen TV when playing a 4:3 video.
+	//   "BLURRED_BACKGROUND" - Pad the gaps between image and image frame
+	// with a blurred copy of the
+	// same image.
+	ImageDisplayOptions string `json:"imageDisplayOptions,omitempty"`
+
+	// Items: Required. List of items in the Browse Carousel Card. Minimum
+	// of two
+	// items, maximum of ten.
+	Items []*GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCardItem `json:"items,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ImageDisplayOptions")
+	// to unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ImageDisplayOptions") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageBrowseCarouselCard) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageBrowseCarouselCard
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCa
+// rdItem: Browsing carousel tile
+type GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCardItem struct {
+	// Description: Optional. Description of the carousel item. Maximum of
+	// four lines of
+	// text.
+	Description string `json:"description,omitempty"`
+
+	// Footer: Optional. Text that appears at the bottom of the Browse
+	// Carousel
+	// Card. Maximum of one line of text.
+	Footer string `json:"footer,omitempty"`
+
+	// Image: Optional. Hero image for the carousel item.
+	Image *GoogleCloudDialogflowV2IntentMessageImage `json:"image,omitempty"`
+
+	// OpenUriAction: Required. Action to present to the user.
+	OpenUriAction *GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCardItemOpenUrlAction `json:"openUriAction,omitempty"`
+
+	// Title: Required. Title of the carousel item. Maximum of two lines of
+	// text.
+	Title string `json:"title,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Description") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Description") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCardItem) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCardItem
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCa
+// rdItemOpenUrlAction: Actions on Google action to open a given url.
+type GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCardItemOpenUrlAction struct {
+	// Url: Required. URL
+	Url string `json:"url,omitempty"`
+
+	// UrlTypeHint: Optional. Specifies the type of viewer that is used when
+	// opening
+	// the URL. Defaults to opening via web browser.
+	//
+	// Possible values:
+	//   "URL_TYPE_HINT_UNSPECIFIED" - Unspecified
+	//   "AMP_ACTION" - Url would be an amp action
+	//   "AMP_CONTENT" - URL that points directly to AMP content, or to a
+	// canonical URL
+	// which refers to AMP content via <link rel="amphtml">.
+	UrlTypeHint string `json:"urlTypeHint,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Url") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Url") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCardItemOpenUrlAction) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageBrowseCarouselCardBrowseCarouselCardItemOpenUrlAction
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2IntentMessageCard: The card response message.
 type GoogleCloudDialogflowV2IntentMessageCard struct {
 	// Buttons: Optional. The collection of card buttons.
@@ -1837,8 +2324,8 @@ func (s *GoogleCloudDialogflowV2IntentMessageCard) MarshalJSON() ([]byte, error)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GoogleCloudDialogflowV2IntentMessageCardButton: Optional. Contains
-// information about a button.
+// GoogleCloudDialogflowV2IntentMessageCardButton: Contains information
+// about a button.
 type GoogleCloudDialogflowV2IntentMessageCardButton struct {
 	// Postback: Optional. The text to send back to the Dialogflow API or a
 	// URI to
@@ -1938,6 +2425,46 @@ func (s *GoogleCloudDialogflowV2IntentMessageCarouselSelectItem) MarshalJSON() (
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2IntentMessageColumnProperties: Column
+// properties for TableCard.
+type GoogleCloudDialogflowV2IntentMessageColumnProperties struct {
+	// Header: Required. Column heading.
+	Header string `json:"header,omitempty"`
+
+	// HorizontalAlignment: Optional. Defines text alignment for all cells
+	// in this column.
+	//
+	// Possible values:
+	//   "HORIZONTAL_ALIGNMENT_UNSPECIFIED" - Text is aligned to the leading
+	// edge of the column.
+	//   "LEADING" - Text is aligned to the leading edge of the column.
+	//   "CENTER" - Text is centered in the column.
+	//   "TRAILING" - Text is aligned to the trailing edge of the column.
+	HorizontalAlignment string `json:"horizontalAlignment,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Header") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Header") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageColumnProperties) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageColumnProperties
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2IntentMessageImage: The image response
 // message.
 type GoogleCloudDialogflowV2IntentMessageImage struct {
@@ -2016,6 +2543,9 @@ type GoogleCloudDialogflowV2IntentMessageListSelect struct {
 	// Items: Required. List items.
 	Items []*GoogleCloudDialogflowV2IntentMessageListSelectItem `json:"items,omitempty"`
 
+	// Subtitle: Optional. Subtitle of the list.
+	Subtitle string `json:"subtitle,omitempty"`
+
 	// Title: Optional. The overall title of the list.
 	Title string `json:"title,omitempty"`
 
@@ -2076,6 +2606,83 @@ type GoogleCloudDialogflowV2IntentMessageListSelectItem struct {
 
 func (s *GoogleCloudDialogflowV2IntentMessageListSelectItem) MarshalJSON() ([]byte, error) {
 	type NoMethod GoogleCloudDialogflowV2IntentMessageListSelectItem
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2IntentMessageMediaContent: The media content
+// card for Actions on Google.
+type GoogleCloudDialogflowV2IntentMessageMediaContent struct {
+	// MediaObjects: Required. List of media objects.
+	MediaObjects []*GoogleCloudDialogflowV2IntentMessageMediaContentResponseMediaObject `json:"mediaObjects,omitempty"`
+
+	// MediaType: Optional. What type of media is the content (ie "audio").
+	//
+	// Possible values:
+	//   "RESPONSE_MEDIA_TYPE_UNSPECIFIED" - Unspecified.
+	//   "AUDIO" - Response media type is audio.
+	MediaType string `json:"mediaType,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "MediaObjects") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "MediaObjects") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageMediaContent) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageMediaContent
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2IntentMessageMediaContentResponseMediaObject:
+// Response media object for media content card.
+type GoogleCloudDialogflowV2IntentMessageMediaContentResponseMediaObject struct {
+	// ContentUrl: Required. Url where the media is stored.
+	ContentUrl string `json:"contentUrl,omitempty"`
+
+	// Description: Optional. Description of media card.
+	Description string `json:"description,omitempty"`
+
+	// Icon: Optional. Icon to display above media content.
+	Icon *GoogleCloudDialogflowV2IntentMessageImage `json:"icon,omitempty"`
+
+	// LargeImage: Optional. Image to display above media content.
+	LargeImage *GoogleCloudDialogflowV2IntentMessageImage `json:"largeImage,omitempty"`
+
+	// Name: Required. Name of media card.
+	Name string `json:"name,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ContentUrl") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ContentUrl") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageMediaContentResponseMediaObject) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageMediaContentResponseMediaObject
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -2284,6 +2891,112 @@ func (s *GoogleCloudDialogflowV2IntentMessageSuggestions) MarshalJSON() ([]byte,
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2IntentMessageTableCard: Table card for Actions
+// on Google.
+type GoogleCloudDialogflowV2IntentMessageTableCard struct {
+	// Buttons: Optional. List of buttons for the card.
+	Buttons []*GoogleCloudDialogflowV2IntentMessageBasicCardButton `json:"buttons,omitempty"`
+
+	// ColumnProperties: Optional. Display properties for the columns in
+	// this table.
+	ColumnProperties []*GoogleCloudDialogflowV2IntentMessageColumnProperties `json:"columnProperties,omitempty"`
+
+	// Image: Optional. Image which should be displayed on the card.
+	Image *GoogleCloudDialogflowV2IntentMessageImage `json:"image,omitempty"`
+
+	// Rows: Optional. Rows in this table of data.
+	Rows []*GoogleCloudDialogflowV2IntentMessageTableCardRow `json:"rows,omitempty"`
+
+	// Subtitle: Optional. Subtitle to the title.
+	Subtitle string `json:"subtitle,omitempty"`
+
+	// Title: Required. Title of the card.
+	Title string `json:"title,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Buttons") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Buttons") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageTableCard) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageTableCard
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2IntentMessageTableCardCell: Cell of
+// TableCardRow.
+type GoogleCloudDialogflowV2IntentMessageTableCardCell struct {
+	// Text: Required. Text in this cell.
+	Text string `json:"text,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Text") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Text") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageTableCardCell) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageTableCardCell
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2IntentMessageTableCardRow: Row of TableCard.
+type GoogleCloudDialogflowV2IntentMessageTableCardRow struct {
+	// Cells: Optional. List of cells that make up this row.
+	Cells []*GoogleCloudDialogflowV2IntentMessageTableCardCell `json:"cells,omitempty"`
+
+	// DividerAfter: Optional. Whether to add a visual divider after this
+	// row.
+	DividerAfter bool `json:"dividerAfter,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Cells") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Cells") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2IntentMessageTableCardRow) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2IntentMessageTableCardRow
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2IntentMessageText: The text response message.
 type GoogleCloudDialogflowV2IntentMessageText struct {
 	// Text: Optional. The collection of the agent's responses.
@@ -2347,7 +3060,7 @@ type GoogleCloudDialogflowV2IntentParameter struct {
 
 	// Prompts: Optional. The collection of prompts that the agent can
 	// present to the
-	// user in order to collect value for the parameter.
+	// user in order to collect a value for the parameter.
 	Prompts []string `json:"prompts,omitempty"`
 
 	// Value: Optional. The definition of the parameter value. It can be:
@@ -2382,21 +3095,44 @@ func (s *GoogleCloudDialogflowV2IntentParameter) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GoogleCloudDialogflowV2IntentTrainingPhrase: Represents an example or
-// template that the agent is trained on.
+// GoogleCloudDialogflowV2IntentTrainingPhrase: Represents an example
+// that the agent is trained on.
 type GoogleCloudDialogflowV2IntentTrainingPhrase struct {
 	// Name: Output only. The unique identifier of this training phrase.
 	Name string `json:"name,omitempty"`
 
-	// Parts: Required. The collection of training phrase parts (can be
-	// annotated).
-	// Fields: `entity_type`, `alias` and `user_defined` should be
-	// populated
-	// only for the annotated parts of the training phrase.
+	// Parts: Required. The ordered list of training phrase parts.
+	// The parts are concatenated in order to form the training
+	// phrase.
+	//
+	// Note: The API does not automatically annotate training phrases like
+	// the
+	// Dialogflow Console does.
+	//
+	// Note: Do not forget to include whitespace at part boundaries,
+	// so the training phrase is well formatted when the parts are
+	// concatenated.
+	//
+	// If the training phrase does not need to be annotated with
+	// parameters,
+	// you just need a single part with only the Part.text field set.
+	//
+	// If you want to annotate the training phrase, you must create
+	// multiple
+	// parts, where the fields of each part are populated in one of two
+	// ways:
+	//
+	// -   `Part.text` is set to a part of the phrase that has no
+	// parameters.
+	// -   `Part.text` is set to a part of the phrase that you want to
+	// annotate,
+	//     and the `entity_type`, `alias`, and `user_defined` fields are
+	// all
+	//     set.
 	Parts []*GoogleCloudDialogflowV2IntentTrainingPhrasePart `json:"parts,omitempty"`
 
-	// TimesAddedCount: Optional. Indicates how many times this example or
-	// template was added to
+	// TimesAddedCount: Optional. Indicates how many times this example was
+	// added to
 	// the intent. Each time a developer adds an existing sample by editing
 	// an
 	// intent or training, this counter is increased.
@@ -2413,6 +3149,13 @@ type GoogleCloudDialogflowV2IntentTrainingPhrase struct {
 	//   "TEMPLATE" - Templates are not annotated with entity types, but
 	// they can contain
 	// @-prefixed entity type names as substrings.
+	// Template mode has been deprecated. Example mode is the only
+	// supported
+	// way to create new training phrases. If you have existing
+	// training
+	// phrases that you've created in template mode, those will continue
+	// to
+	// work.
 	Type string `json:"type,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Name") to
@@ -2444,23 +3187,23 @@ type GoogleCloudDialogflowV2IntentTrainingPhrasePart struct {
 	// Alias: Optional. The parameter name for the value extracted from
 	// the
 	// annotated part of the example.
+	// This field is required for annotated parts of the training phrase.
 	Alias string `json:"alias,omitempty"`
 
-	// EntityType: Optional. The entity type name prefixed with `@`. This
-	// field is
-	// required for the annotated part of the text and applies only
-	// to
-	// examples.
+	// EntityType: Optional. The entity type name prefixed with `@`.
+	// This field is required for annotated parts of the training phrase.
 	EntityType string `json:"entityType,omitempty"`
 
-	// Text: Required. The text corresponding to the example or template,
-	// if there are no annotations. For
-	// annotated examples, it is the text for one of the example's parts.
+	// Text: Required. The text for this part.
 	Text string `json:"text,omitempty"`
 
 	// UserDefined: Optional. Indicates whether the text was manually
-	// annotated by the
-	// developer.
+	// annotated.
+	// This field is set to true when the Dialogflow Console is used
+	// to
+	// manually annotate the part. When creating an annotated part with
+	// the
+	// API, you must set this to true.
 	UserDefined bool `json:"userDefined,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Alias") to
@@ -2646,6 +3389,106 @@ func (s *GoogleCloudDialogflowV2ListSessionEntityTypesResponse) MarshalJSON() ([
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2Message: Represents a message posted into a
+// conversation.
+type GoogleCloudDialogflowV2Message struct {
+	// Content: Required. The message content.
+	Content string `json:"content,omitempty"`
+
+	// CreateTime: Output only. The time when the message was created.
+	CreateTime string `json:"createTime,omitempty"`
+
+	// LanguageCode: Optional. The message language.
+	// This should be a
+	// [BCP-47](https://www.rfc-editor.org/rfc/bcp/bcp47.txt)
+	// language tag. Example: "en-US".
+	LanguageCode string `json:"languageCode,omitempty"`
+
+	// MessageAnnotation: Output only. The annotation for the message.
+	MessageAnnotation *GoogleCloudDialogflowV2MessageAnnotation `json:"messageAnnotation,omitempty"`
+
+	// Name: The unique identifier of the message.
+	// Format: `projects/<Project
+	// ID>/conversations/<Conversation
+	// ID>/messages/<Message ID>`.
+	Name string `json:"name,omitempty"`
+
+	// Participant: Output only. The participant that sends this message.
+	Participant string `json:"participant,omitempty"`
+
+	// ParticipantRole: Output only. The role of the participant.
+	//
+	// Possible values:
+	//   "ROLE_UNSPECIFIED" - Participant role not set.
+	//   "HUMAN_AGENT" - Participant is a human agent.
+	//   "AUTOMATED_AGENT" - Participant is an automated agent, such as a
+	// Dialogflow agent.
+	//   "END_USER" - Participant is an end user that has called or chatted
+	// with
+	// Dialogflow services.
+	ParticipantRole string `json:"participantRole,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Content") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Content") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2Message) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2Message
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2MessageAnnotation: Represents the result of
+// annotation for the message.
+type GoogleCloudDialogflowV2MessageAnnotation struct {
+	// ContainEntities: Indicates whether the text message contains
+	// entities.
+	ContainEntities bool `json:"containEntities,omitempty"`
+
+	// Parts: The collection of annotated message parts ordered by
+	// their
+	// position in the message. You can recover the annotated message
+	// by
+	// concatenating [AnnotatedMessagePart.text].
+	Parts []*GoogleCloudDialogflowV2AnnotatedMessagePart `json:"parts,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ContainEntities") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ContainEntities") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2MessageAnnotation) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2MessageAnnotation
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2OriginalDetectIntentRequest: Represents the
 // contents of the original request that was passed to
 // the `[Streaming]DetectIntent` call.
@@ -2700,6 +3543,65 @@ type GoogleCloudDialogflowV2OriginalDetectIntentRequest struct {
 
 func (s *GoogleCloudDialogflowV2OriginalDetectIntentRequest) MarshalJSON() ([]byte, error) {
 	type NoMethod GoogleCloudDialogflowV2OriginalDetectIntentRequest
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2OutputAudioConfig: Instructs the speech
+// synthesizer on how to generate the output audio content.
+type GoogleCloudDialogflowV2OutputAudioConfig struct {
+	// AudioEncoding: Required. Audio encoding of the synthesized audio
+	// content.
+	//
+	// Possible values:
+	//   "OUTPUT_AUDIO_ENCODING_UNSPECIFIED" - Not specified.
+	//   "OUTPUT_AUDIO_ENCODING_LINEAR_16" - Uncompressed 16-bit signed
+	// little-endian samples (Linear PCM).
+	// Audio content returned as LINEAR16 also contains a WAV header.
+	//   "OUTPUT_AUDIO_ENCODING_MP3" - MP3 audio at 32kbps.
+	//   "OUTPUT_AUDIO_ENCODING_OGG_OPUS" - Opus encoded audio wrapped in an
+	// ogg container. The result will be a
+	// file which can be played natively on Android, and in browsers (at
+	// least
+	// Chrome and Firefox). The quality of the encoding is considerably
+	// higher
+	// than MP3 while using approximately the same bitrate.
+	AudioEncoding string `json:"audioEncoding,omitempty"`
+
+	// SampleRateHertz: Optional. The synthesis sample rate (in hertz) for
+	// this audio. If not
+	// provided, then the synthesizer will use the default sample rate based
+	// on
+	// the audio encoding. If this is different from the voice's natural
+	// sample
+	// rate, then the synthesizer will honor this request by converting to
+	// the
+	// desired sample rate (which might result in worse audio quality).
+	SampleRateHertz int64 `json:"sampleRateHertz,omitempty"`
+
+	// SynthesizeSpeechConfig: Optional. Configuration of how speech should
+	// be synthesized.
+	SynthesizeSpeechConfig *GoogleCloudDialogflowV2SynthesizeSpeechConfig `json:"synthesizeSpeechConfig,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "AudioEncoding") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "AudioEncoding") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2OutputAudioConfig) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2OutputAudioConfig
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -2769,6 +3671,11 @@ type GoogleCloudDialogflowV2QueryParameters struct {
 	// before the new ones are activated.
 	ResetContexts bool `json:"resetContexts,omitempty"`
 
+	// SentimentAnalysisRequestConfig: Optional. Configures the type of
+	// sentiment analysis to perform. If not
+	// provided, sentiment analysis is not performed.
+	SentimentAnalysisRequestConfig *GoogleCloudDialogflowV2SentimentAnalysisRequestConfig `json:"sentimentAnalysisRequestConfig,omitempty"`
+
 	// SessionEntityTypes: Optional. Additional session entity types to
 	// replace or extend developer
 	// entity types with. The entity synonyms apply to all languages and
@@ -2815,6 +3722,7 @@ type GoogleCloudDialogflowV2QueryResult struct {
 	Action string `json:"action,omitempty"`
 
 	// AllRequiredParamsPresent: This field is set to:
+	//
 	// - `false` if the matched intent has required parameters and not all
 	// of
 	//    the required parameter values have been collected.
@@ -2836,18 +3744,25 @@ type GoogleCloudDialogflowV2QueryResult struct {
 
 	// FulfillmentText: The text to be pronounced to the user or shown on
 	// the screen.
+	// Note: This is a legacy field, `fulfillment_messages` should be
+	// preferred.
 	FulfillmentText string `json:"fulfillmentText,omitempty"`
 
 	// Intent: The intent that matched the conversational query. Some,
 	// not
 	// all fields are filled in this message, including but not limited
 	// to:
-	// `name`, `display_name` and `webhook_state`.
+	// `name`, `display_name`, `end_interaction` and `is_fallback`.
 	Intent *GoogleCloudDialogflowV2Intent `json:"intent,omitempty"`
 
 	// IntentDetectionConfidence: The intent detection confidence. Values
 	// range from 0.0
 	// (completely uncertain) to 1.0 (completely certain).
+	// This value is for informational purpose only and is only used to
+	// help match the best intent within the classification threshold.
+	// This value may change for the same end-user expression at any time
+	// due to a
+	// model retraining or change in implementation.
 	// If there are `multiple knowledge_answers` messages, this value is set
 	// to
 	// the greatest `knowledgeAnswers.match_confidence` value in the list.
@@ -2855,8 +3770,10 @@ type GoogleCloudDialogflowV2QueryResult struct {
 
 	// LanguageCode: The language that was triggered during intent
 	// detection.
-	// See [Language
-	// Support](https://dialogflow.com/docs/reference/language)
+	// See
+	// [Language
+	// Support](https://cloud.google.com/dialogflow/docs/reference/
+	// language)
 	// for a list of the currently supported language codes.
 	LanguageCode string `json:"languageCode,omitempty"`
 
@@ -2872,6 +3789,7 @@ type GoogleCloudDialogflowV2QueryResult struct {
 	Parameters googleapi.RawMessage `json:"parameters,omitempty"`
 
 	// QueryText: The original conversational query text:
+	//
 	// - If natural language text was provided as input, `query_text`
 	// contains
 	//   a copy of the input.
@@ -2880,8 +3798,15 @@ type GoogleCloudDialogflowV2QueryResult struct {
 	//   contains the speech recognition result. If speech recognizer
 	// produced
 	//   multiple alternatives, a particular one is picked.
-	// - If an event was provided as input, `query_text` is not set.
+	// - If automatic spell correction is enabled, `query_text` will contain
+	// the
+	//   corrected user input.
 	QueryText string `json:"queryText,omitempty"`
+
+	// SentimentAnalysisResult: The sentiment analysis result, which depends
+	// on the
+	// `sentiment_analysis_request_config` specified in the request.
+	SentimentAnalysisResult *GoogleCloudDialogflowV2SentimentAnalysisResult `json:"sentimentAnalysisResult,omitempty"`
 
 	// SpeechRecognitionConfidence: The Speech recognition confidence
 	// between 0.0 and 1.0. A higher number
@@ -2952,22 +3877,7 @@ func (s *GoogleCloudDialogflowV2QueryResult) UnmarshalJSON(data []byte) error {
 // GoogleCloudDialogflowV2RestoreAgentRequest: The request message for
 // Agents.RestoreAgent.
 type GoogleCloudDialogflowV2RestoreAgentRequest struct {
-	// AgentContent: The agent to restore.
-	//
-	// Example for how to restore an agent via the command line:
-	// <pre>curl \
-	//
-	// 'https://dialogflow.googleapis.com/v2/projects/&lt;project_name&gt;/ag
-	// ent:restore\
-	//    -X POST \
-	//    -H 'Authorization: Bearer '$(gcloud auth application-default
-	//    print-access-token) \
-	//    -H 'Accept: application/json' \
-	//    -H 'Content-Type: application/json' \
-	//    --compressed \
-	//    --data-binary "{
-	//        'agentContent': '$(cat &lt;agent zip file&gt; | base64 -w 0)'
-	//    }"</pre>
+	// AgentContent: Zip compressed raw byte content for agent.
 	AgentContent string `json:"agentContent,omitempty"`
 
 	// AgentUri: The URI to a Google Cloud Storage file containing the agent
@@ -3034,6 +3944,126 @@ type GoogleCloudDialogflowV2SearchAgentsResponse struct {
 
 func (s *GoogleCloudDialogflowV2SearchAgentsResponse) MarshalJSON() ([]byte, error) {
 	type NoMethod GoogleCloudDialogflowV2SearchAgentsResponse
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2Sentiment: The sentiment, such as
+// positive/negative feeling or association, for a unit
+// of analysis, such as the query text.
+type GoogleCloudDialogflowV2Sentiment struct {
+	// Magnitude: A non-negative number in the [0, +inf) range, which
+	// represents the absolute
+	// magnitude of sentiment, regardless of score (positive or negative).
+	Magnitude float64 `json:"magnitude,omitempty"`
+
+	// Score: Sentiment score between -1.0 (negative sentiment) and 1.0
+	// (positive
+	// sentiment).
+	Score float64 `json:"score,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Magnitude") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Magnitude") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2Sentiment) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2Sentiment
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+func (s *GoogleCloudDialogflowV2Sentiment) UnmarshalJSON(data []byte) error {
+	type NoMethod GoogleCloudDialogflowV2Sentiment
+	var s1 struct {
+		Magnitude gensupport.JSONFloat64 `json:"magnitude"`
+		Score     gensupport.JSONFloat64 `json:"score"`
+		*NoMethod
+	}
+	s1.NoMethod = (*NoMethod)(s)
+	if err := json.Unmarshal(data, &s1); err != nil {
+		return err
+	}
+	s.Magnitude = float64(s1.Magnitude)
+	s.Score = float64(s1.Score)
+	return nil
+}
+
+// GoogleCloudDialogflowV2SentimentAnalysisRequestConfig: Configures the
+// types of sentiment analysis to perform.
+type GoogleCloudDialogflowV2SentimentAnalysisRequestConfig struct {
+	// AnalyzeQueryTextSentiment: Optional. Instructs the service to perform
+	// sentiment analysis on
+	// `query_text`. If not provided, sentiment analysis is not performed
+	// on
+	// `query_text`.
+	AnalyzeQueryTextSentiment bool `json:"analyzeQueryTextSentiment,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "AnalyzeQueryTextSentiment") to unconditionally include in API
+	// requests. By default, fields with empty values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g.
+	// "AnalyzeQueryTextSentiment") to include in API requests with the JSON
+	// null value. By default, fields with empty values are omitted from API
+	// requests. However, any field with an empty value appearing in
+	// NullFields will be sent to the server as null. It is an error if a
+	// field in this list has a non-empty value. This may be used to include
+	// null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2SentimentAnalysisRequestConfig) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2SentimentAnalysisRequestConfig
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2SentimentAnalysisResult: The result of
+// sentiment analysis as configured
+// by
+// `sentiment_analysis_request_config`.
+type GoogleCloudDialogflowV2SentimentAnalysisResult struct {
+	// QueryTextSentiment: The sentiment analysis result for `query_text`.
+	QueryTextSentiment *GoogleCloudDialogflowV2Sentiment `json:"queryTextSentiment,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "QueryTextSentiment")
+	// to unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "QueryTextSentiment") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2SentimentAnalysisResult) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2SentimentAnalysisResult
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -3120,16 +4150,106 @@ func (s *GoogleCloudDialogflowV2SessionEntityType) MarshalJSON() ([]byte, error)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2SynthesizeSpeechConfig: Configuration of how
+// speech should be synthesized.
+type GoogleCloudDialogflowV2SynthesizeSpeechConfig struct {
+	// EffectsProfileId: Optional. An identifier which selects 'audio
+	// effects' profiles that are
+	// applied on (post synthesized) text to speech. Effects are applied on
+	// top of
+	// each other in the order they are given.
+	EffectsProfileId []string `json:"effectsProfileId,omitempty"`
+
+	// Pitch: Optional. Speaking pitch, in the range [-20.0, 20.0]. 20 means
+	// increase 20
+	// semitones from the original pitch. -20 means decrease 20 semitones
+	// from the
+	// original pitch.
+	Pitch float64 `json:"pitch,omitempty"`
+
+	// SpeakingRate: Optional. Speaking rate/speed, in the range [0.25,
+	// 4.0]. 1.0 is the normal
+	// native speed supported by the specific voice. 2.0 is twice as fast,
+	// and
+	// 0.5 is half as fast. If unset(0.0), defaults to the native 1.0 speed.
+	// Any
+	// other values < 0.25 or > 4.0 will return an error.
+	SpeakingRate float64 `json:"speakingRate,omitempty"`
+
+	// Voice: Optional. The desired voice of the synthesized audio.
+	Voice *GoogleCloudDialogflowV2VoiceSelectionParams `json:"voice,omitempty"`
+
+	// VolumeGainDb: Optional. Volume gain (in dB) of the normal native
+	// volume supported by the
+	// specific voice, in the range [-96.0, 16.0]. If unset, or set to a
+	// value of
+	// 0.0 (dB), will play at normal native signal amplitude. A value of
+	// -6.0 (dB)
+	// will play at approximately half the amplitude of the normal native
+	// signal
+	// amplitude. A value of +6.0 (dB) will play at approximately twice
+	// the
+	// amplitude of the normal native signal amplitude. We strongly
+	// recommend not
+	// to exceed +10 (dB) as there's usually no effective increase in
+	// loudness for
+	// any value greater than that.
+	VolumeGainDb float64 `json:"volumeGainDb,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "EffectsProfileId") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "EffectsProfileId") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2SynthesizeSpeechConfig) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2SynthesizeSpeechConfig
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+func (s *GoogleCloudDialogflowV2SynthesizeSpeechConfig) UnmarshalJSON(data []byte) error {
+	type NoMethod GoogleCloudDialogflowV2SynthesizeSpeechConfig
+	var s1 struct {
+		Pitch        gensupport.JSONFloat64 `json:"pitch"`
+		SpeakingRate gensupport.JSONFloat64 `json:"speakingRate"`
+		VolumeGainDb gensupport.JSONFloat64 `json:"volumeGainDb"`
+		*NoMethod
+	}
+	s1.NoMethod = (*NoMethod)(s)
+	if err := json.Unmarshal(data, &s1); err != nil {
+		return err
+	}
+	s.Pitch = float64(s1.Pitch)
+	s.SpeakingRate = float64(s1.SpeakingRate)
+	s.VolumeGainDb = float64(s1.VolumeGainDb)
+	return nil
+}
+
 // GoogleCloudDialogflowV2TextInput: Represents the natural language
 // text to be processed.
 type GoogleCloudDialogflowV2TextInput struct {
 	// LanguageCode: Required. The language of this conversational query.
-	// See [Language
-	// Support](https://dialogflow.com/docs/languages) for a list of
-	// the
-	// currently supported language codes. Note that queries in the same
-	// session
-	// do not necessarily need to specify the same language.
+	// See
+	// [Language
+	// Support](https://cloud.google.com/dialogflow/docs/reference/
+	// language)
+	// for a list of the currently supported language codes. Note that
+	// queries in
+	// the same session do not necessarily need to specify the same
+	// language.
 	LanguageCode string `json:"languageCode,omitempty"`
 
 	// Text: Required. The UTF-8 encoded natural language text to be
@@ -3163,6 +4283,59 @@ func (s *GoogleCloudDialogflowV2TextInput) MarshalJSON() ([]byte, error) {
 // GoogleCloudDialogflowV2TrainAgentRequest: The request message for
 // Agents.TrainAgent.
 type GoogleCloudDialogflowV2TrainAgentRequest struct {
+}
+
+// GoogleCloudDialogflowV2VoiceSelectionParams: Description of which
+// voice to use for speech synthesis.
+type GoogleCloudDialogflowV2VoiceSelectionParams struct {
+	// Name: Optional. The name of the voice. If not set, the service will
+	// choose a
+	// voice based on the other parameters such as language_code
+	// and
+	// ssml_gender.
+	Name string `json:"name,omitempty"`
+
+	// SsmlGender: Optional. The preferred gender of the voice. If not set,
+	// the service will
+	// choose a voice based on the other parameters such as language_code
+	// and
+	// name. Note that this is only a preference, not requirement. If
+	// a
+	// voice of the appropriate gender is not available, the synthesizer
+	// should
+	// substitute a voice with a different gender rather than failing the
+	// request.
+	//
+	// Possible values:
+	//   "SSML_VOICE_GENDER_UNSPECIFIED" - An unspecified gender, which
+	// means that the client doesn't care which
+	// gender the selected voice will have.
+	//   "SSML_VOICE_GENDER_MALE" - A male voice.
+	//   "SSML_VOICE_GENDER_FEMALE" - A female voice.
+	//   "SSML_VOICE_GENDER_NEUTRAL" - A gender-neutral voice.
+	SsmlGender string `json:"ssmlGender,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Name") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Name") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2VoiceSelectionParams) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2VoiceSelectionParams
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // GoogleCloudDialogflowV2WebhookRequest: The request message for a
@@ -3224,6 +4397,9 @@ type GoogleCloudDialogflowV2WebhookResponse struct {
 	// FollowupEventInput: Optional. Makes the platform immediately invoke
 	// another `DetectIntent` call
 	// internally with the specified event as input.
+	// When this field is set, Dialogflow ignores the
+	// `fulfillment_text`,
+	// `fulfillment_messages`, and `payload` fields.
 	FollowupEventInput *GoogleCloudDialogflowV2EventInput `json:"followupEventInput,omitempty"`
 
 	// FulfillmentMessages: Optional. The collection of rich messages to
@@ -3271,6 +4447,17 @@ type GoogleCloudDialogflowV2WebhookResponse struct {
 	// }</pre>
 	Payload googleapi.RawMessage `json:"payload,omitempty"`
 
+	// SessionEntityTypes: Optional. Additional session entity types to
+	// replace or extend developer
+	// entity types with. The entity synonyms apply to all languages and
+	// persist
+	// for the session of this query. Setting the session entity types
+	// inside
+	// webhook overwrites the session entity types that have been set
+	// through
+	// `DetectIntentRequest.query_params.session_entity_types`.
+	SessionEntityTypes []*GoogleCloudDialogflowV2SessionEntityType `json:"sessionEntityTypes,omitempty"`
+
 	// Source: Optional. This value is passed directly to
 	// `QueryResult.webhook_source`.
 	Source string `json:"source,omitempty"`
@@ -3295,6 +4482,83 @@ type GoogleCloudDialogflowV2WebhookResponse struct {
 
 func (s *GoogleCloudDialogflowV2WebhookResponse) MarshalJSON() ([]byte, error) {
 	type NoMethod GoogleCloudDialogflowV2WebhookResponse
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1AnnotatedConversationDataset: Represents
+// an annotated conversation dataset.
+// ConversationDataset can have multiple AnnotatedConversationDataset,
+// each of
+// them represents one result from one annotation
+// task.
+// AnnotatedConversationDataset can only be generated from annotation
+// task,
+// which will be triggered by LabelConversation.
+type GoogleCloudDialogflowV2beta1AnnotatedConversationDataset struct {
+	// CompletedExampleCount: Output only. Number of examples that have
+	// annotations in the annotated
+	// conversation dataset.
+	CompletedExampleCount int64 `json:"completedExampleCount,omitempty,string"`
+
+	// CreateTime: Output only. Creation time of this annotated conversation
+	// dataset.
+	CreateTime string `json:"createTime,omitempty"`
+
+	// Description: Optional. The description of the annotated conversation
+	// dataset.
+	// Maximum of 10000 bytes.
+	Description string `json:"description,omitempty"`
+
+	// DisplayName: Required. The display name of the annotated conversation
+	// dataset.
+	// It's specified when user starts an annotation task. Maximum of 64
+	// bytes.
+	DisplayName string `json:"displayName,omitempty"`
+
+	// ExampleCount: Output only. Number of examples in the annotated
+	// conversation dataset.
+	ExampleCount int64 `json:"exampleCount,omitempty,string"`
+
+	// Name: Output only. AnnotatedConversationDataset resource name.
+	// Format:
+	// `projects/<Project ID>/conversationDatasets/<Conversation
+	// Dataset
+	// ID>/annotatedConversationDatasets/<Annotated Conversation Dataset
+	// ID>`
+	Name string `json:"name,omitempty"`
+
+	// QuestionTypeName: Output only. Question type name that identifies a
+	// labeling task.
+	// A question is a single task that a worker answers. A question type is
+	// set
+	// of related questions. Each question belongs to a particular question
+	// type.
+	// It can be used in CrowdCompute UI to filter and manage labeling
+	// tasks.
+	QuestionTypeName string `json:"questionTypeName,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "CompletedExampleCount") to unconditionally include in API requests.
+	// By default, fields with empty values are omitted from API requests.
+	// However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CompletedExampleCount") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1AnnotatedConversationDataset) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1AnnotatedConversationDataset
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -3363,7 +4627,7 @@ type GoogleCloudDialogflowV2beta1Context struct {
 	// after which the
 	// context expires. If set to `0` (the default) the context
 	// expires
-	// immediately. Contexts expire automatically after 10 minutes even if
+	// immediately. Contexts expire automatically after 20 minutes if
 	// there
 	// are no matching queries.
 	LifespanCount int64 `json:"lifespanCount,omitempty"`
@@ -3388,9 +4652,11 @@ type GoogleCloudDialogflowV2beta1Context struct {
 
 	// Parameters: Optional. The collection of parameters associated with
 	// this context.
-	// Refer to [this
-	// doc](https://dialogflow.com/docs/actions-and-parameters) for
-	// syntax.
+	// Refer to
+	// [this
+	// doc](https://cloud.google.com/dialogflow/docs/intents-actions-pa
+	// rameters)
+	// for syntax.
 	Parameters googleapi.RawMessage `json:"parameters,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "LifespanCount") to
@@ -3437,8 +4703,12 @@ type GoogleCloudDialogflowV2beta1EntityType struct {
 	// DisplayName: Required. The name of the entity type.
 	DisplayName string `json:"displayName,omitempty"`
 
-	// Entities: Optional. The collection of entities associated with the
-	// entity type.
+	// EnableFuzzyExtraction: Optional. Enables fuzzy entity extraction
+	// during classification.
+	EnableFuzzyExtraction bool `json:"enableFuzzyExtraction,omitempty"`
+
+	// Entities: Optional. The collection of entity entries associated with
+	// the entity type.
 	Entities []*GoogleCloudDialogflowV2beta1EntityTypeEntity `json:"entities,omitempty"`
 
 	// Kind: Required. Indicates the kind of entity type.
@@ -3454,13 +4724,16 @@ type GoogleCloudDialogflowV2beta1EntityType struct {
 	// values. However, list entity types can contain references to other
 	// entity
 	// types (with or without aliases).
+	//   "KIND_REGEXP" - Regexp entity types allow to specify regular
+	// expressions in entries
+	// values.
 	Kind string `json:"kind,omitempty"`
 
-	// Name: Required for all methods except `create` (`create` populates
-	// the name
-	// automatically.
-	// The unique identifier of the entity type. Format:
-	// `projects/<Project ID>/agent/entityTypes/<Entity Type ID>`.
+	// Name: The unique identifier of the entity type.
+	// Required for EntityTypes.UpdateEntityType
+	// and
+	// EntityTypes.BatchUpdateEntityTypes methods.
+	// Format: `projects/<Project ID>/agent/entityTypes/<Entity Type ID>`.
 	Name string `json:"name,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "AutoExpansionMode")
@@ -3487,21 +4760,36 @@ func (s *GoogleCloudDialogflowV2beta1EntityType) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// GoogleCloudDialogflowV2beta1EntityTypeEntity: Optional. Represents an
-// entity.
+// GoogleCloudDialogflowV2beta1EntityTypeEntity: An **entity entry** for
+// an associated entity type.
 type GoogleCloudDialogflowV2beta1EntityTypeEntity struct {
-	// Synonyms: Required. A collection of synonyms. For `KIND_LIST` entity
-	// types this
-	// must contain exactly one synonym equal to `value`.
+	// Synonyms: Required. A collection of value synonyms. For example, if
+	// the entity type
+	// is *vegetable*, and `value` is *scallions*, a synonym could be
+	// *green
+	// onions*.
+	//
+	// For `KIND_LIST` entity types:
+	//
+	// *   This collection must contain exactly one synonym equal to
+	// `value`.
 	Synonyms []string `json:"synonyms,omitempty"`
 
-	// Value: Required.
+	// Value: Required. The primary value associated with this entity
+	// entry.
+	// For example, if the entity type is *vegetable*, the value could
+	// be
+	// *scallions*.
+	//
 	// For `KIND_MAP` entity types:
-	//   A canonical name to be used in place of synonyms.
+	//
+	// *   A canonical value to be used in place of synonyms.
+	//
 	// For `KIND_LIST` entity types:
-	//   A string that can contain references to other entity types (with
+	//
+	// *   A string that can contain references to other entity types (with
 	// or
-	//   without aliases).
+	//     without aliases).
 	Value string `json:"value,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Synonyms") to
@@ -3530,20 +4818,21 @@ func (s *GoogleCloudDialogflowV2beta1EntityTypeEntity) MarshalJSON() ([]byte, er
 // GoogleCloudDialogflowV2beta1EventInput: Events allow for matching
 // intents by event name instead of the natural
 // language input. For instance, input `<event: { name:
-// “welcome_event”,
-// parameters: { name: “Sam” } }>` can trigger a personalized
-// welcome response.
+// "welcome_event",
+// parameters: { name: "Sam" } }>` can trigger a personalized welcome
+// response.
 // The parameter `name` may be used by the agent in the
 // response:
-// `“Hello #welcome_event.name! What can I do for you today?”`.
+// "Hello #welcome_event.name! What can I do for you today?".
 type GoogleCloudDialogflowV2beta1EventInput struct {
 	// LanguageCode: Required. The language of this query. See
 	// [Language
-	// Support](https://dialogflow.com/docs/languages) for a list of
-	// the
-	// currently supported language codes. Note that queries in the same
-	// session
-	// do not necessarily need to specify the same language.
+	// Support](https://cloud.google.com/dialogflow/docs/reference/
+	// language)
+	// for a list of the currently supported language codes. Note that
+	// queries in
+	// the same session do not necessarily need to specify the same
+	// language.
 	LanguageCode string `json:"languageCode,omitempty"`
 
 	// Name: Required. The unique identifier of the event.
@@ -3579,24 +4868,7 @@ func (s *GoogleCloudDialogflowV2beta1EventInput) MarshalJSON() ([]byte, error) {
 // GoogleCloudDialogflowV2beta1ExportAgentResponse: The response message
 // for Agents.ExportAgent.
 type GoogleCloudDialogflowV2beta1ExportAgentResponse struct {
-	// AgentContent: The exported agent.
-	//
-	// Example for how to export an agent to a zip file via a command
-	// line:
-	// <pre>curl \
-	//
-	// 'https://dialogflow.googleapis.com/v2beta1/projects/&lt;project_name&g
-	// t;/agent:export'\
-	//   -X POST \
-	//   -H 'Authorization: Bearer '$(gcloud auth application-default
-	//   print-access-token) \
-	//   -H 'Accept: application/json' \
-	//   -H 'Content-Type: application/json' \
-	//   --compressed \
-	//   --data-binary '{}' \
-	// | grep agentContent | sed -e 's/.*"agentContent": "\([^"]*\)".*/\1/'
-	// \
-	// | base64 --decode > &lt;agent zip file&gt;</pre>
+	// AgentContent: Zip compressed raw byte content for agent.
 	AgentContent string `json:"agentContent,omitempty"`
 
 	// AgentUri: The URI to a file containing the exported agent. This field
@@ -3638,8 +4910,9 @@ type GoogleCloudDialogflowV2beta1Intent struct {
 	Action string `json:"action,omitempty"`
 
 	// DefaultResponsePlatforms: Optional. The list of platforms for which
-	// the first response will be
-	// taken from among the messages assigned to the DEFAULT_PLATFORM.
+	// the first responses will be
+	// copied from the messages in PLATFORM_UNSPECIFIED (i.e. default
+	// platform).
 	//
 	// Possible values:
 	//   "PLATFORM_UNSPECIFIED" - Not specified.
@@ -3719,6 +4992,7 @@ type GoogleCloudDialogflowV2beta1Intent struct {
 	//   }
 	// }</pre>
 	//   "TELEPHONY" - Telephony Gateway.
+	//   "GOOGLE_HANGOUTS" - Google Hangouts.
 	DefaultResponsePlatforms []string `json:"defaultResponsePlatforms,omitempty"`
 
 	// DisplayName: Required. The name of this intent.
@@ -3786,10 +5060,10 @@ type GoogleCloudDialogflowV2beta1Intent struct {
 	//   ml_enabled = true / ml_disabled = false.
 	MlEnabled bool `json:"mlEnabled,omitempty"`
 
-	// Name: Required for all methods except `create` (`create` populates
-	// the name
-	// automatically.
-	// The unique identifier of this intent.
+	// Name: The unique identifier of this intent.
+	// Required for Intents.UpdateIntent and
+	// Intents.BatchUpdateIntents
+	// methods.
 	// Format: `projects/<Project ID>/agent/intents/<Intent ID>`.
 	Name string `json:"name,omitempty"`
 
@@ -3819,13 +5093,15 @@ type GoogleCloudDialogflowV2beta1Intent struct {
 	// Format: `projects/<Project ID>/agent/intents/<Intent ID>`.
 	ParentFollowupIntentName string `json:"parentFollowupIntentName,omitempty"`
 
-	// Priority: Optional. The priority of this intent. Higher numbers
-	// represent higher
-	// priorities. If this is zero or unspecified, we use the
-	// default
-	// priority 500000.
+	// Priority: The priority of this intent. Higher numbers represent
+	// higher
+	// priorities.
 	//
-	// Negative numbers mean that the intent is disabled.
+	// - If the supplied value is unspecified or 0, the service
+	//   translates the value to 500,000, which corresponds to the
+	//   `Normal` priority in the console.
+	// - If the supplied value is negative, the intent is ignored
+	//   in runtime detect intent requests.
 	Priority int64 `json:"priority,omitempty"`
 
 	// ResetContexts: Optional. Indicates whether to delete all contexts in
@@ -3842,8 +5118,8 @@ type GoogleCloudDialogflowV2beta1Intent struct {
 	// Format: `projects/<Project ID>/agent/intents/<Intent ID>`.
 	RootFollowupIntentName string `json:"rootFollowupIntentName,omitempty"`
 
-	// TrainingPhrases: Optional. The collection of examples/templates that
-	// the agent is
+	// TrainingPhrases: Optional. The collection of examples that the agent
+	// is
 	// trained on.
 	TrainingPhrases []*GoogleCloudDialogflowV2beta1IntentTrainingPhrase `json:"trainingPhrases,omitempty"`
 
@@ -3926,6 +5202,9 @@ type GoogleCloudDialogflowV2beta1IntentMessage struct {
 	// BasicCard: Displays a basic card for Actions on Google.
 	BasicCard *GoogleCloudDialogflowV2beta1IntentMessageBasicCard `json:"basicCard,omitempty"`
 
+	// BrowseCarouselCard: Browse carousel card for Actions on Google.
+	BrowseCarouselCard *GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCard `json:"browseCarouselCard,omitempty"`
+
 	// Card: Displays a card.
 	Card *GoogleCloudDialogflowV2beta1IntentMessageCard `json:"card,omitempty"`
 
@@ -3941,6 +5220,9 @@ type GoogleCloudDialogflowV2beta1IntentMessage struct {
 
 	// ListSelect: Displays a list card for Actions on Google.
 	ListSelect *GoogleCloudDialogflowV2beta1IntentMessageListSelect `json:"listSelect,omitempty"`
+
+	// MediaContent: The media content card for Actions on Google.
+	MediaContent *GoogleCloudDialogflowV2beta1IntentMessageMediaContent `json:"mediaContent,omitempty"`
 
 	// Payload: Returns a response containing a custom, platform-specific
 	// payload.
@@ -4029,10 +5311,26 @@ type GoogleCloudDialogflowV2beta1IntentMessage struct {
 	//   }
 	// }</pre>
 	//   "TELEPHONY" - Telephony Gateway.
+	//   "GOOGLE_HANGOUTS" - Google Hangouts.
 	Platform string `json:"platform,omitempty"`
 
 	// QuickReplies: Displays quick replies.
 	QuickReplies *GoogleCloudDialogflowV2beta1IntentMessageQuickReplies `json:"quickReplies,omitempty"`
+
+	// RbmCarouselRichCard: Rich Business Messaging (RBM) carousel rich card
+	// response.
+	RbmCarouselRichCard *GoogleCloudDialogflowV2beta1IntentMessageRbmCarouselCard `json:"rbmCarouselRichCard,omitempty"`
+
+	// RbmStandaloneRichCard: Standalone Rich Business Messaging (RBM) rich
+	// card response.
+	RbmStandaloneRichCard *GoogleCloudDialogflowV2beta1IntentMessageRbmStandaloneCard `json:"rbmStandaloneRichCard,omitempty"`
+
+	// RbmText: Rich Business Messaging (RBM) text response.
+	//
+	// RBM allows businesses to send enriched and branded versions of SMS.
+	// See
+	// https://jibe.google.com/business-messaging.
+	RbmText *GoogleCloudDialogflowV2beta1IntentMessageRbmText `json:"rbmText,omitempty"`
 
 	// SimpleResponses: Returns a voice or text-only response for Actions on
 	// Google.
@@ -4040,6 +5338,9 @@ type GoogleCloudDialogflowV2beta1IntentMessage struct {
 
 	// Suggestions: Displays suggestion chips for Actions on Google.
 	Suggestions *GoogleCloudDialogflowV2beta1IntentMessageSuggestions `json:"suggestions,omitempty"`
+
+	// TableCard: Table card for Actions on Google.
+	TableCard *GoogleCloudDialogflowV2beta1IntentMessageTableCard `json:"tableCard,omitempty"`
 
 	// TelephonyPlayAudio: Plays audio from a file in Telephony Gateway.
 	TelephonyPlayAudio *GoogleCloudDialogflowV2beta1IntentMessageTelephonyPlayAudio `json:"telephonyPlayAudio,omitempty"`
@@ -4176,6 +5477,159 @@ type GoogleCloudDialogflowV2beta1IntentMessageBasicCardButtonOpenUriAction struc
 
 func (s *GoogleCloudDialogflowV2beta1IntentMessageBasicCardButtonOpenUriAction) MarshalJSON() ([]byte, error) {
 	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageBasicCardButtonOpenUriAction
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCard: Browse
+// Carousel Card for Actions on
+// Google.
+// https://developers.google.com/actions/assistant/responses#brow
+// sing_carousel
+type GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCard struct {
+	// ImageDisplayOptions: Optional. Settings for displaying the image.
+	// Applies to every image in
+	// items.
+	//
+	// Possible values:
+	//   "IMAGE_DISPLAY_OPTIONS_UNSPECIFIED" - Fill the gaps between the
+	// image and the image container with gray
+	// bars.
+	//   "GRAY" - Fill the gaps between the image and the image container
+	// with gray
+	// bars.
+	//   "WHITE" - Fill the gaps between the image and the image container
+	// with white
+	// bars.
+	//   "CROPPED" - Image is scaled such that the image width and height
+	// match or exceed
+	// the container dimensions. This may crop the top and bottom of
+	// the
+	// image if the scaled image height is greater than the
+	// container
+	// height, or crop the left and right of the image if the scaled
+	// image
+	// width is greater than the container width. This is similar to
+	// "Zoom
+	// Mode" on a widescreen TV when playing a 4:3 video.
+	//   "BLURRED_BACKGROUND" - Pad the gaps between image and image frame
+	// with a blurred copy of the
+	// same image.
+	ImageDisplayOptions string `json:"imageDisplayOptions,omitempty"`
+
+	// Items: Required. List of items in the Browse Carousel Card. Minimum
+	// of two
+	// items, maximum of ten.
+	Items []*GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarouselCardItem `json:"items,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ImageDisplayOptions")
+	// to unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ImageDisplayOptions") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCard) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCard
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarou
+// selCardItem: Browsing carousel tile
+type GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarouselCardItem struct {
+	// Description: Optional. Description of the carousel item. Maximum of
+	// four lines of
+	// text.
+	Description string `json:"description,omitempty"`
+
+	// Footer: Optional. Text that appears at the bottom of the Browse
+	// Carousel
+	// Card. Maximum of one line of text.
+	Footer string `json:"footer,omitempty"`
+
+	// Image: Optional. Hero image for the carousel item.
+	Image *GoogleCloudDialogflowV2beta1IntentMessageImage `json:"image,omitempty"`
+
+	// OpenUriAction: Required. Action to present to the user.
+	OpenUriAction *GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarouselCardItemOpenUrlAction `json:"openUriAction,omitempty"`
+
+	// Title: Required. Title of the carousel item. Maximum of two lines of
+	// text.
+	Title string `json:"title,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Description") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Description") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarouselCardItem) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarouselCardItem
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarou
+// selCardItemOpenUrlAction: Actions on Google action to open a given
+// url.
+type GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarouselCardItemOpenUrlAction struct {
+	// Url: Required. URL
+	Url string `json:"url,omitempty"`
+
+	// UrlTypeHint: Optional. Specifies the type of viewer that is used when
+	// opening
+	// the URL. Defaults to opening via web browser.
+	//
+	// Possible values:
+	//   "URL_TYPE_HINT_UNSPECIFIED" - Unspecified
+	//   "AMP_ACTION" - Url would be an amp action
+	//   "AMP_CONTENT" - URL that points directly to AMP content, or to a
+	// canonical URL
+	// which refers to AMP content via <link rel="amphtml">.
+	UrlTypeHint string `json:"urlTypeHint,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Url") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Url") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarouselCardItemOpenUrlAction) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageBrowseCarouselCardBrowseCarouselCardItemOpenUrlAction
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -4319,6 +5773,46 @@ func (s *GoogleCloudDialogflowV2beta1IntentMessageCarouselSelectItem) MarshalJSO
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2beta1IntentMessageColumnProperties: Column
+// properties for TableCard.
+type GoogleCloudDialogflowV2beta1IntentMessageColumnProperties struct {
+	// Header: Required. Column heading.
+	Header string `json:"header,omitempty"`
+
+	// HorizontalAlignment: Optional. Defines text alignment for all cells
+	// in this column.
+	//
+	// Possible values:
+	//   "HORIZONTAL_ALIGNMENT_UNSPECIFIED" - Text is aligned to the leading
+	// edge of the column.
+	//   "LEADING" - Text is aligned to the leading edge of the column.
+	//   "CENTER" - Text is centered in the column.
+	//   "TRAILING" - Text is aligned to the trailing edge of the column.
+	HorizontalAlignment string `json:"horizontalAlignment,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Header") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Header") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageColumnProperties) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageColumnProperties
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2beta1IntentMessageImage: The image response
 // message.
 type GoogleCloudDialogflowV2beta1IntentMessageImage struct {
@@ -4399,6 +5893,9 @@ type GoogleCloudDialogflowV2beta1IntentMessageListSelect struct {
 	// Items: Required. List items.
 	Items []*GoogleCloudDialogflowV2beta1IntentMessageListSelectItem `json:"items,omitempty"`
 
+	// Subtitle: Optional. Subtitle of the list.
+	Subtitle string `json:"subtitle,omitempty"`
+
 	// Title: Optional. The overall title of the list.
 	Title string `json:"title,omitempty"`
 
@@ -4463,6 +5960,83 @@ func (s *GoogleCloudDialogflowV2beta1IntentMessageListSelectItem) MarshalJSON() 
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2beta1IntentMessageMediaContent: The media
+// content card for Actions on Google.
+type GoogleCloudDialogflowV2beta1IntentMessageMediaContent struct {
+	// MediaObjects: Required. List of media objects.
+	MediaObjects []*GoogleCloudDialogflowV2beta1IntentMessageMediaContentResponseMediaObject `json:"mediaObjects,omitempty"`
+
+	// MediaType: Optional. What type of media is the content (ie "audio").
+	//
+	// Possible values:
+	//   "RESPONSE_MEDIA_TYPE_UNSPECIFIED" - Unspecified.
+	//   "AUDIO" - Response media type is audio.
+	MediaType string `json:"mediaType,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "MediaObjects") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "MediaObjects") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageMediaContent) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageMediaContent
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageMediaContentResponseMediaObje
+// ct: Response media object for media content card.
+type GoogleCloudDialogflowV2beta1IntentMessageMediaContentResponseMediaObject struct {
+	// ContentUrl: Required. Url where the media is stored.
+	ContentUrl string `json:"contentUrl,omitempty"`
+
+	// Description: Optional. Description of media card.
+	Description string `json:"description,omitempty"`
+
+	// Icon: Optional. Icon to display above media content.
+	Icon *GoogleCloudDialogflowV2beta1IntentMessageImage `json:"icon,omitempty"`
+
+	// LargeImage: Optional. Image to display above media content.
+	LargeImage *GoogleCloudDialogflowV2beta1IntentMessageImage `json:"largeImage,omitempty"`
+
+	// Name: Required. Name of media card.
+	Name string `json:"name,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "ContentUrl") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ContentUrl") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageMediaContentResponseMediaObject) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageMediaContentResponseMediaObject
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2beta1IntentMessageQuickReplies: The quick
 // replies response message.
 type GoogleCloudDialogflowV2beta1IntentMessageQuickReplies struct {
@@ -4491,6 +6065,471 @@ type GoogleCloudDialogflowV2beta1IntentMessageQuickReplies struct {
 
 func (s *GoogleCloudDialogflowV2beta1IntentMessageQuickReplies) MarshalJSON() ([]byte, error) {
 	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageQuickReplies
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmCardContent: Rich
+// Business Messaging (RBM) Card content
+type GoogleCloudDialogflowV2beta1IntentMessageRbmCardContent struct {
+	// Description: Optional. Description of the card (at most 2000
+	// bytes).
+	//
+	// At least one of the title, description or media must be set.
+	Description string `json:"description,omitempty"`
+
+	// Media: Optional. However at least one of the title, description or
+	// media must
+	// be set. Media (image, GIF or a video) to include in the card.
+	Media *GoogleCloudDialogflowV2beta1IntentMessageRbmCardContentRbmMedia `json:"media,omitempty"`
+
+	// Suggestions: Optional. List of suggestions to include in the card.
+	Suggestions []*GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestion `json:"suggestions,omitempty"`
+
+	// Title: Optional. Title of the card (at most 200 bytes).
+	//
+	// At least one of the title, description or media must be set.
+	Title string `json:"title,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Description") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Description") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmCardContent) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmCardContent
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmCardContentRbmMedia: Rich
+// Business Messaging (RBM) Media displayed in Cards
+// The following media-types are currently supported:
+//
+// ## Image Types
+//
+//  image/jpeg
+//  image/jpg'
+//  image/gif
+//  image/png
+//
+// ## Video Types
+//
+//  video/h263
+//  video/m4v
+//  video/mp4
+//  video/mpeg
+//  video/mpeg4
+//  video/webm
+type GoogleCloudDialogflowV2beta1IntentMessageRbmCardContentRbmMedia struct {
+	// FileUri: Required. Publicly reachable URI of the file. The RBM
+	// platform
+	// determines the MIME type of the file from the content-type field
+	// in
+	// the HTTP headers when the platform fetches the file. The
+	// content-type
+	// field must be present and accurate in the HTTP response from the URL.
+	FileUri string `json:"fileUri,omitempty"`
+
+	// Height: Required for cards with vertical orientation. The height of
+	// the media
+	// within a rich card with a vertical layout.
+	// (https://goo.gl/NeFCjz).
+	// For a standalone card with horizontal layout, height is
+	// not
+	// customizable, and this field is ignored.
+	//
+	// Possible values:
+	//   "HEIGHT_UNSPECIFIED" - Not specified.
+	//   "SHORT" - 112 DP.
+	//   "MEDIUM" - 168 DP.
+	//   "TALL" - 264 DP. Not available for rich card carousels when the
+	// card width
+	// is set to small.
+	Height string `json:"height,omitempty"`
+
+	// ThumbnailUri: Optional. Publicly reachable URI of the thumbnail.If
+	// you don't
+	// provide a thumbnail URI, the RBM platform displays a
+	// blank
+	// placeholder thumbnail until the user's device downloads the
+	// file.
+	// Depending on the user's setting, the file may not
+	// download
+	// automatically and may require the user to tap a download button.
+	ThumbnailUri string `json:"thumbnailUri,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "FileUri") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "FileUri") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmCardContentRbmMedia) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmCardContentRbmMedia
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmCarouselCard: Carousel
+// Rich Business Messaging (RBM) rich card.
+//
+// Rich cards allow you to respond to users with more vivid content,
+// e.g.
+// with media and suggestions.
+//
+// For more details about RBM rich cards, please
+// see:
+// https://developers.google.com/rcs-business-messaging/rbm/guides/b
+// uild/send-messages#rich-cards.
+// If you want to show a single card with more control over the
+// layout,
+// please use RbmStandaloneCard instead.
+type GoogleCloudDialogflowV2beta1IntentMessageRbmCarouselCard struct {
+	// CardContents: Required. The cards in the carousel. A carousel must
+	// have at least
+	// 2 cards and at most 10.
+	CardContents []*GoogleCloudDialogflowV2beta1IntentMessageRbmCardContent `json:"cardContents,omitempty"`
+
+	// CardWidth: Required. The width of the cards in the carousel.
+	//
+	// Possible values:
+	//   "CARD_WIDTH_UNSPECIFIED" - Not specified.
+	//   "SMALL" - 120 DP. Note that tall media cannot be used.
+	//   "MEDIUM" - 232 DP.
+	CardWidth string `json:"cardWidth,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "CardContents") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CardContents") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmCarouselCard) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmCarouselCard
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmStandaloneCard:
+// Standalone Rich Business Messaging (RBM) rich card.
+//
+// Rich cards allow you to respond to users with more vivid content,
+// e.g.
+// with media and suggestions.
+//
+// For more details about RBM rich cards, please
+// see:
+// https://developers.google.com/rcs-business-messaging/rbm/guides/b
+// uild/send-messages#rich-cards.
+// You can group multiple rich cards into one using RbmCarouselCard
+// but
+// carousel cards will give you less control over the card layout.
+type GoogleCloudDialogflowV2beta1IntentMessageRbmStandaloneCard struct {
+	// CardContent: Required. Card content.
+	CardContent *GoogleCloudDialogflowV2beta1IntentMessageRbmCardContent `json:"cardContent,omitempty"`
+
+	// CardOrientation: Required. Orientation of the card.
+	//
+	// Possible values:
+	//   "CARD_ORIENTATION_UNSPECIFIED" - Not specified.
+	//   "HORIZONTAL" - Horizontal layout.
+	//   "VERTICAL" - Vertical layout.
+	CardOrientation string `json:"cardOrientation,omitempty"`
+
+	// ThumbnailImageAlignment: Required if orientation is horizontal.
+	// Image preview alignment for standalone cards with horizontal layout.
+	//
+	// Possible values:
+	//   "THUMBNAIL_IMAGE_ALIGNMENT_UNSPECIFIED" - Not specified.
+	//   "LEFT" - Thumbnail preview is left-aligned.
+	//   "RIGHT" - Thumbnail preview is right-aligned.
+	ThumbnailImageAlignment string `json:"thumbnailImageAlignment,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "CardContent") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CardContent") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmStandaloneCard) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmStandaloneCard
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedAction: Rich
+// Business Messaging (RBM) suggested client-side action that the
+// user
+// can choose from the card.
+type GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedAction struct {
+	// Dial: Suggested client side action: Dial a phone number
+	Dial *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionDial `json:"dial,omitempty"`
+
+	// OpenUrl: Suggested client side action: Open a URI on device
+	OpenUrl *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionOpenUri `json:"openUrl,omitempty"`
+
+	// PostbackData: Opaque payload that the Dialogflow receives in a user
+	// event
+	// when the user taps the suggested action. This data will be
+	// also
+	// forwarded to webhook to allow performing custom business logic.
+	PostbackData string `json:"postbackData,omitempty"`
+
+	// ShareLocation: Suggested client side action: Share user location
+	ShareLocation *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionShareLocation `json:"shareLocation,omitempty"`
+
+	// Text: Text to display alongside the action.
+	Text string `json:"text,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Dial") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Dial") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedAction) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedAction
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggeste
+// dActionDial: Opens the user's default dialer app with the specified
+// phone number
+// but does not dial automatically (https://goo.gl/ergbB2).
+type GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionDial struct {
+	// PhoneNumber: Required. The phone number to fill in the default dialer
+	// app.
+	// This field should be in
+	// [E.164](https://en.wikipedia.org/wiki/E.164)
+	// format. An example of a correctly formatted phone
+	// number:
+	// +15556767888.
+	PhoneNumber string `json:"phoneNumber,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "PhoneNumber") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "PhoneNumber") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionDial) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionDial
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggeste
+// dActionOpenUri: Opens the user's default web browser app to the
+// specified uri
+// (https://goo.gl/6GLJD2). If the user has an app installed that
+// is
+// registered as the default handler for the URL, then this app will
+// be
+// opened instead, and its icon will be used in the suggested action UI.
+type GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionOpenUri struct {
+	// Uri: Required. The uri to open on the user device
+	Uri string `json:"uri,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Uri") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Uri") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionOpenUri) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionOpenUri
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggeste
+// dActionShareLocation: Opens the device's location chooser so the user
+// can pick a location
+// to send back to the agent (https://goo.gl/GXotJW).
+type GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedActionRbmSuggestedActionShareLocation struct {
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedReply: Rich
+// Business Messaging (RBM) suggested reply that the user can
+// click
+// instead of typing in their own response.
+type GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedReply struct {
+	// PostbackData: Opaque payload that the Dialogflow receives in a user
+	// event
+	// when the user taps the suggested reply. This data will be
+	// also
+	// forwarded to webhook to allow performing custom business logic.
+	PostbackData string `json:"postbackData,omitempty"`
+
+	// Text: Suggested reply text.
+	Text string `json:"text,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "PostbackData") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "PostbackData") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedReply) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedReply
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestion: Rich Business
+// Messaging (RBM) suggestion. Suggestions allow user to
+// easily select/click a predefined response or perform an action
+// (like
+// opening a web uri).
+type GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestion struct {
+	// Action: Predefined client side actions that user can choose
+	Action *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedAction `json:"action,omitempty"`
+
+	// Reply: Predefined replies for user to select instead of typing
+	Reply *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestedReply `json:"reply,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Action") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Action") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestion) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestion
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageRbmText: Rich Business
+// Messaging (RBM) text response with suggestions.
+type GoogleCloudDialogflowV2beta1IntentMessageRbmText struct {
+	// RbmSuggestion: Optional. One or more suggestions to show to the user.
+	RbmSuggestion []*GoogleCloudDialogflowV2beta1IntentMessageRbmSuggestion `json:"rbmSuggestion,omitempty"`
+
+	// Text: Required. Text sent and displayed to the user.
+	Text string `json:"text,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "RbmSuggestion") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "RbmSuggestion") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageRbmText) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageRbmText
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -4663,6 +6702,113 @@ type GoogleCloudDialogflowV2beta1IntentMessageSuggestions struct {
 
 func (s *GoogleCloudDialogflowV2beta1IntentMessageSuggestions) MarshalJSON() ([]byte, error) {
 	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageSuggestions
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageTableCard: Table card for
+// Actions on Google.
+type GoogleCloudDialogflowV2beta1IntentMessageTableCard struct {
+	// Buttons: Optional. List of buttons for the card.
+	Buttons []*GoogleCloudDialogflowV2beta1IntentMessageBasicCardButton `json:"buttons,omitempty"`
+
+	// ColumnProperties: Optional. Display properties for the columns in
+	// this table.
+	ColumnProperties []*GoogleCloudDialogflowV2beta1IntentMessageColumnProperties `json:"columnProperties,omitempty"`
+
+	// Image: Optional. Image which should be displayed on the card.
+	Image *GoogleCloudDialogflowV2beta1IntentMessageImage `json:"image,omitempty"`
+
+	// Rows: Optional. Rows in this table of data.
+	Rows []*GoogleCloudDialogflowV2beta1IntentMessageTableCardRow `json:"rows,omitempty"`
+
+	// Subtitle: Optional. Subtitle to the title.
+	Subtitle string `json:"subtitle,omitempty"`
+
+	// Title: Required. Title of the card.
+	Title string `json:"title,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Buttons") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Buttons") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageTableCard) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageTableCard
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageTableCardCell: Cell of
+// TableCardRow.
+type GoogleCloudDialogflowV2beta1IntentMessageTableCardCell struct {
+	// Text: Required. Text in this cell.
+	Text string `json:"text,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Text") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Text") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageTableCardCell) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageTableCardCell
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleCloudDialogflowV2beta1IntentMessageTableCardRow: Row of
+// TableCard.
+type GoogleCloudDialogflowV2beta1IntentMessageTableCardRow struct {
+	// Cells: Optional. List of cells that make up this row.
+	Cells []*GoogleCloudDialogflowV2beta1IntentMessageTableCardCell `json:"cells,omitempty"`
+
+	// DividerAfter: Optional. Whether to add a visual divider after this
+	// row.
+	DividerAfter bool `json:"dividerAfter,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Cells") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Cells") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1IntentMessageTableCardRow) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1IntentMessageTableCardRow
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -4854,7 +7000,7 @@ type GoogleCloudDialogflowV2beta1IntentParameter struct {
 
 	// Prompts: Optional. The collection of prompts that the agent can
 	// present to the
-	// user in order to collect value for the parameter.
+	// user in order to collect a value for the parameter.
 	Prompts []string `json:"prompts,omitempty"`
 
 	// Value: Optional. The definition of the parameter value. It can be:
@@ -4890,20 +7036,43 @@ func (s *GoogleCloudDialogflowV2beta1IntentParameter) MarshalJSON() ([]byte, err
 }
 
 // GoogleCloudDialogflowV2beta1IntentTrainingPhrase: Represents an
-// example or template that the agent is trained on.
+// example that the agent is trained on.
 type GoogleCloudDialogflowV2beta1IntentTrainingPhrase struct {
 	// Name: Output only. The unique identifier of this training phrase.
 	Name string `json:"name,omitempty"`
 
-	// Parts: Required. The collection of training phrase parts (can be
-	// annotated).
-	// Fields: `entity_type`, `alias` and `user_defined` should be
-	// populated
-	// only for the annotated parts of the training phrase.
+	// Parts: Required. The ordered list of training phrase parts.
+	// The parts are concatenated in order to form the training
+	// phrase.
+	//
+	// Note: The API does not automatically annotate training phrases like
+	// the
+	// Dialogflow Console does.
+	//
+	// Note: Do not forget to include whitespace at part boundaries,
+	// so the training phrase is well formatted when the parts are
+	// concatenated.
+	//
+	// If the training phrase does not need to be annotated with
+	// parameters,
+	// you just need a single part with only the Part.text field set.
+	//
+	// If you want to annotate the training phrase, you must create
+	// multiple
+	// parts, where the fields of each part are populated in one of two
+	// ways:
+	//
+	// -   `Part.text` is set to a part of the phrase that has no
+	// parameters.
+	// -   `Part.text` is set to a part of the phrase that you want to
+	// annotate,
+	//     and the `entity_type`, `alias`, and `user_defined` fields are
+	// all
+	//     set.
 	Parts []*GoogleCloudDialogflowV2beta1IntentTrainingPhrasePart `json:"parts,omitempty"`
 
-	// TimesAddedCount: Optional. Indicates how many times this example or
-	// template was added to
+	// TimesAddedCount: Optional. Indicates how many times this example was
+	// added to
 	// the intent. Each time a developer adds an existing sample by editing
 	// an
 	// intent or training, this counter is increased.
@@ -4920,6 +7089,13 @@ type GoogleCloudDialogflowV2beta1IntentTrainingPhrase struct {
 	//   "TEMPLATE" - Templates are not annotated with entity types, but
 	// they can contain
 	// @-prefixed entity type names as substrings.
+	// Template mode has been deprecated. Example mode is the only
+	// supported
+	// way to create new training phrases. If you have existing
+	// training
+	// phrases that you've created in template mode, those will continue
+	// to
+	// work.
 	Type string `json:"type,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Name") to
@@ -4951,23 +7127,23 @@ type GoogleCloudDialogflowV2beta1IntentTrainingPhrasePart struct {
 	// Alias: Optional. The parameter name for the value extracted from
 	// the
 	// annotated part of the example.
+	// This field is required for annotated parts of the training phrase.
 	Alias string `json:"alias,omitempty"`
 
-	// EntityType: Optional. The entity type name prefixed with `@`. This
-	// field is
-	// required for the annotated part of the text and applies only
-	// to
-	// examples.
+	// EntityType: Optional. The entity type name prefixed with `@`.
+	// This field is required for annotated parts of the training phrase.
 	EntityType string `json:"entityType,omitempty"`
 
-	// Text: Required. The text corresponding to the example or template,
-	// if there are no annotations. For
-	// annotated examples, it is the text for one of the example's parts.
+	// Text: Required. The text for this part.
 	Text string `json:"text,omitempty"`
 
 	// UserDefined: Optional. Indicates whether the text was manually
-	// annotated by the
-	// developer.
+	// annotated.
+	// This field is set to true when the Dialogflow Console is used
+	// to
+	// manually annotate the part. When creating an annotated part with
+	// the
+	// API, you must set this to true.
 	UserDefined bool `json:"userDefined,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Alias") to
@@ -5148,6 +7324,39 @@ func (s *GoogleCloudDialogflowV2beta1KnowledgeOperationMetadata) MarshalJSON() (
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2beta1LabelConversationResponse: The response
+// for
+// ConversationDatasets.LabelConversation
+type GoogleCloudDialogflowV2beta1LabelConversationResponse struct {
+	// AnnotatedConversationDataset: New annotated conversation dataset
+	// created by the labeling task.
+	AnnotatedConversationDataset *GoogleCloudDialogflowV2beta1AnnotatedConversationDataset `json:"annotatedConversationDataset,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g.
+	// "AnnotatedConversationDataset") to unconditionally include in API
+	// requests. By default, fields with empty values are omitted from API
+	// requests. However, any non-pointer, non-interface field appearing in
+	// ForceSendFields will be sent to the server regardless of whether the
+	// field is empty or not. This may be used to include empty fields in
+	// Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g.
+	// "AnnotatedConversationDataset") to include in API requests with the
+	// JSON null value. By default, fields with empty values are omitted
+	// from API requests. However, any field with an empty value appearing
+	// in NullFields will be sent to the server as null. It is an error if a
+	// field in this list has a non-empty value. This may be used to include
+	// null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1LabelConversationResponse) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1LabelConversationResponse
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2beta1OriginalDetectIntentRequest: Represents
 // the contents of the original request that was passed to
 // the `[Streaming]DetectIntent` call.
@@ -5213,6 +7422,7 @@ type GoogleCloudDialogflowV2beta1QueryResult struct {
 	Action string `json:"action,omitempty"`
 
 	// AllRequiredParamsPresent: This field is set to:
+	//
 	// - `false` if the matched intent has required parameters and not all
 	// of
 	//    the required parameter values have been collected.
@@ -5234,18 +7444,25 @@ type GoogleCloudDialogflowV2beta1QueryResult struct {
 
 	// FulfillmentText: The text to be pronounced to the user or shown on
 	// the screen.
+	// Note: This is a legacy field, `fulfillment_messages` should be
+	// preferred.
 	FulfillmentText string `json:"fulfillmentText,omitempty"`
 
 	// Intent: The intent that matched the conversational query. Some,
 	// not
 	// all fields are filled in this message, including but not limited
 	// to:
-	// `name`, `display_name` and `webhook_state`.
+	// `name`, `display_name`, `end_interaction` and `is_fallback`.
 	Intent *GoogleCloudDialogflowV2beta1Intent `json:"intent,omitempty"`
 
 	// IntentDetectionConfidence: The intent detection confidence. Values
 	// range from 0.0
 	// (completely uncertain) to 1.0 (completely certain).
+	// This value is for informational purpose only and is only used to
+	// help match the best intent within the classification threshold.
+	// This value may change for the same end-user expression at any time
+	// due to a
+	// model retraining or change in implementation.
 	// If there are `multiple knowledge_answers` messages, this value is set
 	// to
 	// the greatest `knowledgeAnswers.match_confidence` value in the list.
@@ -5258,8 +7475,10 @@ type GoogleCloudDialogflowV2beta1QueryResult struct {
 
 	// LanguageCode: The language that was triggered during intent
 	// detection.
-	// See [Language
-	// Support](https://dialogflow.com/docs/reference/language)
+	// See
+	// [Language
+	// Support](https://cloud.google.com/dialogflow/docs/reference/
+	// language)
 	// for a list of the currently supported language codes.
 	LanguageCode string `json:"languageCode,omitempty"`
 
@@ -5275,6 +7494,7 @@ type GoogleCloudDialogflowV2beta1QueryResult struct {
 	Parameters googleapi.RawMessage `json:"parameters,omitempty"`
 
 	// QueryText: The original conversational query text:
+	//
 	// - If natural language text was provided as input, `query_text`
 	// contains
 	//   a copy of the input.
@@ -5283,7 +7503,9 @@ type GoogleCloudDialogflowV2beta1QueryResult struct {
 	//   contains the speech recognition result. If speech recognizer
 	// produced
 	//   multiple alternatives, a particular one is picked.
-	// - If an event was provided as input, `query_text` is not set.
+	// - If automatic spell correction is enabled, `query_text` will contain
+	// the
+	//   corrected user input.
 	QueryText string `json:"queryText,omitempty"`
 
 	// SentimentAnalysisResult: The sentiment analysis result, which depends
@@ -5442,6 +7664,91 @@ func (s *GoogleCloudDialogflowV2beta1SentimentAnalysisResult) MarshalJSON() ([]b
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GoogleCloudDialogflowV2beta1SessionEntityType: Represents a session
+// entity type.
+//
+// Extends or replaces a developer entity type at the user session level
+// (we
+// refer to the entity types defined at the agent level as "developer
+// entity
+// types").
+//
+// Note: session entity types apply to all queries, regardless of the
+// language.
+type GoogleCloudDialogflowV2beta1SessionEntityType struct {
+	// Entities: Required. The collection of entities associated with this
+	// session entity
+	// type.
+	Entities []*GoogleCloudDialogflowV2beta1EntityTypeEntity `json:"entities,omitempty"`
+
+	// EntityOverrideMode: Required. Indicates whether the additional data
+	// should override or
+	// supplement the developer entity type definition.
+	//
+	// Possible values:
+	//   "ENTITY_OVERRIDE_MODE_UNSPECIFIED" - Not specified. This value
+	// should be never used.
+	//   "ENTITY_OVERRIDE_MODE_OVERRIDE" - The collection of session
+	// entities overrides the collection of entities
+	// in the corresponding developer entity type.
+	//   "ENTITY_OVERRIDE_MODE_SUPPLEMENT" - The collection of session
+	// entities extends the collection of entities in
+	// the corresponding developer entity type.
+	//
+	// Note: Even in this override mode calls to
+	// `ListSessionEntityTypes`,
+	// `GetSessionEntityType`, `CreateSessionEntityType`
+	// and
+	// `UpdateSessionEntityType` only return the additional entities added
+	// in
+	// this session entity type. If you want to get the supplemented
+	// list,
+	// please call EntityTypes.GetEntityType on the developer entity
+	// type
+	// and merge.
+	EntityOverrideMode string `json:"entityOverrideMode,omitempty"`
+
+	// Name: Required. The unique identifier of this session entity type.
+	// Format:
+	// `projects/<Project ID>/agent/sessions/<Session
+	// ID>/entityTypes/<Entity Type
+	// Display Name>`, or
+	// `projects/<Project ID>/agent/environments/<Environment
+	// ID>/users/<User
+	// ID>/sessions/<Session ID>/entityTypes/<Entity Type Display Name>`.
+	// If `Environment ID` is not specified, we assume default
+	// 'draft'
+	// environment. If `User ID` is not specified, we assume default '-'
+	// user.
+	//
+	// `<Entity Type Display Name>` must be the display name of an existing
+	// entity
+	// type in the same agent that will be overridden or supplemented.
+	Name string `json:"name,omitempty"`
+
+	// ForceSendFields is a list of field names (e.g. "Entities") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Entities") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleCloudDialogflowV2beta1SessionEntityType) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleCloudDialogflowV2beta1SessionEntityType
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
 // GoogleCloudDialogflowV2beta1WebhookRequest: The request message for a
 // webhook call.
 type GoogleCloudDialogflowV2beta1WebhookRequest struct {
@@ -5512,6 +7819,9 @@ type GoogleCloudDialogflowV2beta1WebhookResponse struct {
 	// FollowupEventInput: Optional. Makes the platform immediately invoke
 	// another `DetectIntent` call
 	// internally with the specified event as input.
+	// When this field is set, Dialogflow ignores the
+	// `fulfillment_text`,
+	// `fulfillment_messages`, and `payload` fields.
 	FollowupEventInput *GoogleCloudDialogflowV2beta1EventInput `json:"followupEventInput,omitempty"`
 
 	// FulfillmentMessages: Optional. The collection of rich messages to
@@ -5559,6 +7869,17 @@ type GoogleCloudDialogflowV2beta1WebhookResponse struct {
 	// }</pre>
 	Payload googleapi.RawMessage `json:"payload,omitempty"`
 
+	// SessionEntityTypes: Optional. Additional session entity types to
+	// replace or extend developer
+	// entity types with. The entity synonyms apply to all languages and
+	// persist
+	// for the session of this query. Setting the session entity types
+	// inside
+	// webhook overwrites the session entity types that have been set
+	// through
+	// `DetectIntentRequest.query_params.session_entity_types`.
+	SessionEntityTypes []*GoogleCloudDialogflowV2beta1SessionEntityType `json:"sessionEntityTypes,omitempty"`
+
 	// Source: Optional. This value is passed directly to
 	// `QueryResult.webhook_source`.
 	Source string `json:"source,omitempty"`
@@ -5583,6 +7904,43 @@ type GoogleCloudDialogflowV2beta1WebhookResponse struct {
 
 func (s *GoogleCloudDialogflowV2beta1WebhookResponse) MarshalJSON() ([]byte, error) {
 	type NoMethod GoogleCloudDialogflowV2beta1WebhookResponse
+	raw := NoMethod(*s)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
+}
+
+// GoogleLongrunningListOperationsResponse: The response message for
+// Operations.ListOperations.
+type GoogleLongrunningListOperationsResponse struct {
+	// NextPageToken: The standard List next-page token.
+	NextPageToken string `json:"nextPageToken,omitempty"`
+
+	// Operations: A list of operations that matches the specified filter in
+	// the request.
+	Operations []*GoogleLongrunningOperation `json:"operations,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the
+	// server.
+	googleapi.ServerResponse `json:"-"`
+
+	// ForceSendFields is a list of field names (e.g. "NextPageToken") to
+	// unconditionally include in API requests. By default, fields with
+	// empty values are omitted from API requests. However, any non-pointer,
+	// non-interface field appearing in ForceSendFields will be sent to the
+	// server regardless of whether the field is empty or not. This may be
+	// used to include empty fields in Patch requests.
+	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "NextPageToken") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
+}
+
+func (s *GoogleLongrunningListOperationsResponse) MarshalJSON() ([]byte, error) {
+	type NoMethod GoogleLongrunningListOperationsResponse
 	raw := NoMethod(*s)
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
@@ -5615,7 +7973,8 @@ type GoogleLongrunningOperation struct {
 	// service that
 	// originally returns it. If you use the default HTTP mapping,
 	// the
-	// `name` should have the format of `operations/some/unique/name`.
+	// `name` should be a resource name ending with
+	// `operations/{unique_id}`.
 	Name string `json:"name,omitempty"`
 
 	// Response: The normal response of the operation in case of success.
@@ -5681,84 +8040,17 @@ type GoogleProtobufEmpty struct {
 }
 
 // GoogleRpcStatus: The `Status` type defines a logical error model that
-// is suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// is suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type GoogleRpcStatus struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -5856,6 +8148,291 @@ func (s *GoogleTypeLatLng) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// method id "dialogflow.projects.agent":
+
+type ProjectsAgentCall struct {
+	s                            *Service
+	parent                       string
+	googleclouddialogflowv2agent *GoogleCloudDialogflowV2Agent
+	urlParams_                   gensupport.URLParams
+	ctx_                         context.Context
+	header_                      http.Header
+}
+
+// Agent: Creates/updates the specified agent.
+func (r *ProjectsService) Agent(parent string, googleclouddialogflowv2agent *GoogleCloudDialogflowV2Agent) *ProjectsAgentCall {
+	c := &ProjectsAgentCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.parent = parent
+	c.googleclouddialogflowv2agent = googleclouddialogflowv2agent
+	return c
+}
+
+// UpdateMask sets the optional parameter "updateMask": The mask to
+// control which fields get updated.
+func (c *ProjectsAgentCall) UpdateMask(updateMask string) *ProjectsAgentCall {
+	c.urlParams_.Set("updateMask", updateMask)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsAgentCall) Fields(s ...googleapi.Field) *ProjectsAgentCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsAgentCall) Context(ctx context.Context) *ProjectsAgentCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsAgentCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsAgentCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.googleclouddialogflowv2agent)
+	if err != nil {
+		return nil, err
+	}
+	reqHeaders.Set("Content-Type", "application/json")
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v2/{+parent}/agent")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"parent": c.parent,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "dialogflow.projects.agent" call.
+// Exactly one of *GoogleCloudDialogflowV2Agent or error will be
+// non-nil. Any non-2xx status code is an error. Response headers are in
+// either *GoogleCloudDialogflowV2Agent.ServerResponse.Header or (if a
+// response was returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsAgentCall) Do(opts ...googleapi.CallOption) (*GoogleCloudDialogflowV2Agent, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleCloudDialogflowV2Agent{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Creates/updates the specified agent.",
+	//   "flatPath": "v2/projects/{projectsId}/agent",
+	//   "httpMethod": "POST",
+	//   "id": "dialogflow.projects.agent",
+	//   "parameterOrder": [
+	//     "parent"
+	//   ],
+	//   "parameters": {
+	//     "parent": {
+	//       "description": "Required. The project of this agent.\nFormat: `projects/\u003cProject ID\u003e`.",
+	//       "location": "path",
+	//       "pattern": "^projects/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "updateMask": {
+	//       "description": "Optional. The mask to control which fields get updated.",
+	//       "format": "google-fieldmask",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v2/{+parent}/agent",
+	//   "request": {
+	//     "$ref": "GoogleCloudDialogflowV2Agent"
+	//   },
+	//   "response": {
+	//     "$ref": "GoogleCloudDialogflowV2Agent"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/dialogflow"
+	//   ]
+	// }
+
+}
+
+// method id "dialogflow.projects.deleteAgent":
+
+type ProjectsDeleteAgentCall struct {
+	s          *Service
+	parent     string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// DeleteAgent: Deletes the specified agent.
+func (r *ProjectsService) DeleteAgent(parent string) *ProjectsDeleteAgentCall {
+	c := &ProjectsDeleteAgentCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.parent = parent
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsDeleteAgentCall) Fields(s ...googleapi.Field) *ProjectsDeleteAgentCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsDeleteAgentCall) Context(ctx context.Context) *ProjectsDeleteAgentCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsDeleteAgentCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsDeleteAgentCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v2/{+parent}/agent")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("DELETE", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"parent": c.parent,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "dialogflow.projects.deleteAgent" call.
+// Exactly one of *GoogleProtobufEmpty or error will be non-nil. Any
+// non-2xx status code is an error. Response headers are in either
+// *GoogleProtobufEmpty.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsDeleteAgentCall) Do(opts ...googleapi.CallOption) (*GoogleProtobufEmpty, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleProtobufEmpty{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Deletes the specified agent.",
+	//   "flatPath": "v2/projects/{projectsId}/agent",
+	//   "httpMethod": "DELETE",
+	//   "id": "dialogflow.projects.deleteAgent",
+	//   "parameterOrder": [
+	//     "parent"
+	//   ],
+	//   "parameters": {
+	//     "parent": {
+	//       "description": "Required. The project that the agent to delete is associated with.\nFormat: `projects/\u003cProject ID\u003e`.",
+	//       "location": "path",
+	//       "pattern": "^projects/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v2/{+parent}/agent",
+	//   "response": {
+	//     "$ref": "GoogleProtobufEmpty"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/dialogflow"
+	//   ]
+	// }
+
+}
+
 // method id "dialogflow.projects.getAgent":
 
 type ProjectsGetAgentCall struct {
@@ -5911,6 +8488,7 @@ func (c *ProjectsGetAgentCall) Header() http.Header {
 
 func (c *ProjectsGetAgentCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6013,8 +8591,7 @@ type ProjectsAgentExportCall struct {
 
 // Export: Exports the specified agent to a ZIP file.
 //
-// Operation <response: ExportAgentResponse,
-//            metadata: google.protobuf.Struct>
+// Operation <response: ExportAgentResponse>
 func (r *ProjectsAgentService) Export(parent string, googleclouddialogflowv2exportagentrequest *GoogleCloudDialogflowV2ExportAgentRequest) *ProjectsAgentExportCall {
 	c := &ProjectsAgentExportCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -6049,6 +8626,7 @@ func (c *ProjectsAgentExportCall) Header() http.Header {
 
 func (c *ProjectsAgentExportCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6112,7 +8690,7 @@ func (c *ProjectsAgentExportCall) Do(opts ...googleapi.CallOption) (*GoogleLongr
 	}
 	return ret, nil
 	// {
-	//   "description": "Exports the specified agent to a ZIP file.\n\nOperation \u003cresponse: ExportAgentResponse,\n           metadata: google.protobuf.Struct\u003e",
+	//   "description": "Exports the specified agent to a ZIP file.\n\nOperation \u003cresponse: ExportAgentResponse\u003e",
 	//   "flatPath": "v2/projects/{projectsId}/agent:export",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.export",
@@ -6162,8 +8740,7 @@ type ProjectsAgentImportCall struct {
 // new
 // versions from ImportAgentRequest.
 //
-// Operation <response: google.protobuf.Empty,
-//            metadata: google.protobuf.Struct>
+// Operation <response: google.protobuf.Empty>
 func (r *ProjectsAgentService) Import(parent string, googleclouddialogflowv2importagentrequest *GoogleCloudDialogflowV2ImportAgentRequest) *ProjectsAgentImportCall {
 	c := &ProjectsAgentImportCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -6198,6 +8775,7 @@ func (c *ProjectsAgentImportCall) Header() http.Header {
 
 func (c *ProjectsAgentImportCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6261,7 +8839,7 @@ func (c *ProjectsAgentImportCall) Do(opts ...googleapi.CallOption) (*GoogleLongr
 	}
 	return ret, nil
 	// {
-	//   "description": "Imports the specified agent from a ZIP file.\n\nUploads new intents and entity types without deleting the existing ones.\nIntents and entity types with the same name are replaced with the new\nversions from ImportAgentRequest.\n\nOperation \u003cresponse: google.protobuf.Empty,\n           metadata: google.protobuf.Struct\u003e",
+	//   "description": "Imports the specified agent from a ZIP file.\n\nUploads new intents and entity types without deleting the existing ones.\nIntents and entity types with the same name are replaced with the new\nversions from ImportAgentRequest.\n\nOperation \u003cresponse: google.protobuf.Empty\u003e",
 	//   "flatPath": "v2/projects/{projectsId}/agent:import",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.import",
@@ -6309,8 +8887,7 @@ type ProjectsAgentRestoreCall struct {
 // and
 // entity types in the older version are deleted.
 //
-// Operation <response: google.protobuf.Empty,
-//            metadata: google.protobuf.Struct>
+// Operation <response: google.protobuf.Empty>
 func (r *ProjectsAgentService) Restore(parent string, googleclouddialogflowv2restoreagentrequest *GoogleCloudDialogflowV2RestoreAgentRequest) *ProjectsAgentRestoreCall {
 	c := &ProjectsAgentRestoreCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -6345,6 +8922,7 @@ func (c *ProjectsAgentRestoreCall) Header() http.Header {
 
 func (c *ProjectsAgentRestoreCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6408,7 +8986,7 @@ func (c *ProjectsAgentRestoreCall) Do(opts ...googleapi.CallOption) (*GoogleLong
 	}
 	return ret, nil
 	// {
-	//   "description": "Restores the specified agent from a ZIP file.\n\nReplaces the current agent version with a new one. All the intents and\nentity types in the older version are deleted.\n\nOperation \u003cresponse: google.protobuf.Empty,\n           metadata: google.protobuf.Struct\u003e",
+	//   "description": "Restores the specified agent from a ZIP file.\n\nReplaces the current agent version with a new one. All the intents and\nentity types in the older version are deleted.\n\nOperation \u003cresponse: google.protobuf.Empty\u003e",
 	//   "flatPath": "v2/projects/{projectsId}/agent:restore",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.restore",
@@ -6520,6 +9098,7 @@ func (c *ProjectsAgentSearchCall) Header() http.Header {
 
 func (c *ProjectsAgentSearchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6598,7 +9177,7 @@ func (c *ProjectsAgentSearchCall) Do(opts ...googleapi.CallOption) (*GoogleCloud
 	//       "type": "integer"
 	//     },
 	//     "pageToken": {
-	//       "description": "Optional. The next_page_token value returned from a previous list request.",
+	//       "description": "The next_page_token value returned from a previous list request.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -6656,8 +9235,7 @@ type ProjectsAgentTrainCall struct {
 
 // Train: Trains the specified agent.
 //
-// Operation <response: google.protobuf.Empty,
-//            metadata: google.protobuf.Struct>
+// Operation <response: google.protobuf.Empty>
 func (r *ProjectsAgentService) Train(parent string, googleclouddialogflowv2trainagentrequest *GoogleCloudDialogflowV2TrainAgentRequest) *ProjectsAgentTrainCall {
 	c := &ProjectsAgentTrainCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -6692,6 +9270,7 @@ func (c *ProjectsAgentTrainCall) Header() http.Header {
 
 func (c *ProjectsAgentTrainCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6755,7 +9334,7 @@ func (c *ProjectsAgentTrainCall) Do(opts ...googleapi.CallOption) (*GoogleLongru
 	}
 	return ret, nil
 	// {
-	//   "description": "Trains the specified agent.\n\nOperation \u003cresponse: google.protobuf.Empty,\n           metadata: google.protobuf.Struct\u003e",
+	//   "description": "Trains the specified agent.\n\nOperation \u003cresponse: google.protobuf.Empty\u003e",
 	//   "flatPath": "v2/projects/{projectsId}/agent:train",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.train",
@@ -6799,8 +9378,7 @@ type ProjectsAgentEntityTypesBatchDeleteCall struct {
 
 // BatchDelete: Deletes entity types in the specified agent.
 //
-// Operation <response: google.protobuf.Empty,
-//            metadata: google.protobuf.Struct>
+// Operation <response: google.protobuf.Empty>
 func (r *ProjectsAgentEntityTypesService) BatchDelete(parent string, googleclouddialogflowv2batchdeleteentitytypesrequest *GoogleCloudDialogflowV2BatchDeleteEntityTypesRequest) *ProjectsAgentEntityTypesBatchDeleteCall {
 	c := &ProjectsAgentEntityTypesBatchDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -6835,6 +9413,7 @@ func (c *ProjectsAgentEntityTypesBatchDeleteCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesBatchDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6898,7 +9477,7 @@ func (c *ProjectsAgentEntityTypesBatchDeleteCall) Do(opts ...googleapi.CallOptio
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes entity types in the specified agent.\n\nOperation \u003cresponse: google.protobuf.Empty,\n           metadata: google.protobuf.Struct\u003e",
+	//   "description": "Deletes entity types in the specified agent.\n\nOperation \u003cresponse: google.protobuf.Empty\u003e",
 	//   "flatPath": "v2/projects/{projectsId}/agent/entityTypes:batchDelete",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.entityTypes.batchDelete",
@@ -6943,8 +9522,7 @@ type ProjectsAgentEntityTypesBatchUpdateCall struct {
 // BatchUpdate: Updates/Creates multiple entity types in the specified
 // agent.
 //
-// Operation <response: BatchUpdateEntityTypesResponse,
-//            metadata: google.protobuf.Struct>
+// Operation <response: BatchUpdateEntityTypesResponse>
 func (r *ProjectsAgentEntityTypesService) BatchUpdate(parent string, googleclouddialogflowv2batchupdateentitytypesrequest *GoogleCloudDialogflowV2BatchUpdateEntityTypesRequest) *ProjectsAgentEntityTypesBatchUpdateCall {
 	c := &ProjectsAgentEntityTypesBatchUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -6979,6 +9557,7 @@ func (c *ProjectsAgentEntityTypesBatchUpdateCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesBatchUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7042,7 +9621,7 @@ func (c *ProjectsAgentEntityTypesBatchUpdateCall) Do(opts ...googleapi.CallOptio
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates/Creates multiple entity types in the specified agent.\n\nOperation \u003cresponse: BatchUpdateEntityTypesResponse,\n           metadata: google.protobuf.Struct\u003e",
+	//   "description": "Updates/Creates multiple entity types in the specified agent.\n\nOperation \u003cresponse: BatchUpdateEntityTypesResponse\u003e",
 	//   "flatPath": "v2/projects/{projectsId}/agent/entityTypes:batchUpdate",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.entityTypes.batchUpdate",
@@ -7094,13 +9673,14 @@ func (r *ProjectsAgentEntityTypesService) Create(parent string, googleclouddialo
 
 // LanguageCode sets the optional parameter "languageCode": The language
 // of entity synonyms defined in `entity_type`. If not
-// specified, the agent's default language is used.
-// [More than a
-// dozen
-// languages](https://dialogflow.com/docs/reference/language) are
-// supported.
-// Note: languages must be enabled in the agent, before they can be
+// specified, the agent's default language is
 // used.
+// [Many
+// languages](https://cloud.google.com/dialogflow/docs/refere
+// nce/language)
+// are supported. Note: languages must be enabled in the agent before
+// they can
+// be used.
 func (c *ProjectsAgentEntityTypesCreateCall) LanguageCode(languageCode string) *ProjectsAgentEntityTypesCreateCall {
 	c.urlParams_.Set("languageCode", languageCode)
 	return c
@@ -7133,6 +9713,7 @@ func (c *ProjectsAgentEntityTypesCreateCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7206,7 +9787,7 @@ func (c *ProjectsAgentEntityTypesCreateCall) Do(opts ...googleapi.CallOption) (*
 	//   ],
 	//   "parameters": {
 	//     "languageCode": {
-	//       "description": "Optional. The language of entity synonyms defined in `entity_type`. If not\nspecified, the agent's default language is used.\n[More than a dozen\nlanguages](https://dialogflow.com/docs/reference/language) are supported.\nNote: languages must be enabled in the agent, before they can be used.",
+	//       "description": "Optional. The language of entity synonyms defined in `entity_type`. If not\nspecified, the agent's default language is used.\n[Many\nlanguages](https://cloud.google.com/dialogflow/docs/reference/language)\nare supported. Note: languages must be enabled in the agent before they can\nbe used.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -7277,6 +9858,7 @@ func (c *ProjectsAgentEntityTypesDeleteCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7383,13 +9965,14 @@ func (r *ProjectsAgentEntityTypesService) Get(name string) *ProjectsAgentEntityT
 
 // LanguageCode sets the optional parameter "languageCode": The language
 // to retrieve entity synonyms for. If not specified,
-// the agent's default language is used.
-// [More than a
-// dozen
-// languages](https://dialogflow.com/docs/reference/language) are
-// supported.
-// Note: languages must be enabled in the agent, before they can be
+// the agent's default language is
 // used.
+// [Many
+// languages](https://cloud.google.com/dialogflow/docs/refere
+// nce/language)
+// are supported. Note: languages must be enabled in the agent before
+// they can
+// be used.
 func (c *ProjectsAgentEntityTypesGetCall) LanguageCode(languageCode string) *ProjectsAgentEntityTypesGetCall {
 	c.urlParams_.Set("languageCode", languageCode)
 	return c
@@ -7432,6 +10015,7 @@ func (c *ProjectsAgentEntityTypesGetCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7503,7 +10087,7 @@ func (c *ProjectsAgentEntityTypesGetCall) Do(opts ...googleapi.CallOption) (*Goo
 	//   ],
 	//   "parameters": {
 	//     "languageCode": {
-	//       "description": "Optional. The language to retrieve entity synonyms for. If not specified,\nthe agent's default language is used.\n[More than a dozen\nlanguages](https://dialogflow.com/docs/reference/language) are supported.\nNote: languages must be enabled in the agent, before they can be used.",
+	//       "description": "Optional. The language to retrieve entity synonyms for. If not specified,\nthe agent's default language is used.\n[Many\nlanguages](https://cloud.google.com/dialogflow/docs/reference/language)\nare supported. Note: languages must be enabled in the agent before they can\nbe used.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -7547,13 +10131,14 @@ func (r *ProjectsAgentEntityTypesService) List(parent string) *ProjectsAgentEnti
 
 // LanguageCode sets the optional parameter "languageCode": The language
 // to list entity synonyms for. If not specified,
-// the agent's default language is used.
-// [More than a
-// dozen
-// languages](https://dialogflow.com/docs/reference/language) are
-// supported.
-// Note: languages must be enabled in the agent, before they can be
+// the agent's default language is
 // used.
+// [Many
+// languages](https://cloud.google.com/dialogflow/docs/refere
+// nce/language)
+// are supported. Note: languages must be enabled in the agent before
+// they can
+// be used.
 func (c *ProjectsAgentEntityTypesListCall) LanguageCode(languageCode string) *ProjectsAgentEntityTypesListCall {
 	c.urlParams_.Set("languageCode", languageCode)
 	return c
@@ -7611,6 +10196,7 @@ func (c *ProjectsAgentEntityTypesListCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7683,7 +10269,7 @@ func (c *ProjectsAgentEntityTypesListCall) Do(opts ...googleapi.CallOption) (*Go
 	//   ],
 	//   "parameters": {
 	//     "languageCode": {
-	//       "description": "Optional. The language to list entity synonyms for. If not specified,\nthe agent's default language is used.\n[More than a dozen\nlanguages](https://dialogflow.com/docs/reference/language) are supported.\nNote: languages must be enabled in the agent, before they can be used.",
+	//       "description": "Optional. The language to list entity synonyms for. If not specified,\nthe agent's default language is used.\n[Many\nlanguages](https://cloud.google.com/dialogflow/docs/reference/language)\nare supported. Note: languages must be enabled in the agent before they can\nbe used.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -7760,13 +10346,14 @@ func (r *ProjectsAgentEntityTypesService) Patch(nameid string, googleclouddialog
 
 // LanguageCode sets the optional parameter "languageCode": The language
 // of entity synonyms defined in `entity_type`. If not
-// specified, the agent's default language is used.
-// [More than a
-// dozen
-// languages](https://dialogflow.com/docs/reference/language) are
-// supported.
-// Note: languages must be enabled in the agent, before they can be
+// specified, the agent's default language is
 // used.
+// [Many
+// languages](https://cloud.google.com/dialogflow/docs/refere
+// nce/language)
+// are supported. Note: languages must be enabled in the agent before
+// they can
+// be used.
 func (c *ProjectsAgentEntityTypesPatchCall) LanguageCode(languageCode string) *ProjectsAgentEntityTypesPatchCall {
 	c.urlParams_.Set("languageCode", languageCode)
 	return c
@@ -7806,6 +10393,7 @@ func (c *ProjectsAgentEntityTypesPatchCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7879,12 +10467,12 @@ func (c *ProjectsAgentEntityTypesPatchCall) Do(opts ...googleapi.CallOption) (*G
 	//   ],
 	//   "parameters": {
 	//     "languageCode": {
-	//       "description": "Optional. The language of entity synonyms defined in `entity_type`. If not\nspecified, the agent's default language is used.\n[More than a dozen\nlanguages](https://dialogflow.com/docs/reference/language) are supported.\nNote: languages must be enabled in the agent, before they can be used.",
+	//       "description": "Optional. The language of entity synonyms defined in `entity_type`. If not\nspecified, the agent's default language is used.\n[Many\nlanguages](https://cloud.google.com/dialogflow/docs/reference/language)\nare supported. Note: languages must be enabled in the agent before they can\nbe used.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "name": {
-	//       "description": "Required for all methods except `create` (`create` populates the name\nautomatically.\nThe unique identifier of the entity type. Format:\n`projects/\u003cProject ID\u003e/agent/entityTypes/\u003cEntity Type ID\u003e`.",
+	//       "description": "The unique identifier of the entity type.\nRequired for EntityTypes.UpdateEntityType and\nEntityTypes.BatchUpdateEntityTypes methods.\nFormat: `projects/\u003cProject ID\u003e/agent/entityTypes/\u003cEntity Type ID\u003e`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/agent/entityTypes/[^/]+$",
 	//       "required": true,
@@ -7961,6 +10549,7 @@ func (c *ProjectsAgentEntityTypesEntitiesBatchCreateCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesEntitiesBatchCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8069,8 +10658,7 @@ type ProjectsAgentEntityTypesEntitiesBatchDeleteCall struct {
 // BatchDelete: Deletes entities in the specified entity
 // type.
 //
-// Operation <response: google.protobuf.Empty,
-//            metadata: google.protobuf.Struct>
+// Operation <response: google.protobuf.Empty>
 func (r *ProjectsAgentEntityTypesEntitiesService) BatchDelete(parent string, googleclouddialogflowv2batchdeleteentitiesrequest *GoogleCloudDialogflowV2BatchDeleteEntitiesRequest) *ProjectsAgentEntityTypesEntitiesBatchDeleteCall {
 	c := &ProjectsAgentEntityTypesEntitiesBatchDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -8105,6 +10693,7 @@ func (c *ProjectsAgentEntityTypesEntitiesBatchDeleteCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesEntitiesBatchDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8168,7 +10757,7 @@ func (c *ProjectsAgentEntityTypesEntitiesBatchDeleteCall) Do(opts ...googleapi.C
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes entities in the specified entity type.\n\nOperation \u003cresponse: google.protobuf.Empty,\n           metadata: google.protobuf.Struct\u003e",
+	//   "description": "Deletes entities in the specified entity type.\n\nOperation \u003cresponse: google.protobuf.Empty\u003e",
 	//   "flatPath": "v2/projects/{projectsId}/agent/entityTypes/{entityTypesId}/entities:batchDelete",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.entityTypes.entities.batchDelete",
@@ -8216,8 +10805,7 @@ type ProjectsAgentEntityTypesEntitiesBatchUpdateCall struct {
 // explicitly
 // specified in the request.
 //
-// Operation <response: google.protobuf.Empty,
-//            metadata: google.protobuf.Struct>
+// Operation <response: google.protobuf.Empty>
 func (r *ProjectsAgentEntityTypesEntitiesService) BatchUpdate(parent string, googleclouddialogflowv2batchupdateentitiesrequest *GoogleCloudDialogflowV2BatchUpdateEntitiesRequest) *ProjectsAgentEntityTypesEntitiesBatchUpdateCall {
 	c := &ProjectsAgentEntityTypesEntitiesBatchUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -8252,6 +10840,7 @@ func (c *ProjectsAgentEntityTypesEntitiesBatchUpdateCall) Header() http.Header {
 
 func (c *ProjectsAgentEntityTypesEntitiesBatchUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8315,7 +10904,7 @@ func (c *ProjectsAgentEntityTypesEntitiesBatchUpdateCall) Do(opts ...googleapi.C
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates or creates multiple entities in the specified entity type. This\nmethod does not affect entities in the entity type that aren't explicitly\nspecified in the request.\n\nOperation \u003cresponse: google.protobuf.Empty,\n           metadata: google.protobuf.Struct\u003e",
+	//   "description": "Updates or creates multiple entities in the specified entity type. This\nmethod does not affect entities in the entity type that aren't explicitly\nspecified in the request.\n\nOperation \u003cresponse: google.protobuf.Empty\u003e",
 	//   "flatPath": "v2/projects/{projectsId}/agent/entityTypes/{entityTypesId}/entities:batchUpdate",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.entityTypes.entities.batchUpdate",
@@ -8394,6 +10983,7 @@ func (c *ProjectsAgentIntentsBatchDeleteCall) Header() http.Header {
 
 func (c *ProjectsAgentIntentsBatchDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8537,6 +11127,7 @@ func (c *ProjectsAgentIntentsBatchUpdateCall) Header() http.Header {
 
 func (c *ProjectsAgentIntentsBatchUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8665,12 +11256,13 @@ func (c *ProjectsAgentIntentsCreateCall) IntentView(intentView string) *Projects
 // of training phrases, parameters and rich messages
 // defined in `intent`. If not specified, the agent's default language
 // is
-// used. [More than a
-// dozen
-// languages](https://dialogflow.com/docs/reference/language) are
-// supported.
-// Note: languages must be enabled in the agent, before they can be
 // used.
+// [Many
+// languages](https://cloud.google.com/dialogflow/docs/reference/la
+// nguage)
+// are supported. Note: languages must be enabled in the agent before
+// they can
+// be used.
 func (c *ProjectsAgentIntentsCreateCall) LanguageCode(languageCode string) *ProjectsAgentIntentsCreateCall {
 	c.urlParams_.Set("languageCode", languageCode)
 	return c
@@ -8703,6 +11295,7 @@ func (c *ProjectsAgentIntentsCreateCall) Header() http.Header {
 
 func (c *ProjectsAgentIntentsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8784,7 +11377,7 @@ func (c *ProjectsAgentIntentsCreateCall) Do(opts ...googleapi.CallOption) (*Goog
 	//       "type": "string"
 	//     },
 	//     "languageCode": {
-	//       "description": "Optional. The language of training phrases, parameters and rich messages\ndefined in `intent`. If not specified, the agent's default language is\nused. [More than a dozen\nlanguages](https://dialogflow.com/docs/reference/language) are supported.\nNote: languages must be enabled in the agent, before they can be used.",
+	//       "description": "Optional. The language of training phrases, parameters and rich messages\ndefined in `intent`. If not specified, the agent's default language is\nused. [Many\nlanguages](https://cloud.google.com/dialogflow/docs/reference/language)\nare supported. Note: languages must be enabled in the agent before they can\nbe used.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -8856,6 +11449,7 @@ func (c *ProjectsAgentIntentsDeleteCall) Header() http.Header {
 
 func (c *ProjectsAgentIntentsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8923,7 +11517,7 @@ func (c *ProjectsAgentIntentsDeleteCall) Do(opts ...googleapi.CallOption) (*Goog
 	//   ],
 	//   "parameters": {
 	//     "name": {
-	//       "description": "Required. The name of the intent to delete. If this intent has direct or\nindirect followup intents, we also delete them.\n\nFormat: `projects/\u003cProject ID\u003e/agent/intents/\u003cIntent ID\u003e`.",
+	//       "description": "Required. The name of the intent to delete. If this intent has direct or\nindirect followup intents, we also delete them.\nFormat: `projects/\u003cProject ID\u003e/agent/intents/\u003cIntent ID\u003e`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/agent/intents/[^/]+$",
 	//       "required": true,
@@ -8975,12 +11569,12 @@ func (c *ProjectsAgentIntentsGetCall) IntentView(intentView string) *ProjectsAge
 // to retrieve training phrases, parameters and rich
 // messages for. If not specified, the agent's default language is
 // used.
-// [More than a
-// dozen
-// languages](https://dialogflow.com/docs/reference/language) are
-// supported.
-// Note: languages must be enabled in the agent, before they can be
-// used.
+// [Many
+// languages](https://cloud.google.com/dialogflow/docs/refere
+// nce/language)
+// are supported. Note: languages must be enabled in the agent before
+// they can
+// be used.
 func (c *ProjectsAgentIntentsGetCall) LanguageCode(languageCode string) *ProjectsAgentIntentsGetCall {
 	c.urlParams_.Set("languageCode", languageCode)
 	return c
@@ -9023,6 +11617,7 @@ func (c *ProjectsAgentIntentsGetCall) Header() http.Header {
 
 func (c *ProjectsAgentIntentsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9102,7 +11697,7 @@ func (c *ProjectsAgentIntentsGetCall) Do(opts ...googleapi.CallOption) (*GoogleC
 	//       "type": "string"
 	//     },
 	//     "languageCode": {
-	//       "description": "Optional. The language to retrieve training phrases, parameters and rich\nmessages for. If not specified, the agent's default language is used.\n[More than a dozen\nlanguages](https://dialogflow.com/docs/reference/language) are supported.\nNote: languages must be enabled in the agent, before they can be used.",
+	//       "description": "Optional. The language to retrieve training phrases, parameters and rich\nmessages for. If not specified, the agent's default language is used.\n[Many\nlanguages](https://cloud.google.com/dialogflow/docs/reference/language)\nare supported. Note: languages must be enabled in the agent before they can\nbe used.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -9159,11 +11754,12 @@ func (c *ProjectsAgentIntentsListCall) IntentView(intentView string) *ProjectsAg
 // to list training phrases, parameters and rich
 // messages for. If not specified, the agent's default language is
 // used.
-// [More than a
-// dozen
-// languages](https://dialogflow.com/docs/reference/language) are
-// supported.
-// Note: languages must be enabled in the agent before they can be used.
+// [Many
+// languages](https://cloud.google.com/dialogflow/docs/refere
+// nce/language)
+// are supported. Note: languages must be enabled in the agent before
+// they can
+// be used.
 func (c *ProjectsAgentIntentsListCall) LanguageCode(languageCode string) *ProjectsAgentIntentsListCall {
 	c.urlParams_.Set("languageCode", languageCode)
 	return c
@@ -9221,6 +11817,7 @@ func (c *ProjectsAgentIntentsListCall) Header() http.Header {
 
 func (c *ProjectsAgentIntentsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9302,7 +11899,7 @@ func (c *ProjectsAgentIntentsListCall) Do(opts ...googleapi.CallOption) (*Google
 	//       "type": "string"
 	//     },
 	//     "languageCode": {
-	//       "description": "Optional. The language to list training phrases, parameters and rich\nmessages for. If not specified, the agent's default language is used.\n[More than a dozen\nlanguages](https://dialogflow.com/docs/reference/language) are supported.\nNote: languages must be enabled in the agent before they can be used.",
+	//       "description": "Optional. The language to list training phrases, parameters and rich\nmessages for. If not specified, the agent's default language is used.\n[Many\nlanguages](https://cloud.google.com/dialogflow/docs/reference/language)\nare supported. Note: languages must be enabled in the agent before they can\nbe used.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
@@ -9392,12 +11989,13 @@ func (c *ProjectsAgentIntentsPatchCall) IntentView(intentView string) *ProjectsA
 // of training phrases, parameters and rich messages
 // defined in `intent`. If not specified, the agent's default language
 // is
-// used. [More than a
-// dozen
-// languages](https://dialogflow.com/docs/reference/language) are
-// supported.
-// Note: languages must be enabled in the agent, before they can be
 // used.
+// [Many
+// languages](https://cloud.google.com/dialogflow/docs/reference/la
+// nguage)
+// are supported. Note: languages must be enabled in the agent before
+// they can
+// be used.
 func (c *ProjectsAgentIntentsPatchCall) LanguageCode(languageCode string) *ProjectsAgentIntentsPatchCall {
 	c.urlParams_.Set("languageCode", languageCode)
 	return c
@@ -9437,6 +12035,7 @@ func (c *ProjectsAgentIntentsPatchCall) Header() http.Header {
 
 func (c *ProjectsAgentIntentsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9518,12 +12117,12 @@ func (c *ProjectsAgentIntentsPatchCall) Do(opts ...googleapi.CallOption) (*Googl
 	//       "type": "string"
 	//     },
 	//     "languageCode": {
-	//       "description": "Optional. The language of training phrases, parameters and rich messages\ndefined in `intent`. If not specified, the agent's default language is\nused. [More than a dozen\nlanguages](https://dialogflow.com/docs/reference/language) are supported.\nNote: languages must be enabled in the agent, before they can be used.",
+	//       "description": "Optional. The language of training phrases, parameters and rich messages\ndefined in `intent`. If not specified, the agent's default language is\nused. [Many\nlanguages](https://cloud.google.com/dialogflow/docs/reference/language)\nare supported. Note: languages must be enabled in the agent before they can\nbe used.",
 	//       "location": "query",
 	//       "type": "string"
 	//     },
 	//     "name": {
-	//       "description": "Required for all methods except `create` (`create` populates the name\nautomatically.\nThe unique identifier of this intent.\nFormat: `projects/\u003cProject ID\u003e/agent/intents/\u003cIntent ID\u003e`.",
+	//       "description": "The unique identifier of this intent.\nRequired for Intents.UpdateIntent and Intents.BatchUpdateIntents\nmethods.\nFormat: `projects/\u003cProject ID\u003e/agent/intents/\u003cIntent ID\u003e`.",
 	//       "location": "path",
 	//       "pattern": "^projects/[^/]+/agent/intents/[^/]+$",
 	//       "required": true,
@@ -9595,6 +12194,7 @@ func (c *ProjectsAgentSessionsDeleteContextsCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsDeleteContextsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9733,6 +12333,7 @@ func (c *ProjectsAgentSessionsDetectIntentCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsDetectIntentCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9877,6 +12478,7 @@ func (c *ProjectsAgentSessionsContextsCreateCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsContextsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10015,6 +12617,7 @@ func (c *ProjectsAgentSessionsContextsDeleteCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsContextsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10156,6 +12759,7 @@ func (c *ProjectsAgentSessionsContextsGetCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsContextsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10315,6 +12919,7 @@ func (c *ProjectsAgentSessionsContextsListCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsContextsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10491,6 +13096,7 @@ func (c *ProjectsAgentSessionsContextsPatchCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsContextsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10607,6 +13213,10 @@ type ProjectsAgentSessionsEntityTypesCreateCall struct {
 // If the specified session entity type already exists, overrides the
 // session
 // entity type.
+//
+// This method doesn't work with Google Assistant integration.
+// Contact Dialogflow support if you need to use session entities
+// with Google Assistant integration.
 func (r *ProjectsAgentSessionsEntityTypesService) Create(parent string, googleclouddialogflowv2sessionentitytype *GoogleCloudDialogflowV2SessionEntityType) *ProjectsAgentSessionsEntityTypesCreateCall {
 	c := &ProjectsAgentSessionsEntityTypesCreateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -10641,6 +13251,7 @@ func (c *ProjectsAgentSessionsEntityTypesCreateCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsEntityTypesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10706,7 +13317,7 @@ func (c *ProjectsAgentSessionsEntityTypesCreateCall) Do(opts ...googleapi.CallOp
 	}
 	return ret, nil
 	// {
-	//   "description": "Creates a session entity type.\n\nIf the specified session entity type already exists, overrides the session\nentity type.",
+	//   "description": "Creates a session entity type.\n\nIf the specified session entity type already exists, overrides the session\nentity type.\n\nThis method doesn't work with Google Assistant integration.\nContact Dialogflow support if you need to use session entities\nwith Google Assistant integration.",
 	//   "flatPath": "v2/projects/{projectsId}/agent/sessions/{sessionsId}/entityTypes",
 	//   "httpMethod": "POST",
 	//   "id": "dialogflow.projects.agent.sessions.entityTypes.create",
@@ -10748,6 +13359,10 @@ type ProjectsAgentSessionsEntityTypesDeleteCall struct {
 }
 
 // Delete: Deletes the specified session entity type.
+//
+// This method doesn't work with Google Assistant integration.
+// Contact Dialogflow support if you need to use session entities
+// with Google Assistant integration.
 func (r *ProjectsAgentSessionsEntityTypesService) Delete(name string) *ProjectsAgentSessionsEntityTypesDeleteCall {
 	c := &ProjectsAgentSessionsEntityTypesDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.name = name
@@ -10781,6 +13396,7 @@ func (c *ProjectsAgentSessionsEntityTypesDeleteCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsEntityTypesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10839,7 +13455,7 @@ func (c *ProjectsAgentSessionsEntityTypesDeleteCall) Do(opts ...googleapi.CallOp
 	}
 	return ret, nil
 	// {
-	//   "description": "Deletes the specified session entity type.",
+	//   "description": "Deletes the specified session entity type.\n\nThis method doesn't work with Google Assistant integration.\nContact Dialogflow support if you need to use session entities\nwith Google Assistant integration.",
 	//   "flatPath": "v2/projects/{projectsId}/agent/sessions/{sessionsId}/entityTypes/{entityTypesId}",
 	//   "httpMethod": "DELETE",
 	//   "id": "dialogflow.projects.agent.sessions.entityTypes.delete",
@@ -10879,6 +13495,10 @@ type ProjectsAgentSessionsEntityTypesGetCall struct {
 }
 
 // Get: Retrieves the specified session entity type.
+//
+// This method doesn't work with Google Assistant integration.
+// Contact Dialogflow support if you need to use session entities
+// with Google Assistant integration.
 func (r *ProjectsAgentSessionsEntityTypesService) Get(name string) *ProjectsAgentSessionsEntityTypesGetCall {
 	c := &ProjectsAgentSessionsEntityTypesGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.name = name
@@ -10922,6 +13542,7 @@ func (c *ProjectsAgentSessionsEntityTypesGetCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsEntityTypesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -10985,7 +13606,7 @@ func (c *ProjectsAgentSessionsEntityTypesGetCall) Do(opts ...googleapi.CallOptio
 	}
 	return ret, nil
 	// {
-	//   "description": "Retrieves the specified session entity type.",
+	//   "description": "Retrieves the specified session entity type.\n\nThis method doesn't work with Google Assistant integration.\nContact Dialogflow support if you need to use session entities\nwith Google Assistant integration.",
 	//   "flatPath": "v2/projects/{projectsId}/agent/sessions/{sessionsId}/entityTypes/{entityTypesId}",
 	//   "httpMethod": "GET",
 	//   "id": "dialogflow.projects.agent.sessions.entityTypes.get",
@@ -11026,6 +13647,10 @@ type ProjectsAgentSessionsEntityTypesListCall struct {
 
 // List: Returns the list of all session entity types in the specified
 // session.
+//
+// This method doesn't work with Google Assistant integration.
+// Contact Dialogflow support if you need to use session entities
+// with Google Assistant integration.
 func (r *ProjectsAgentSessionsEntityTypesService) List(parent string) *ProjectsAgentSessionsEntityTypesListCall {
 	c := &ProjectsAgentSessionsEntityTypesListCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.parent = parent
@@ -11084,6 +13709,7 @@ func (c *ProjectsAgentSessionsEntityTypesListCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsEntityTypesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11147,7 +13773,7 @@ func (c *ProjectsAgentSessionsEntityTypesListCall) Do(opts ...googleapi.CallOpti
 	}
 	return ret, nil
 	// {
-	//   "description": "Returns the list of all session entity types in the specified session.",
+	//   "description": "Returns the list of all session entity types in the specified session.\n\nThis method doesn't work with Google Assistant integration.\nContact Dialogflow support if you need to use session entities\nwith Google Assistant integration.",
 	//   "flatPath": "v2/projects/{projectsId}/agent/sessions/{sessionsId}/entityTypes",
 	//   "httpMethod": "GET",
 	//   "id": "dialogflow.projects.agent.sessions.entityTypes.list",
@@ -11219,6 +13845,10 @@ type ProjectsAgentSessionsEntityTypesPatchCall struct {
 }
 
 // Patch: Updates the specified session entity type.
+//
+// This method doesn't work with Google Assistant integration.
+// Contact Dialogflow support if you need to use session entities
+// with Google Assistant integration.
 func (r *ProjectsAgentSessionsEntityTypesService) Patch(nameid string, googleclouddialogflowv2sessionentitytype *GoogleCloudDialogflowV2SessionEntityType) *ProjectsAgentSessionsEntityTypesPatchCall {
 	c := &ProjectsAgentSessionsEntityTypesPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.nameid = nameid
@@ -11260,6 +13890,7 @@ func (c *ProjectsAgentSessionsEntityTypesPatchCall) Header() http.Header {
 
 func (c *ProjectsAgentSessionsEntityTypesPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11325,7 +13956,7 @@ func (c *ProjectsAgentSessionsEntityTypesPatchCall) Do(opts ...googleapi.CallOpt
 	}
 	return ret, nil
 	// {
-	//   "description": "Updates the specified session entity type.",
+	//   "description": "Updates the specified session entity type.\n\nThis method doesn't work with Google Assistant integration.\nContact Dialogflow support if you need to use session entities\nwith Google Assistant integration.",
 	//   "flatPath": "v2/projects/{projectsId}/agent/sessions/{sessionsId}/entityTypes/{entityTypesId}",
 	//   "httpMethod": "PATCH",
 	//   "id": "dialogflow.projects.agent.sessions.entityTypes.patch",
@@ -11353,6 +13984,671 @@ func (c *ProjectsAgentSessionsEntityTypesPatchCall) Do(opts ...googleapi.CallOpt
 	//   },
 	//   "response": {
 	//     "$ref": "GoogleCloudDialogflowV2SessionEntityType"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/dialogflow"
+	//   ]
+	// }
+
+}
+
+// method id "dialogflow.projects.locations.operations.cancel":
+
+type ProjectsLocationsOperationsCancelCall struct {
+	s          *Service
+	name       string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Cancel: Starts asynchronous cancellation on a long-running operation.
+//  The server
+// makes a best effort to cancel the operation, but success is
+// not
+// guaranteed.  If the server doesn't support this method, it
+// returns
+// `google.rpc.Code.UNIMPLEMENTED`.  Clients can
+// use
+// Operations.GetOperation or
+// other methods to check whether the cancellation succeeded or whether
+// the
+// operation completed despite cancellation. On successful
+// cancellation,
+// the operation is not deleted; instead, it becomes an operation
+// with
+// an Operation.error value with a google.rpc.Status.code of
+// 1,
+// corresponding to `Code.CANCELLED`.
+func (r *ProjectsLocationsOperationsService) Cancel(name string) *ProjectsLocationsOperationsCancelCall {
+	c := &ProjectsLocationsOperationsCancelCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.name = name
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsLocationsOperationsCancelCall) Fields(s ...googleapi.Field) *ProjectsLocationsOperationsCancelCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsLocationsOperationsCancelCall) Context(ctx context.Context) *ProjectsLocationsOperationsCancelCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsLocationsOperationsCancelCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsLocationsOperationsCancelCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v2/{+name}:cancel")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"name": c.name,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "dialogflow.projects.locations.operations.cancel" call.
+// Exactly one of *GoogleProtobufEmpty or error will be non-nil. Any
+// non-2xx status code is an error. Response headers are in either
+// *GoogleProtobufEmpty.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsLocationsOperationsCancelCall) Do(opts ...googleapi.CallOption) (*GoogleProtobufEmpty, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleProtobufEmpty{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Starts asynchronous cancellation on a long-running operation.  The server\nmakes a best effort to cancel the operation, but success is not\nguaranteed.  If the server doesn't support this method, it returns\n`google.rpc.Code.UNIMPLEMENTED`.  Clients can use\nOperations.GetOperation or\nother methods to check whether the cancellation succeeded or whether the\noperation completed despite cancellation. On successful cancellation,\nthe operation is not deleted; instead, it becomes an operation with\nan Operation.error value with a google.rpc.Status.code of 1,\ncorresponding to `Code.CANCELLED`.",
+	//   "flatPath": "v2/projects/{projectsId}/locations/{locationsId}/operations/{operationsId}:cancel",
+	//   "httpMethod": "POST",
+	//   "id": "dialogflow.projects.locations.operations.cancel",
+	//   "parameterOrder": [
+	//     "name"
+	//   ],
+	//   "parameters": {
+	//     "name": {
+	//       "description": "The name of the operation resource to be cancelled.",
+	//       "location": "path",
+	//       "pattern": "^projects/[^/]+/locations/[^/]+/operations/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v2/{+name}:cancel",
+	//   "response": {
+	//     "$ref": "GoogleProtobufEmpty"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/dialogflow"
+	//   ]
+	// }
+
+}
+
+// method id "dialogflow.projects.locations.operations.get":
+
+type ProjectsLocationsOperationsGetCall struct {
+	s            *Service
+	name         string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// Get: Gets the latest state of a long-running operation.  Clients can
+// use this
+// method to poll the operation result at intervals as recommended by
+// the API
+// service.
+func (r *ProjectsLocationsOperationsService) Get(name string) *ProjectsLocationsOperationsGetCall {
+	c := &ProjectsLocationsOperationsGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.name = name
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsLocationsOperationsGetCall) Fields(s ...googleapi.Field) *ProjectsLocationsOperationsGetCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *ProjectsLocationsOperationsGetCall) IfNoneMatch(entityTag string) *ProjectsLocationsOperationsGetCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsLocationsOperationsGetCall) Context(ctx context.Context) *ProjectsLocationsOperationsGetCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsLocationsOperationsGetCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsLocationsOperationsGetCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v2/{+name}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"name": c.name,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "dialogflow.projects.locations.operations.get" call.
+// Exactly one of *GoogleLongrunningOperation or error will be non-nil.
+// Any non-2xx status code is an error. Response headers are in either
+// *GoogleLongrunningOperation.ServerResponse.Header or (if a response
+// was returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsLocationsOperationsGetCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunningOperation, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleLongrunningOperation{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Gets the latest state of a long-running operation.  Clients can use this\nmethod to poll the operation result at intervals as recommended by the API\nservice.",
+	//   "flatPath": "v2/projects/{projectsId}/locations/{locationsId}/operations/{operationsId}",
+	//   "httpMethod": "GET",
+	//   "id": "dialogflow.projects.locations.operations.get",
+	//   "parameterOrder": [
+	//     "name"
+	//   ],
+	//   "parameters": {
+	//     "name": {
+	//       "description": "The name of the operation resource.",
+	//       "location": "path",
+	//       "pattern": "^projects/[^/]+/locations/[^/]+/operations/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v2/{+name}",
+	//   "response": {
+	//     "$ref": "GoogleLongrunningOperation"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/dialogflow"
+	//   ]
+	// }
+
+}
+
+// method id "dialogflow.projects.locations.operations.list":
+
+type ProjectsLocationsOperationsListCall struct {
+	s            *Service
+	name         string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// List: Lists operations that match the specified filter in the
+// request. If the
+// server doesn't support this method, it returns
+// `UNIMPLEMENTED`.
+//
+// NOTE: the `name` binding allows API services to override the
+// binding
+// to use different resource name schemes, such as `users/*/operations`.
+// To
+// override the binding, API services can add a binding such
+// as
+// "/v1/{name=users/*}/operations" to their service configuration.
+// For backwards compatibility, the default name includes the
+// operations
+// collection id, however overriding users must ensure the name
+// binding
+// is the parent resource, without the operations collection id.
+func (r *ProjectsLocationsOperationsService) List(name string) *ProjectsLocationsOperationsListCall {
+	c := &ProjectsLocationsOperationsListCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.name = name
+	return c
+}
+
+// Filter sets the optional parameter "filter": The standard list
+// filter.
+func (c *ProjectsLocationsOperationsListCall) Filter(filter string) *ProjectsLocationsOperationsListCall {
+	c.urlParams_.Set("filter", filter)
+	return c
+}
+
+// PageSize sets the optional parameter "pageSize": The standard list
+// page size.
+func (c *ProjectsLocationsOperationsListCall) PageSize(pageSize int64) *ProjectsLocationsOperationsListCall {
+	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
+	return c
+}
+
+// PageToken sets the optional parameter "pageToken": The standard list
+// page token.
+func (c *ProjectsLocationsOperationsListCall) PageToken(pageToken string) *ProjectsLocationsOperationsListCall {
+	c.urlParams_.Set("pageToken", pageToken)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsLocationsOperationsListCall) Fields(s ...googleapi.Field) *ProjectsLocationsOperationsListCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *ProjectsLocationsOperationsListCall) IfNoneMatch(entityTag string) *ProjectsLocationsOperationsListCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsLocationsOperationsListCall) Context(ctx context.Context) *ProjectsLocationsOperationsListCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsLocationsOperationsListCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsLocationsOperationsListCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v2/{+name}/operations")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"name": c.name,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "dialogflow.projects.locations.operations.list" call.
+// Exactly one of *GoogleLongrunningListOperationsResponse or error will
+// be non-nil. Any non-2xx status code is an error. Response headers are
+// in either
+// *GoogleLongrunningListOperationsResponse.ServerResponse.Header or (if
+// a response was returned at all) in error.(*googleapi.Error).Header.
+// Use googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsLocationsOperationsListCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunningListOperationsResponse, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleLongrunningListOperationsResponse{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Lists operations that match the specified filter in the request. If the\nserver doesn't support this method, it returns `UNIMPLEMENTED`.\n\nNOTE: the `name` binding allows API services to override the binding\nto use different resource name schemes, such as `users/*/operations`. To\noverride the binding, API services can add a binding such as\n`\"/v1/{name=users/*}/operations\"` to their service configuration.\nFor backwards compatibility, the default name includes the operations\ncollection id, however overriding users must ensure the name binding\nis the parent resource, without the operations collection id.",
+	//   "flatPath": "v2/projects/{projectsId}/locations/{locationsId}/operations",
+	//   "httpMethod": "GET",
+	//   "id": "dialogflow.projects.locations.operations.list",
+	//   "parameterOrder": [
+	//     "name"
+	//   ],
+	//   "parameters": {
+	//     "filter": {
+	//       "description": "The standard list filter.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "name": {
+	//       "description": "The name of the operation's parent resource.",
+	//       "location": "path",
+	//       "pattern": "^projects/[^/]+/locations/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "pageSize": {
+	//       "description": "The standard list page size.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
+	//     },
+	//     "pageToken": {
+	//       "description": "The standard list page token.",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v2/{+name}/operations",
+	//   "response": {
+	//     "$ref": "GoogleLongrunningListOperationsResponse"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/dialogflow"
+	//   ]
+	// }
+
+}
+
+// Pages invokes f for each page of results.
+// A non-nil error returned from f will halt the iteration.
+// The provided context supersedes any context provided to the Context method.
+func (c *ProjectsLocationsOperationsListCall) Pages(ctx context.Context, f func(*GoogleLongrunningListOperationsResponse) error) error {
+	c.ctx_ = ctx
+	defer c.PageToken(c.urlParams_.Get("pageToken")) // reset paging to original point
+	for {
+		x, err := c.Do()
+		if err != nil {
+			return err
+		}
+		if err := f(x); err != nil {
+			return err
+		}
+		if x.NextPageToken == "" {
+			return nil
+		}
+		c.PageToken(x.NextPageToken)
+	}
+}
+
+// method id "dialogflow.projects.operations.cancel":
+
+type ProjectsOperationsCancelCall struct {
+	s          *Service
+	name       string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Cancel: Starts asynchronous cancellation on a long-running operation.
+//  The server
+// makes a best effort to cancel the operation, but success is
+// not
+// guaranteed.  If the server doesn't support this method, it
+// returns
+// `google.rpc.Code.UNIMPLEMENTED`.  Clients can
+// use
+// Operations.GetOperation or
+// other methods to check whether the cancellation succeeded or whether
+// the
+// operation completed despite cancellation. On successful
+// cancellation,
+// the operation is not deleted; instead, it becomes an operation
+// with
+// an Operation.error value with a google.rpc.Status.code of
+// 1,
+// corresponding to `Code.CANCELLED`.
+func (r *ProjectsOperationsService) Cancel(name string) *ProjectsOperationsCancelCall {
+	c := &ProjectsOperationsCancelCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.name = name
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsOperationsCancelCall) Fields(s ...googleapi.Field) *ProjectsOperationsCancelCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsOperationsCancelCall) Context(ctx context.Context) *ProjectsOperationsCancelCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsOperationsCancelCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsOperationsCancelCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v2/{+name}:cancel")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"name": c.name,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "dialogflow.projects.operations.cancel" call.
+// Exactly one of *GoogleProtobufEmpty or error will be non-nil. Any
+// non-2xx status code is an error. Response headers are in either
+// *GoogleProtobufEmpty.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsOperationsCancelCall) Do(opts ...googleapi.CallOption) (*GoogleProtobufEmpty, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleProtobufEmpty{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Starts asynchronous cancellation on a long-running operation.  The server\nmakes a best effort to cancel the operation, but success is not\nguaranteed.  If the server doesn't support this method, it returns\n`google.rpc.Code.UNIMPLEMENTED`.  Clients can use\nOperations.GetOperation or\nother methods to check whether the cancellation succeeded or whether the\noperation completed despite cancellation. On successful cancellation,\nthe operation is not deleted; instead, it becomes an operation with\nan Operation.error value with a google.rpc.Status.code of 1,\ncorresponding to `Code.CANCELLED`.",
+	//   "flatPath": "v2/projects/{projectsId}/operations/{operationsId}:cancel",
+	//   "httpMethod": "POST",
+	//   "id": "dialogflow.projects.operations.cancel",
+	//   "parameterOrder": [
+	//     "name"
+	//   ],
+	//   "parameters": {
+	//     "name": {
+	//       "description": "The name of the operation resource to be cancelled.",
+	//       "location": "path",
+	//       "pattern": "^projects/[^/]+/operations/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v2/{+name}:cancel",
+	//   "response": {
+	//     "$ref": "GoogleProtobufEmpty"
 	//   },
 	//   "scopes": [
 	//     "https://www.googleapis.com/auth/cloud-platform",
@@ -11421,6 +14717,7 @@ func (c *ProjectsOperationsGetCall) Header() http.Header {
 
 func (c *ProjectsOperationsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -11508,4 +14805,224 @@ func (c *ProjectsOperationsGetCall) Do(opts ...googleapi.CallOption) (*GoogleLon
 	//   ]
 	// }
 
+}
+
+// method id "dialogflow.projects.operations.list":
+
+type ProjectsOperationsListCall struct {
+	s            *Service
+	name         string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// List: Lists operations that match the specified filter in the
+// request. If the
+// server doesn't support this method, it returns
+// `UNIMPLEMENTED`.
+//
+// NOTE: the `name` binding allows API services to override the
+// binding
+// to use different resource name schemes, such as `users/*/operations`.
+// To
+// override the binding, API services can add a binding such
+// as
+// "/v1/{name=users/*}/operations" to their service configuration.
+// For backwards compatibility, the default name includes the
+// operations
+// collection id, however overriding users must ensure the name
+// binding
+// is the parent resource, without the operations collection id.
+func (r *ProjectsOperationsService) List(name string) *ProjectsOperationsListCall {
+	c := &ProjectsOperationsListCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.name = name
+	return c
+}
+
+// Filter sets the optional parameter "filter": The standard list
+// filter.
+func (c *ProjectsOperationsListCall) Filter(filter string) *ProjectsOperationsListCall {
+	c.urlParams_.Set("filter", filter)
+	return c
+}
+
+// PageSize sets the optional parameter "pageSize": The standard list
+// page size.
+func (c *ProjectsOperationsListCall) PageSize(pageSize int64) *ProjectsOperationsListCall {
+	c.urlParams_.Set("pageSize", fmt.Sprint(pageSize))
+	return c
+}
+
+// PageToken sets the optional parameter "pageToken": The standard list
+// page token.
+func (c *ProjectsOperationsListCall) PageToken(pageToken string) *ProjectsOperationsListCall {
+	c.urlParams_.Set("pageToken", pageToken)
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *ProjectsOperationsListCall) Fields(s ...googleapi.Field) *ProjectsOperationsListCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets the optional parameter which makes the operation
+// fail if the object's ETag matches the given value. This is useful for
+// getting updates only after the object has changed since the last
+// request. Use googleapi.IsNotModified to check whether the response
+// error from Do is the result of In-None-Match.
+func (c *ProjectsOperationsListCall) IfNoneMatch(entityTag string) *ProjectsOperationsListCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method. Any
+// pending HTTP request will be aborted if the provided context is
+// canceled.
+func (c *ProjectsOperationsListCall) Context(ctx context.Context) *ProjectsOperationsListCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ProjectsOperationsListCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *ProjectsOperationsListCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
+	reqHeaders.Set("User-Agent", c.s.userAgent())
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	var body io.Reader = nil
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "v2/{+name}/operations")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"name": c.name,
+	})
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "dialogflow.projects.operations.list" call.
+// Exactly one of *GoogleLongrunningListOperationsResponse or error will
+// be non-nil. Any non-2xx status code is an error. Response headers are
+// in either
+// *GoogleLongrunningListOperationsResponse.ServerResponse.Header or (if
+// a response was returned at all) in error.(*googleapi.Error).Header.
+// Use googleapi.IsNotModified to check whether the returned error was
+// because http.StatusNotModified was returned.
+func (c *ProjectsOperationsListCall) Do(opts ...googleapi.CallOption) (*GoogleLongrunningListOperationsResponse, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, &googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	ret := &GoogleLongrunningListOperationsResponse{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	if err := gensupport.DecodeResponse(target, res); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Lists operations that match the specified filter in the request. If the\nserver doesn't support this method, it returns `UNIMPLEMENTED`.\n\nNOTE: the `name` binding allows API services to override the binding\nto use different resource name schemes, such as `users/*/operations`. To\noverride the binding, API services can add a binding such as\n`\"/v1/{name=users/*}/operations\"` to their service configuration.\nFor backwards compatibility, the default name includes the operations\ncollection id, however overriding users must ensure the name binding\nis the parent resource, without the operations collection id.",
+	//   "flatPath": "v2/projects/{projectsId}/operations",
+	//   "httpMethod": "GET",
+	//   "id": "dialogflow.projects.operations.list",
+	//   "parameterOrder": [
+	//     "name"
+	//   ],
+	//   "parameters": {
+	//     "filter": {
+	//       "description": "The standard list filter.",
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "name": {
+	//       "description": "The name of the operation's parent resource.",
+	//       "location": "path",
+	//       "pattern": "^projects/[^/]+$",
+	//       "required": true,
+	//       "type": "string"
+	//     },
+	//     "pageSize": {
+	//       "description": "The standard list page size.",
+	//       "format": "int32",
+	//       "location": "query",
+	//       "type": "integer"
+	//     },
+	//     "pageToken": {
+	//       "description": "The standard list page token.",
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "v2/{+name}/operations",
+	//   "response": {
+	//     "$ref": "GoogleLongrunningListOperationsResponse"
+	//   },
+	//   "scopes": [
+	//     "https://www.googleapis.com/auth/cloud-platform",
+	//     "https://www.googleapis.com/auth/dialogflow"
+	//   ]
+	// }
+
+}
+
+// Pages invokes f for each page of results.
+// A non-nil error returned from f will halt the iteration.
+// The provided context supersedes any context provided to the Context method.
+func (c *ProjectsOperationsListCall) Pages(ctx context.Context, f func(*GoogleLongrunningListOperationsResponse) error) error {
+	c.ctx_ = ctx
+	defer c.PageToken(c.urlParams_.Get("pageToken")) // reset paging to original point
+	for {
+		x, err := c.Do()
+		if err != nil {
+			return err
+		}
+		if err := f(x); err != nil {
+			return err
+		}
+		if x.NextPageToken == "" {
+			return nil
+		}
+		c.PageToken(x.NextPageToken)
+	}
 }

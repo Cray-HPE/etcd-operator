@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,13 +6,39 @@
 
 // Package tagmanager provides access to the Tag Manager API.
 //
-// See https://developers.google.com/tag-manager/api/v1/
+// For product documentation, see: https://developers.google.com/tag-manager/api/v1/
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/tagmanager/v1"
 //   ...
-//   tagmanagerService, err := tagmanager.New(oauthHttpClient)
+//   ctx := context.Background()
+//   tagmanagerService, err := tagmanager.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   tagmanagerService, err := tagmanager.NewService(ctx, option.WithScopes(tagmanager.TagmanagerReadonlyScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   tagmanagerService, err := tagmanager.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   tagmanagerService, err := tagmanager.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package tagmanager // import "google.golang.org/api/tagmanager/v1"
 
 import (
@@ -27,8 +53,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -76,6 +104,38 @@ const (
 	TagmanagerReadonlyScope = "https://www.googleapis.com/auth/tagmanager.readonly"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/tagmanager.delete.containers",
+		"https://www.googleapis.com/auth/tagmanager.edit.containers",
+		"https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+		"https://www.googleapis.com/auth/tagmanager.manage.accounts",
+		"https://www.googleapis.com/auth/tagmanager.manage.users",
+		"https://www.googleapis.com/auth/tagmanager.publish",
+		"https://www.googleapis.com/auth/tagmanager.readonly",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -478,8 +538,10 @@ type Container struct {
 	//   "language"
 	//   "newHistoryFragment"
 	//   "newHistoryState"
+	//   "newHistoryUrl"
 	//   "oldHistoryFragment"
 	//   "oldHistoryState"
+	//   "oldHistoryUrl"
 	//   "osVersion"
 	//   "pageHostname"
 	//   "pagePath"
@@ -1361,6 +1423,8 @@ type Parameter struct {
 	// - template: The value represents any text; this can include variable
 	// references (even variable references that might return non-string
 	// types)
+	// - trigger_reference: The value represents a trigger, represented as
+	// the trigger id
 	//
 	// Possible values:
 	//   "boolean"
@@ -1368,6 +1432,7 @@ type Parameter struct {
 	//   "list"
 	//   "map"
 	//   "template"
+	//   "triggerReference"
 	Type string `json:"type,omitempty"`
 
 	// Value: A parameter's value (may contain variable references such as
@@ -1756,6 +1821,7 @@ type Trigger struct {
 	//   "pageview"
 	//   "scrollDepth"
 	//   "timer"
+	//   "triggerGroup"
 	//   "windowLoaded"
 	//   "youTubeVideo"
 	Type string `json:"type,omitempty"`
@@ -2002,6 +2068,7 @@ func (c *AccountsGetCall) Header() http.Header {
 
 func (c *AccountsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2143,6 +2210,7 @@ func (c *AccountsListCall) Header() http.Header {
 
 func (c *AccountsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2271,6 +2339,7 @@ func (c *AccountsUpdateCall) Header() http.Header {
 
 func (c *AccountsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2413,6 +2482,7 @@ func (c *AccountsContainersCreateCall) Header() http.Header {
 
 func (c *AccountsContainersCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2550,6 +2620,7 @@ func (c *AccountsContainersDeleteCall) Header() http.Header {
 
 func (c *AccountsContainersDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2670,6 +2741,7 @@ func (c *AccountsContainersGetCall) Header() http.Header {
 
 func (c *AccountsContainersGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2820,6 +2892,7 @@ func (c *AccountsContainersListCall) Header() http.Header {
 
 func (c *AccountsContainersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -2963,6 +3036,7 @@ func (c *AccountsContainersUpdateCall) Header() http.Header {
 
 func (c *AccountsContainersUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3115,6 +3189,7 @@ func (c *AccountsContainersEnvironmentsCreateCall) Header() http.Header {
 
 func (c *AccountsContainersEnvironmentsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3262,6 +3337,7 @@ func (c *AccountsContainersEnvironmentsDeleteCall) Header() http.Header {
 
 func (c *AccountsContainersEnvironmentsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3392,6 +3468,7 @@ func (c *AccountsContainersEnvironmentsGetCall) Header() http.Header {
 
 func (c *AccountsContainersEnvironmentsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3552,6 +3629,7 @@ func (c *AccountsContainersEnvironmentsListCall) Header() http.Header {
 
 func (c *AccountsContainersEnvironmentsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3647,177 +3725,6 @@ func (c *AccountsContainersEnvironmentsListCall) Do(opts ...googleapi.CallOption
 
 }
 
-// method id "tagmanager.accounts.containers.environments.patch":
-
-type AccountsContainersEnvironmentsPatchCall struct {
-	s             *Service
-	accountId     string
-	containerId   string
-	environmentId string
-	environment   *Environment
-	urlParams_    gensupport.URLParams
-	ctx_          context.Context
-	header_       http.Header
-}
-
-// Patch: Updates a GTM Environment. This method supports patch
-// semantics.
-func (r *AccountsContainersEnvironmentsService) Patch(accountId string, containerId string, environmentId string, environment *Environment) *AccountsContainersEnvironmentsPatchCall {
-	c := &AccountsContainersEnvironmentsPatchCall{s: r.s, urlParams_: make(gensupport.URLParams)}
-	c.accountId = accountId
-	c.containerId = containerId
-	c.environmentId = environmentId
-	c.environment = environment
-	return c
-}
-
-// Fingerprint sets the optional parameter "fingerprint": When provided,
-// this fingerprint must match the fingerprint of the environment in
-// storage.
-func (c *AccountsContainersEnvironmentsPatchCall) Fingerprint(fingerprint string) *AccountsContainersEnvironmentsPatchCall {
-	c.urlParams_.Set("fingerprint", fingerprint)
-	return c
-}
-
-// Fields allows partial responses to be retrieved. See
-// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
-// for more information.
-func (c *AccountsContainersEnvironmentsPatchCall) Fields(s ...googleapi.Field) *AccountsContainersEnvironmentsPatchCall {
-	c.urlParams_.Set("fields", googleapi.CombineFields(s))
-	return c
-}
-
-// Context sets the context to be used in this call's Do method. Any
-// pending HTTP request will be aborted if the provided context is
-// canceled.
-func (c *AccountsContainersEnvironmentsPatchCall) Context(ctx context.Context) *AccountsContainersEnvironmentsPatchCall {
-	c.ctx_ = ctx
-	return c
-}
-
-// Header returns an http.Header that can be modified by the caller to
-// add HTTP headers to the request.
-func (c *AccountsContainersEnvironmentsPatchCall) Header() http.Header {
-	if c.header_ == nil {
-		c.header_ = make(http.Header)
-	}
-	return c.header_
-}
-
-func (c *AccountsContainersEnvironmentsPatchCall) doRequest(alt string) (*http.Response, error) {
-	reqHeaders := make(http.Header)
-	for k, v := range c.header_ {
-		reqHeaders[k] = v
-	}
-	reqHeaders.Set("User-Agent", c.s.userAgent())
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.environment)
-	if err != nil {
-		return nil, err
-	}
-	reqHeaders.Set("Content-Type", "application/json")
-	c.urlParams_.Set("alt", alt)
-	c.urlParams_.Set("prettyPrint", "false")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "accounts/{accountId}/containers/{containerId}/environments/{environmentId}")
-	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("PATCH", urls, body)
-	if err != nil {
-		return nil, err
-	}
-	req.Header = reqHeaders
-	googleapi.Expand(req.URL, map[string]string{
-		"accountId":     c.accountId,
-		"containerId":   c.containerId,
-		"environmentId": c.environmentId,
-	})
-	return gensupport.SendRequest(c.ctx_, c.s.client, req)
-}
-
-// Do executes the "tagmanager.accounts.containers.environments.patch" call.
-// Exactly one of *Environment or error will be non-nil. Any non-2xx
-// status code is an error. Response headers are in either
-// *Environment.ServerResponse.Header or (if a response was returned at
-// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified
-// to check whether the returned error was because
-// http.StatusNotModified was returned.
-func (c *AccountsContainersEnvironmentsPatchCall) Do(opts ...googleapi.CallOption) (*Environment, error) {
-	gensupport.SetOptions(c.urlParams_, opts...)
-	res, err := c.doRequest("json")
-	if res != nil && res.StatusCode == http.StatusNotModified {
-		if res.Body != nil {
-			res.Body.Close()
-		}
-		return nil, &googleapi.Error{
-			Code:   res.StatusCode,
-			Header: res.Header,
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer googleapi.CloseBody(res)
-	if err := googleapi.CheckResponse(res); err != nil {
-		return nil, err
-	}
-	ret := &Environment{
-		ServerResponse: googleapi.ServerResponse{
-			Header:         res.Header,
-			HTTPStatusCode: res.StatusCode,
-		},
-	}
-	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
-		return nil, err
-	}
-	return ret, nil
-	// {
-	//   "description": "Updates a GTM Environment. This method supports patch semantics.",
-	//   "httpMethod": "PATCH",
-	//   "id": "tagmanager.accounts.containers.environments.patch",
-	//   "parameterOrder": [
-	//     "accountId",
-	//     "containerId",
-	//     "environmentId"
-	//   ],
-	//   "parameters": {
-	//     "accountId": {
-	//       "description": "The GTM Account ID.",
-	//       "location": "path",
-	//       "required": true,
-	//       "type": "string"
-	//     },
-	//     "containerId": {
-	//       "description": "The GTM Container ID.",
-	//       "location": "path",
-	//       "required": true,
-	//       "type": "string"
-	//     },
-	//     "environmentId": {
-	//       "description": "The GTM Environment ID.",
-	//       "location": "path",
-	//       "required": true,
-	//       "type": "string"
-	//     },
-	//     "fingerprint": {
-	//       "description": "When provided, this fingerprint must match the fingerprint of the environment in storage.",
-	//       "location": "query",
-	//       "type": "string"
-	//     }
-	//   },
-	//   "path": "accounts/{accountId}/containers/{containerId}/environments/{environmentId}",
-	//   "request": {
-	//     "$ref": "Environment"
-	//   },
-	//   "response": {
-	//     "$ref": "Environment"
-	//   },
-	//   "scopes": [
-	//     "https://www.googleapis.com/auth/tagmanager.edit.containers"
-	//   ]
-	// }
-
-}
-
 // method id "tagmanager.accounts.containers.environments.update":
 
 type AccountsContainersEnvironmentsUpdateCall struct {
@@ -3876,6 +3783,7 @@ func (c *AccountsContainersEnvironmentsUpdateCall) Header() http.Header {
 
 func (c *AccountsContainersEnvironmentsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4036,6 +3944,7 @@ func (c *AccountsContainersFoldersCreateCall) Header() http.Header {
 
 func (c *AccountsContainersFoldersCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4183,6 +4092,7 @@ func (c *AccountsContainersFoldersDeleteCall) Header() http.Header {
 
 func (c *AccountsContainersFoldersDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4313,6 +4223,7 @@ func (c *AccountsContainersFoldersGetCall) Header() http.Header {
 
 func (c *AccountsContainersFoldersGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4473,6 +4384,7 @@ func (c *AccountsContainersFoldersListCall) Header() http.Header {
 
 func (c *AccountsContainersFoldersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4625,6 +4537,7 @@ func (c *AccountsContainersFoldersUpdateCall) Header() http.Header {
 
 func (c *AccountsContainersFoldersUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4796,6 +4709,7 @@ func (c *AccountsContainersFoldersEntitiesListCall) Header() http.Header {
 
 func (c *AccountsContainersFoldersEntitiesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4970,6 +4884,7 @@ func (c *AccountsContainersMoveFoldersUpdateCall) Header() http.Header {
 
 func (c *AccountsContainersMoveFoldersUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5117,6 +5032,7 @@ func (c *AccountsContainersReauthorizeEnvironmentsUpdateCall) Header() http.Head
 
 func (c *AccountsContainersReauthorizeEnvironmentsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5272,6 +5188,7 @@ func (c *AccountsContainersTagsCreateCall) Header() http.Header {
 
 func (c *AccountsContainersTagsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5419,6 +5336,7 @@ func (c *AccountsContainersTagsDeleteCall) Header() http.Header {
 
 func (c *AccountsContainersTagsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5549,6 +5467,7 @@ func (c *AccountsContainersTagsGetCall) Header() http.Header {
 
 func (c *AccountsContainersTagsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5709,6 +5628,7 @@ func (c *AccountsContainersTagsListCall) Header() http.Header {
 
 func (c *AccountsContainersTagsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5861,6 +5781,7 @@ func (c *AccountsContainersTagsUpdateCall) Header() http.Header {
 
 func (c *AccountsContainersTagsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6021,6 +5942,7 @@ func (c *AccountsContainersTriggersCreateCall) Header() http.Header {
 
 func (c *AccountsContainersTriggersCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6168,6 +6090,7 @@ func (c *AccountsContainersTriggersDeleteCall) Header() http.Header {
 
 func (c *AccountsContainersTriggersDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6298,6 +6221,7 @@ func (c *AccountsContainersTriggersGetCall) Header() http.Header {
 
 func (c *AccountsContainersTriggersGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6458,6 +6382,7 @@ func (c *AccountsContainersTriggersListCall) Header() http.Header {
 
 func (c *AccountsContainersTriggersListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6611,6 +6536,7 @@ func (c *AccountsContainersTriggersUpdateCall) Header() http.Header {
 
 func (c *AccountsContainersTriggersUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6771,6 +6697,7 @@ func (c *AccountsContainersVariablesCreateCall) Header() http.Header {
 
 func (c *AccountsContainersVariablesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -6918,6 +6845,7 @@ func (c *AccountsContainersVariablesDeleteCall) Header() http.Header {
 
 func (c *AccountsContainersVariablesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7048,6 +6976,7 @@ func (c *AccountsContainersVariablesGetCall) Header() http.Header {
 
 func (c *AccountsContainersVariablesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7208,6 +7137,7 @@ func (c *AccountsContainersVariablesListCall) Header() http.Header {
 
 func (c *AccountsContainersVariablesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7361,6 +7291,7 @@ func (c *AccountsContainersVariablesUpdateCall) Header() http.Header {
 
 func (c *AccountsContainersVariablesUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7521,6 +7452,7 @@ func (c *AccountsContainersVersionsCreateCall) Header() http.Header {
 
 func (c *AccountsContainersVersionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7668,6 +7600,7 @@ func (c *AccountsContainersVersionsDeleteCall) Header() http.Header {
 
 func (c *AccountsContainersVersionsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7798,6 +7731,7 @@ func (c *AccountsContainersVersionsGetCall) Header() http.Header {
 
 func (c *AccountsContainersVersionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -7973,6 +7907,7 @@ func (c *AccountsContainersVersionsListCall) Header() http.Header {
 
 func (c *AccountsContainersVersionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8137,6 +8072,7 @@ func (c *AccountsContainersVersionsPublishCall) Header() http.Header {
 
 func (c *AccountsContainersVersionsPublishCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8292,6 +8228,7 @@ func (c *AccountsContainersVersionsRestoreCall) Header() http.Header {
 
 func (c *AccountsContainersVersionsRestoreCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8439,6 +8376,7 @@ func (c *AccountsContainersVersionsUndeleteCall) Header() http.Header {
 
 func (c *AccountsContainersVersionsUndeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8596,6 +8534,7 @@ func (c *AccountsContainersVersionsUpdateCall) Header() http.Header {
 
 func (c *AccountsContainersVersionsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8754,6 +8693,7 @@ func (c *AccountsPermissionsCreateCall) Header() http.Header {
 
 func (c *AccountsPermissionsCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -8892,6 +8832,7 @@ func (c *AccountsPermissionsDeleteCall) Header() http.Header {
 
 func (c *AccountsPermissionsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9012,6 +8953,7 @@ func (c *AccountsPermissionsGetCall) Header() http.Header {
 
 func (c *AccountsPermissionsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9162,6 +9104,7 @@ func (c *AccountsPermissionsListCall) Header() http.Header {
 
 func (c *AccountsPermissionsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -9296,6 +9239,7 @@ func (c *AccountsPermissionsUpdateCall) Header() http.Header {
 
 func (c *AccountsPermissionsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}

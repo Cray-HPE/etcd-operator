@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All rights reserved.
+// Copyright 2019 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,39 @@
 //
 // This package is DEPRECATED. Use package cloud.google.com/go/firestore instead.
 //
-// See https://cloud.google.com/firestore
+// For product documentation, see: https://cloud.google.com/firestore
+//
+// Creating a client
 //
 // Usage example:
 //
 //   import "google.golang.org/api/firestore/v1beta1"
 //   ...
-//   firestoreService, err := firestore.New(oauthHttpClient)
+//   ctx := context.Background()
+//   firestoreService, err := firestore.NewService(ctx)
+//
+// In this example, Google Application Default Credentials are used for authentication.
+//
+// For information on how to create and obtain Application Default Credentials, see https://developers.google.com/identity/protocols/application-default-credentials.
+//
+// Other authentication options
+//
+// By default, all available scopes (see "Constants") are used to authenticate. To restrict scopes, use option.WithScopes:
+//
+//   firestoreService, err := firestore.NewService(ctx, option.WithScopes(firestore.DatastoreScope))
+//
+// To use an API key for authentication (note: some APIs do not support API keys), use option.WithAPIKey:
+//
+//   firestoreService, err := firestore.NewService(ctx, option.WithAPIKey("AIza..."))
+//
+// To use an OAuth token (e.g., a user token obtained via a three-legged OAuth flow), use option.WithTokenSource:
+//
+//   config := &oauth2.Config{...}
+//   // ...
+//   token, err := config.Exchange(ctx, ...)
+//   firestoreService, err := firestore.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+//
+// See https://godoc.org/google.golang.org/api/option/ for details on options.
 package firestore // import "google.golang.org/api/firestore/v1beta1"
 
 import (
@@ -29,8 +55,10 @@ import (
 	"strconv"
 	"strings"
 
-	gensupport "google.golang.org/api/gensupport"
 	googleapi "google.golang.org/api/googleapi"
+	gensupport "google.golang.org/api/internal/gensupport"
+	option "google.golang.org/api/option"
+	htransport "google.golang.org/api/transport/http"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -61,6 +89,33 @@ const (
 	DatastoreScope = "https://www.googleapis.com/auth/datastore"
 )
 
+// NewService creates a new Service.
+func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, error) {
+	scopesOption := option.WithScopes(
+		"https://www.googleapis.com/auth/cloud-platform",
+		"https://www.googleapis.com/auth/datastore",
+	)
+	// NOTE: prepend, so we don't override user-specified scopes.
+	opts = append([]option.ClientOption{scopesOption}, opts...)
+	client, endpoint, err := htransport.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s, err := New(client)
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		s.BasePath = endpoint
+	}
+	return s, nil
+}
+
+// New creates a new Service. It uses the provided http.Client for requests.
+//
+// Deprecated: please use NewService instead.
+// To provide a custom HTTP client, use option.WithHTTPClient.
+// If you are using google.golang.org/api/googleapis/transport.APIKey, use option.WithAPIKey with NewService instead.
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
@@ -930,6 +985,12 @@ type FieldFilter struct {
 	// `order_by`.
 	//   "EQUAL" - Equal.
 	//   "ARRAY_CONTAINS" - Contains. Requires that the field is an array.
+	//   "IN" - In. Requires that `value` is a non-empty ArrayValue with at
+	// most 10
+	// values.
+	//   "ARRAY_CONTAINS_ANY" - Contains any. Requires that the field is an
+	// array and
+	// `value` is a non-empty ArrayValue with at most 10 values.
 	Op string `json:"op,omitempty"`
 
 	// Value: The value to compare to.
@@ -1010,6 +1071,62 @@ type FieldTransform struct {
 	// path syntax
 	// reference.
 	FieldPath string `json:"fieldPath,omitempty"`
+
+	// Increment: Adds the given value to the field's current value.
+	//
+	// This must be an integer or a double value.
+	// If the field is not an integer or double, or if the field does not
+	// yet
+	// exist, the transformation will set the field to the given value.
+	// If either of the given value or the current field value are
+	// doubles,
+	// both values will be interpreted as doubles. Double arithmetic
+	// and
+	// representation of double values follow IEEE 754 semantics.
+	// If there is positive/negative integer overflow, the field is
+	// resolved
+	// to the largest magnitude positive/negative integer.
+	Increment *Value `json:"increment,omitempty"`
+
+	// Maximum: Sets the field to the maximum of its current value and the
+	// given value.
+	//
+	// This must be an integer or a double value.
+	// If the field is not an integer or double, or if the field does not
+	// yet
+	// exist, the transformation will set the field to the given value.
+	// If a maximum operation is applied where the field and the input
+	// value
+	// are of mixed types (that is - one is an integer and one is a
+	// double)
+	// the field takes on the type of the larger operand. If the operands
+	// are
+	// equivalent (e.g. 3 and 3.0), the field does not change.
+	// 0, 0.0, and -0.0 are all zero. The maximum of a zero stored value
+	// and
+	// zero input value is always the stored value.
+	// The maximum of any numeric value x and NaN is NaN.
+	Maximum *Value `json:"maximum,omitempty"`
+
+	// Minimum: Sets the field to the minimum of its current value and the
+	// given value.
+	//
+	// This must be an integer or a double value.
+	// If the field is not an integer or double, or if the field does not
+	// yet
+	// exist, the transformation will set the field to the input value.
+	// If a minimum operation is applied where the field and the input
+	// value
+	// are of mixed types (that is - one is an integer and one is a
+	// double)
+	// the field takes on the type of the smaller operand. If the operands
+	// are
+	// equivalent (e.g. 3 and 3.0), the field does not change.
+	// 0, 0.0, and -0.0 are all zero. The minimum of a zero stored value
+	// and
+	// zero input value is always the stored value.
+	// The minimum of any numeric value x and NaN is NaN.
+	Minimum *Value `json:"minimum,omitempty"`
 
 	// RemoveAllFromArray: Remove all of the given elements from the array
 	// in the field.
@@ -1620,7 +1737,8 @@ type GoogleLongrunningOperation struct {
 	// service that
 	// originally returns it. If you use the default HTTP mapping,
 	// the
-	// `name` should have the format of `operations/some/unique/name`.
+	// `name` should be a resource name ending with
+	// `operations/{unique_id}`.
 	Name string `json:"name,omitempty"`
 
 	// Response: The normal response of the operation in case of success.
@@ -2288,84 +2406,17 @@ func (s *RunQueryResponse) MarshalJSON() ([]byte, error) {
 }
 
 // Status: The `Status` type defines a logical error model that is
-// suitable for different
-// programming environments, including REST APIs and RPC APIs. It is
-// used by
-// [gRPC](https://github.com/grpc). The error model is designed to
-// be:
+// suitable for
+// different programming environments, including REST APIs and RPC APIs.
+// It is
+// used by [gRPC](https://github.com/grpc). Each `Status` message
+// contains
+// three pieces of data: error code, error message, and error
+// details.
 //
-// - Simple to use and understand for most users
-// - Flexible enough to meet unexpected needs
-//
-// # Overview
-//
-// The `Status` message contains three pieces of data: error code, error
-// message,
-// and error details. The error code should be an enum value
-// of
-// google.rpc.Code, but it may accept additional error codes if needed.
-// The
-// error message should be a developer-facing English message that
-// helps
-// developers *understand* and *resolve* the error. If a localized
-// user-facing
-// error message is needed, put the localized message in the error
-// details or
-// localize it in the client. The optional error details may contain
-// arbitrary
-// information about the error. There is a predefined set of error
-// detail types
-// in the package `google.rpc` that can be used for common error
-// conditions.
-//
-// # Language mapping
-//
-// The `Status` message is the logical representation of the error
-// model, but it
-// is not necessarily the actual wire format. When the `Status` message
-// is
-// exposed in different client libraries and different wire protocols,
-// it can be
-// mapped differently. For example, it will likely be mapped to some
-// exceptions
-// in Java, but more likely mapped to some error codes in C.
-//
-// # Other uses
-//
-// The error model and the `Status` message can be used in a variety
-// of
-// environments, either with or without APIs, to provide a
-// consistent developer experience across different
-// environments.
-//
-// Example uses of this error model include:
-//
-// - Partial errors. If a service needs to return partial errors to the
-// client,
-//     it may embed the `Status` in the normal response to indicate the
-// partial
-//     errors.
-//
-// - Workflow errors. A typical workflow has multiple steps. Each step
-// may
-//     have a `Status` message for error reporting.
-//
-// - Batch operations. If a client uses batch request and batch
-// response, the
-//     `Status` message should be used directly inside batch response,
-// one for
-//     each error sub-response.
-//
-// - Asynchronous operations. If an API call embeds asynchronous
-// operation
-//     results in its response, the status of those operations should
-// be
-//     represented directly using the `Status` message.
-//
-// - Logging. If some API errors are stored in logs, the message
-// `Status` could
-//     be used directly after any stripping needed for security/privacy
-// reasons.
+// You can find out more about this error model and how to work with it
+// in the
+// [API Design Guide](https://cloud.google.com/apis/design/errors).
 type Status struct {
 	// Code: The status code, which should be an enum value of
 	// google.rpc.Code.
@@ -2506,17 +2557,9 @@ type Target struct {
 	// fail.
 	ResumeToken string `json:"resumeToken,omitempty"`
 
-	// TargetId: A client provided target ID.
-	//
-	// If not set, the server will assign an ID for the target.
-	//
-	// Used for resuming a target without changing IDs. The IDs can either
-	// be
-	// client-assigned or be server-assigned in a previous stream. All
-	// targets
-	// with client provided IDs must be added before adding a target that
-	// needs
-	// a server-assigned id.
+	// TargetId: The target ID that identifies the target on the stream.
+	// Must be a positive
+	// number and non-zero.
 	TargetId int64 `json:"targetId,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Documents") to
@@ -2602,13 +2645,7 @@ type TargetChange struct {
 	//
 	// If empty, the change applies to all targets.
 	//
-	// For `target_change_type=ADD`, the order of the target IDs matches the
-	// order
-	// of the requests to add the targets. This allows clients to
-	// unambiguously
-	// associate server-assigned target IDs with added targets.
-	//
-	// For other states, the order of the target IDs is not defined.
+	// The order of the target IDs is not defined.
 	TargetIds []int64 `json:"targetIds,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Cause") to
@@ -2676,7 +2713,7 @@ type UnaryFilter struct {
 	// Possible values:
 	//   "OPERATOR_UNSPECIFIED" - Unspecified. This value must not be used.
 	//   "IS_NAN" - Test if a field is equal to NaN.
-	//   "IS_NULL" - Test if an exprestion evaluates to Null.
+	//   "IS_NULL" - Test if an expression evaluates to Null.
 	Op string `json:"op,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Field") to
@@ -2812,7 +2849,7 @@ type Write struct {
 	// ment_path}`.
 	Delete string `json:"delete,omitempty"`
 
-	// Transform: Applies a tranformation to a document.
+	// Transform: Applies a transformation to a document.
 	// At most one `transform` per document is allowed in a given
 	// request.
 	// An `update` cannot follow a `transform` on the same document in a
@@ -3089,6 +3126,7 @@ func (c *ProjectsDatabasesExportDocumentsCall) Header() http.Header {
 
 func (c *ProjectsDatabasesExportDocumentsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3238,6 +3276,7 @@ func (c *ProjectsDatabasesImportDocumentsCall) Header() http.Header {
 
 func (c *ProjectsDatabasesImportDocumentsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3382,6 +3421,7 @@ func (c *ProjectsDatabasesDocumentsBatchGetCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsBatchGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3522,6 +3562,7 @@ func (c *ProjectsDatabasesDocumentsBeginTransactionCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsBeginTransactionCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3662,6 +3703,7 @@ func (c *ProjectsDatabasesDocumentsCommitCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsCommitCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3821,6 +3863,7 @@ func (c *ProjectsDatabasesDocumentsCreateDocumentCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsCreateDocumentCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -3996,6 +4039,7 @@ func (c *ProjectsDatabasesDocumentsDeleteCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4171,6 +4215,7 @@ func (c *ProjectsDatabasesDocumentsGetCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4395,6 +4440,7 @@ func (c *ProjectsDatabasesDocumentsListCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4599,6 +4645,7 @@ func (c *ProjectsDatabasesDocumentsListCollectionIdsCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsListCollectionIdsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4760,6 +4807,7 @@ func (c *ProjectsDatabasesDocumentsListenCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsListenCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -4935,6 +4983,7 @@ func (c *ProjectsDatabasesDocumentsPatchCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5098,6 +5147,7 @@ func (c *ProjectsDatabasesDocumentsRollbackCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsRollbackCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5238,6 +5288,7 @@ func (c *ProjectsDatabasesDocumentsRunQueryCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsRunQueryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5378,6 +5429,7 @@ func (c *ProjectsDatabasesDocumentsWriteCall) Header() http.Header {
 
 func (c *ProjectsDatabasesDocumentsWriteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5535,6 +5587,7 @@ func (c *ProjectsDatabasesIndexesCreateCall) Header() http.Header {
 
 func (c *ProjectsDatabasesIndexesCreateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5673,6 +5726,7 @@ func (c *ProjectsDatabasesIndexesDeleteCall) Header() http.Header {
 
 func (c *ProjectsDatabasesIndexesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5814,6 +5868,7 @@ func (c *ProjectsDatabasesIndexesGetCall) Header() http.Header {
 
 func (c *ProjectsDatabasesIndexesGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
@@ -5978,6 +6033,7 @@ func (c *ProjectsDatabasesIndexesListCall) Header() http.Header {
 
 func (c *ProjectsDatabasesIndexesListCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	reqHeaders.Set("x-goog-api-client", "gl-go/1.11.0 gdcl/20191216")
 	for k, v := range c.header_ {
 		reqHeaders[k] = v
 	}
