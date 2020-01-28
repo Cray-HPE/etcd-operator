@@ -1,4 +1,4 @@
-# THIS IS A TRACKED REPO! (https://github.com/coreos/etcd-operator)
+# THIS IS A TRACKED REPO! (originally https://github.com/coreos/etcd-operator and more recently https://github.com/cbws/etcd-operator)
 
 # etcd operator
 
