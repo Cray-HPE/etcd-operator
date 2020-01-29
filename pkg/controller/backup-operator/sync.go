@@ -96,23 +96,23 @@ func (b *Backup) processItem(key string) error {
 
 		var ticker *time.Ticker
 		var duration int64
-		b.logger.Infof("EtcdBackup name: %s", eb.Name)
+		b.logger.Debugf("EtcdBackup name: %s", eb.Name)
 		// Checking if etcdback status contains lastExecutionDate, if it doesn't then it meant that etcd periodic backup didn't fired already
 		if eb.Status.LastExecutionDate.IsZero() {
-			b.logger.Infoln("Calculating remaining periodic backup time, based on EtcdBackup crd creation date")
+			b.logger.Debugln("Calculating remaining periodic backup time, based on EtcdBackup crd creation date")
 
 			// duration = (Create date in seconds + backup interval in seconds) - current data in seconds
 			duration = int64(eb.CreationTimestamp.Time.Add(time.Duration(eb.Spec.BackupPolicy.BackupIntervalInSecond) * time.Second).Sub(time.Now()).Seconds())
 			ticker = time.NewTicker(
 				time.Duration(duration) * time.Second)
-		} else { // if it already exists and had some runs
-			b.logger.Infoln("Calculating remaining periodic backup time, based on EtcdBackup crd status lastExecutionDate")
+		} else { // if lastExecution already exists
+			b.logger.Debugln("Calculating remaining periodic backup time, based on EtcdBackup crd status lastExecutionDate")
 			currentDate := time.Now()
 			lastExec := eb.Status.LastExecutionDate.Time
 			timeDiff := int64(lastExec.Add(time.Duration(eb.Spec.BackupPolicy.BackupIntervalInSecond) * time.Second).Sub(currentDate).Seconds()) // Calculating new duration = (Create date + backup interval in seconds) - current date
-			b.logger.Infof("Statistics. Current date: %s \n", currentDate)
-			b.logger.Infof("LastExecutionDate: %s \n", lastExec)
-			b.logger.Infof("Time difference: %d \n", timeDiff)
+			b.logger.Debugf("Statistics. Current date: %s \n", currentDate)
+			b.logger.Debugf("LastExecutionDate: %s \n", lastExec)
+			b.logger.Debugf("Time difference: %d \n", timeDiff)
 			if timeDiff <= 0 {
 				duration = eb.Spec.BackupPolicy.BackupIntervalInSecond
 				ticker = time.NewTicker(
@@ -126,7 +126,7 @@ func (b *Backup) processItem(key string) error {
 		// Run new backup runner
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
-		b.logger.Infof("Calculated Duration: %d \n", duration)
+		b.logger.Debugf("Calculated Duration: %d \n", duration)
 		go b.periodicRunnerFunc(ctx, ticker, eb, duration)
 
 		// Store cancel function for periodic
@@ -152,7 +152,7 @@ func (b *Backup) isChanged(eb *api.EtcdBackup) bool {
 func (b *Backup) deletePeriodicBackupRunner(uid types.UID) bool {
 	backupRunner, exists := b.backupRunnerStore.Load(uid)
 	if exists {
-		b.logger.Infoln("--------------------------- Sending context kill signal to channel  ---------------------")
+		b.logger.Debugln("--------------------------- Sending context kill signal to channel  ---------------------")
 		backupRunner.(BackupRunner).cancelFunc()
 		b.backupRunnerStore.Delete(uid)
 		return true
@@ -201,7 +201,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 	for {
 		select {
 		case <-ctx.Done():
-			b.logger.Infoln("--------------------- received context kill signal  ---------------------")
+			b.logger.Debugln("--------------------- received context kill signal  ---------------------")
 			return
 		case <-t.C:
 			var latestEb *api.EtcdBackup
@@ -233,9 +233,9 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 
 			// If current duration of timer doesn't match expected duration that means we have to revert time to its old state
 			if currentDuration != latestEb.Spec.BackupPolicy.BackupIntervalInSecond {
-				b.logger.Infoln("------------------------------- Initializing new ticker  ---------------------")
-				b.logger.Infof("Current timer duration: %d \n", currentDuration)
-				b.logger.Infof("Expected timer duration: %d \n", latestEb.Spec.BackupPolicy.BackupIntervalInSecond)
+				b.logger.Debugln("------------------------------- Initializing new ticker  ---------------------")
+				b.logger.Debugf("Current timer duration: %d \n", currentDuration)
+				b.logger.Debugf("Expected timer duration: %d \n", latestEb.Spec.BackupPolicy.BackupIntervalInSecond)
 
 				t.Stop()
 				currentDuration = latestEb.Spec.BackupPolicy.BackupIntervalInSecond
