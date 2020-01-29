@@ -84,7 +84,6 @@ func (b *Backup) processItem(key string) error {
 		(eb.Status.Succeeded || len(eb.Status.Reason) != 0) {
 		return nil
 	}
-
 	if isPeriodic && b.isChanged(eb) {
 		// Stop previous backup runner if it exists
 		b.deletePeriodicBackupRunner(eb.ObjectMeta.UID)
@@ -95,12 +94,40 @@ func (b *Backup) processItem(key string) error {
 			return err
 		}
 
+		var ticker *time.Ticker
+		var duration int64
+		b.logger.Infof("EtcdBackup name: %s", eb.Name)
+		// Checking if etcdback status contains lastExecutionDate, if it doesn't then it meant that etcd periodic backup didn't fired already
+		if eb.Status.LastExecutionDate.IsZero() {
+			b.logger.Infoln("Calculating remaining periodic backup time, based on EtcdBackup crd creation date")
+
+			// duration = (Create date in seconds + backup interval in seconds) - current data in seconds
+			duration = int64(eb.CreationTimestamp.Time.Add(time.Duration(eb.Spec.BackupPolicy.BackupIntervalInSecond) * time.Second).Sub(time.Now()).Seconds())
+			ticker = time.NewTicker(
+				time.Duration(duration) * time.Second)
+		} else { // if it already exists and had some runs
+			b.logger.Infoln("Calculating remaining periodic backup time, based on EtcdBackup crd status lastExecutionDate")
+			currentDate := time.Now()
+			lastExec := eb.Status.LastExecutionDate.Time
+			timeDiff := int64(lastExec.Add(time.Duration(eb.Spec.BackupPolicy.BackupIntervalInSecond) * time.Second).Sub(currentDate).Seconds()) // Calculating new duration = (Create date + backup interval in seconds) - current date
+			b.logger.Infof("Statistics. Current date: %s \n", currentDate)
+			b.logger.Infof("LastExecutionDate: %s \n", lastExec)
+			b.logger.Infof("Time difference: %d \n", timeDiff)
+			if timeDiff <= 0 {
+				duration = eb.Spec.BackupPolicy.BackupIntervalInSecond
+				ticker = time.NewTicker(
+					time.Duration(eb.Spec.BackupPolicy.BackupIntervalInSecond) * time.Second)
+			} else {
+				duration = timeDiff
+				ticker = time.NewTicker(
+					time.Duration(duration) * time.Second)
+			}
+		}
 		// Run new backup runner
-		ticker := time.NewTicker(
-			time.Duration(eb.Spec.BackupPolicy.BackupIntervalInSecond) * time.Second)
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
-		go b.periodicRunnerFunc(ctx, ticker, eb)
+		b.logger.Infof("Calculated Duration: %d \n", duration)
+		go b.periodicRunnerFunc(ctx, ticker, eb, duration)
 
 		// Store cancel function for periodic
 		b.backupRunnerStore.Store(eb.ObjectMeta.UID, BackupRunner{eb.Spec, cancel})
@@ -125,6 +152,7 @@ func (b *Backup) isChanged(eb *api.EtcdBackup) bool {
 func (b *Backup) deletePeriodicBackupRunner(uid types.UID) bool {
 	backupRunner, exists := b.backupRunnerStore.Load(uid)
 	if exists {
+		b.logger.Infoln("--------------------------- Sending context kill signal to channel  ---------------------")
 		backupRunner.(BackupRunner).cancelFunc()
 		b.backupRunnerStore.Delete(uid)
 		return true
@@ -167,11 +195,13 @@ func (b *Backup) removeFinalizerOfPeriodicBackup(eb *api.EtcdBackup) error {
 	return err
 }
 
-func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api.EtcdBackup) {
+func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api.EtcdBackup, currentDuration int64) {
+
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			b.logger.Infoln("--------------------- received context kill signal  ---------------------")
 			break
 		case <-t.C:
 			var latestEb *api.EtcdBackup
@@ -197,8 +227,20 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 				// Perform backup
 				bs, err = b.handleBackup(&ctx, &latestEb.Spec, true, latestEb.Namespace)
 			}
+
 			// Report backup status
 			b.reportBackupStatus(bs, err, latestEb)
+
+			// If current duration of timer doesn't match expected duration that means we have to revert time to its old state
+			if currentDuration != latestEb.Spec.BackupPolicy.BackupIntervalInSecond {
+				b.logger.Infoln("------------------------------- Initializing new ticker  ---------------------")
+				b.logger.Infof("Current timer duration: %d \n", currentDuration)
+				b.logger.Infof("Expected timer duration: %d \n", latestEb.Spec.BackupPolicy.BackupIntervalInSecond)
+
+				t.Stop()
+				currentDuration = latestEb.Spec.BackupPolicy.BackupIntervalInSecond
+				t = time.NewTicker(time.Duration(latestEb.Spec.BackupPolicy.BackupIntervalInSecond) * time.Second)
+			}
 		}
 	}
 }
@@ -206,6 +248,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.EtcdBackup) {
 	if berr != nil {
 		eb.Status.Succeeded = false
+		eb.Status.LastExecutionDate = metav1.Now()
 		eb.Status.Reason = berr.Error()
 	} else {
 		eb.Status.Reason = ""
@@ -213,6 +256,7 @@ func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.Et
 		eb.Status.EtcdRevision = bs.EtcdRevision
 		eb.Status.EtcdVersion = bs.EtcdVersion
 		eb.Status.LastSuccessDate = bs.LastSuccessDate
+		eb.Status.LastExecutionDate = bs.LastSuccessDate
 	}
 	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Update(eb)
 	if err != nil {

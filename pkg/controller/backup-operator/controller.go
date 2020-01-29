@@ -60,6 +60,7 @@ func (b *Backup) run(ctx context.Context) {
 }
 
 func (b *Backup) onAdd(obj interface{}) {
+	b.logger.Infoln("------------------------------- onAdd  ---------------------")
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		panic(err)
@@ -68,6 +69,7 @@ func (b *Backup) onAdd(obj interface{}) {
 }
 
 func (b *Backup) onUpdate(oldObj, newObj interface{}) {
+	b.logger.Infoln("------------------------------- onUpdate ---------------------")
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		panic(err)
@@ -76,6 +78,7 @@ func (b *Backup) onUpdate(oldObj, newObj interface{}) {
 }
 
 func (b *Backup) onDelete(obj interface{}) {
+	b.logger.Infoln("------------------------------- onDelete  ---------------------")
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		panic(err)

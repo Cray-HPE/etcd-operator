@@ -123,6 +123,9 @@ type BackupStatus struct {
 	EtcdRevision int64 `json:"etcdRevision,omitempty"`
 	// LastSuccessDate indicate the time to get snapshot last time
 	LastSuccessDate metav1.Time `json:"lastSuccessDate,omitempty"`
+	// Last execution date. First it will be creation timestamp, later on it will be last execution date despite successful or failed run.
+	// This field is used when pod is restarted ticked should be create from this timestamp not current timestamp
+	LastExecutionDate metav1.Time `json:"lastExecutionDate,omitempty"`
 }
 
 // S3BackupSource provides the spec how to store backups on S3.
