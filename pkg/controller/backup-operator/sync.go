@@ -202,7 +202,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 		select {
 		case <-ctx.Done():
 			b.logger.Infoln("--------------------- received context kill signal  ---------------------")
-			break
+			return
 		case <-t.C:
 			var latestEb *api.EtcdBackup
 			var bs *api.BackupStatus
