@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.52.0 // indirect
-	cloud.google.com/go/storage v1.0.0
+	cloud.google.com/go/storage v1.5.0
 	contrib.go.opencensus.io/exporter/ocagent v0.6.0 // indirect
 	github.com/Azure/azure-sdk-for-go v11.3.0-beta+incompatible
 	github.com/Azure/go-autorest v11.9.0+incompatible
