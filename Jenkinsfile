@@ -3,6 +3,7 @@
 dockerBuildPipeline {
         repository = "cray"
         dockerfile = "./hack/build/Dockerfile"
+        imagePrefix = "cray"
         buildPrepScript = "buildPrep.sh"
         dockerBuildContextDir = "."
         app = "etcd-operator"
