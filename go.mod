@@ -38,7 +38,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
-	google.golang.org/api v0.20.0
+	google.golang.org/api v0.22.0
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20190226173710-145d52631d00
 	k8s.io/apiextensions-apiserver v0.0.0-20190226180157-bd0469a053ff
