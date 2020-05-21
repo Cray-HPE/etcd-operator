@@ -14,7 +14,6 @@ require (
 	github.com/coreos/etcd v3.2.13+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/emicklei/go-restful v2.9.0+incompatible // indirect
-	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.42.0 // indirect
 	github.com/go-openapi/jsonpointer v0.18.0 // indirect
 	github.com/go-openapi/jsonreference v0.18.0 // indirect

@@ -5,7 +5,7 @@ set -e
 export PATH=$PATH:/usr/local/go/bin
 export PATH=$PATH:/root/go/bin
 rm -rf /usr/local/go
-rm -f go1.11.5.linux-amd64.tar*
+rm -f go1.14.2.linux-amd64.tar*
 : "${GOPATH:=$HOME/go}"
 
 if which git ; then
@@ -20,11 +20,11 @@ if which go ; then
   echo "Go is installed."
 else
   echo "Go wasn't installed, trying to install"
-  wget https://dl.google.com/go/go1.11.5.linux-amd64.tar.gz
-  tar -C /usr/local -xzf go1.11.5.linux-amd64.tar.gz
+  wget https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz
+  tar -C /usr/local -xzf go1.14.2.linux-amd64.tar.gz
 fi
 
-GO_VERSION="1.11.5"
+GO_VERSION="1.14.2"
 INSTALLED_GO_VERSION=$(go version | awk '{print $3}')
 
 if [[ "go${GO_VERSION}" !=  $INSTALLED_GO_VERSION ]]; then
@@ -36,13 +36,13 @@ if [[ "go${GO_VERSION}" !=  $INSTALLED_GO_VERSION ]]; then
     cp $GOPATH/bin/go$GO_VERSION $GO_EXEC
 fi
 
+rm -rf $GOPATH/pkg
+rm -rf $GOPATH/bin
+rm -rf $GOPATH/src
+
 mkdir -p $GOPATH/bin
 mkdir -p $GOPATH/src
 mkdir -p $GOPATH/pkg
-
-rm -f $GOPATH/bin/dep
-rm -rf $GOPATH/pkg/dep
-rm -rf $GOPATH/src/github.com/coreos/etcd-operator
 
 if which dep; then
   echo "dep is installed."
@@ -56,7 +56,7 @@ mkdir -p $GOPATH/src/github.com/coreos/etcd-operator
 cp -r . $GOPATH/src/github.com/coreos/etcd-operator
 cd $GOPATH/src/github.com/coreos/etcd-operator
 
-$GOPATH/src/github.com/coreos/etcd-operator/hack/update_vendor.sh
+go get -v -t -d ./...
 $GOPATH/src/github.com/coreos/etcd-operator/hack/build/operator/build
 $GOPATH/src/github.com/coreos/etcd-operator/hack/build/backup-operator/build
 $GOPATH/src/github.com/coreos/etcd-operator/hack/build/restore-operator/build
