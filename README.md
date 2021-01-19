@@ -1,4 +1,9 @@
+SPDX-License-Identifier: apache-2.0 OR mit
+
 # THIS IS A TRACKED REPO! (originally https://github.com/coreos/etcd-operator and more recently https://github.com/cbws/etcd-operator)
+
+HPE-developed code is licensed using the MIT license.
+Community-developed code is licensed using the Apache-2.0 license.
 
 # etcd operator
 
