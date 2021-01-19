@@ -11,4 +11,5 @@ dockerBuildPipeline {
         useEntryPointForTest = "false"
         product = "csm"
         slackNotification = ["casm-cloud-alerts", "slack-token", false, false, true, true]
+        githubPushRepo = "Cray-HPE/etcd-operator"
 }
