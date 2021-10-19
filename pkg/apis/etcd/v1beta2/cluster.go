@@ -167,6 +167,9 @@ type PodPolicy struct {
 	// The default is to not use memory as the storage medium
 	// No effect if persistent volume is used
 	Tmpfs bool `json:"tmpfs,omitempty"`
+
+	// Sets the priorityClassName for etcd pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }
 
 // TODO: move this to initializer
