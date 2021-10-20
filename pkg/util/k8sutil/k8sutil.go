@@ -439,6 +439,7 @@ func newEtcdPod(kubecli kubernetes.Interface, m *etcdutil.Member, initialCluster
 			}},
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,
+			PriorityClassName: cs.Pod.PriorityClassName,
 			Volumes:       volumes,
 			// DNS A record: `[m.Name].[clusterName].Namespace.svc`
 			// For example, etcd-795649v9kq in default namesapce will have DNS name

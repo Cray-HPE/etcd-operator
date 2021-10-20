@@ -35,7 +35,7 @@ pipeline {
         stage("Publish etcd-operator docker image") {
             steps {
                 script {
-                    publishCsmDockerImage(image: env.OPERATOR_NAME, tag: env.VERSION, isStable: env.IS_STABLE)
+                    publishCsmDockerImage(image: env.OPERATOR_NAME, tag: env.VERSION, isStable: env.IS_STABLE, snykTargetFile: "hack/build/Dockerfile")
                 }
             }
         }

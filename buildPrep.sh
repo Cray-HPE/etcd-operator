@@ -46,7 +46,7 @@ fi
 
 ORIGINAL_DIR=$PWD
 mkdir -p $GOPATH/src/github.com/coreos/etcd-operator
-cp -r . $GOPATH/src/github.com/coreos/etcd-operator
+$(cp -r . $GOPATH/src/github.com/coreos/etcd-operator | true)
 cd $GOPATH/src/github.com/coreos/etcd-operator
 
 go get -v -t -d ./...
