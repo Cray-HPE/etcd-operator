@@ -1,4 +1,4 @@
-FROM alpine:3.12.0
+FROM artifactory.algol60.net/docker.io/library/alpine:latest
 
 RUN apk add --no-cache ca-certificates
 
