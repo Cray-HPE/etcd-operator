@@ -55,7 +55,7 @@ import (
 	"github.com/pborman/uuid"
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -125,11 +125,11 @@ func PVCNameFromMember(memberName string) string {
 	return memberName
 }
 
-func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member) []v1.Container {
+func makeRestoreInitContainers(backupURL *url.URL, token, repo, version string, m *etcdutil.Member, curlImage string) []v1.Container {
 	return []v1.Container{
 		{
 			Name:  "fetch-backup",
-			Image: "curlimages/curl:7.73.0",
+			Image: curlImage,
 			Command: []string{
 				"/bin/sh", "-ec",
 				fmt.Sprintf(`
@@ -294,9 +294,9 @@ func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim, tmpfs bool) 
 		vol.VolumeSource = v1.VolumeSource{
 			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: pvc.Name},
 		}
-               // Addresses case C from https://github.com/coreos/etcd-operator/blob/master/doc/design/persistent_volumes_etcd_data.md
-               // When PVC is used, make the pod auto recover in case of failure
-               pod.Spec.RestartPolicy = v1.RestartPolicyAlways
+		// Addresses case C from https://github.com/coreos/etcd-operator/blob/master/doc/design/persistent_volumes_etcd_data.md
+		// When PVC is used, make the pod auto recover in case of failure
+		pod.Spec.RestartPolicy = v1.RestartPolicyAlways
 	} else {
 		vol.VolumeSource = v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}
 		if tmpfs {
@@ -306,9 +306,9 @@ func AddEtcdVolumeToPod(pod *v1.Pod, pvc *v1.PersistentVolumeClaim, tmpfs bool) 
 	pod.Spec.Volumes = append(pod.Spec.Volumes, vol)
 }
 
-func addRecoveryToPod(pod *v1.Pod, token string, m *etcdutil.Member, cs api.ClusterSpec, backupURL *url.URL) {
+func addRecoveryToPod(pod *v1.Pod, token string, m *etcdutil.Member, cs api.ClusterSpec, backupURL *url.URL, curlImage string) {
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers,
-		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m)...)
+		makeRestoreInitContainers(backupURL, token, cs.Repository, cs.Version, m, curlImage)...)
 }
 
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
@@ -317,13 +317,13 @@ func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
 
 // NewSeedMemberPod returns a Pod manifest for a seed member.
 // It's special that it has new token, and might need recovery init containers
-func NewSeedMemberPod(kubecli kubernetes.Interface, clusterName, clusterNamespace string, ms etcdutil.MemberSet, m *etcdutil.Member, cs api.ClusterSpec, owner metav1.OwnerReference, backupURL *url.URL) (*v1.Pod, error) {
+func NewSeedMemberPod(kubecli kubernetes.Interface, clusterName, clusterNamespace string, ms etcdutil.MemberSet, m *etcdutil.Member, cs api.ClusterSpec, owner metav1.OwnerReference, backupURL *url.URL, curlImage string) (*v1.Pod, error) {
 	token := uuid.New()
 	pod, err := newEtcdPod(kubecli, m, ms.PeerURLPairs(), clusterName, clusterNamespace, "new", token, cs)
 	// TODO: PVC datadir support for restore process
 	AddEtcdVolumeToPod(pod, nil, cs.Pod.Tmpfs)
 	if backupURL != nil {
-		addRecoveryToPod(pod, token, m, cs, backupURL)
+		addRecoveryToPod(pod, token, m, cs, backupURL, curlImage)
 	}
 	applyPodPolicy(clusterName, pod, cs.Pod)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
@@ -462,10 +462,10 @@ func newEtcdPod(kubecli kubernetes.Interface, m *etcdutil.Member, initialCluster
 						sleep 1
 					done`, DNSTimeout, m.Addr())},
 			}},
-			Containers:    []v1.Container{container},
-			RestartPolicy: v1.RestartPolicyNever,
+			Containers:        []v1.Container{container},
+			RestartPolicy:     v1.RestartPolicyNever,
 			PriorityClassName: cs.Pod.PriorityClassName,
-			Volumes:       volumes,
+			Volumes:           volumes,
 			// DNS A record: `[m.Name].[clusterName].Namespace.svc`
 			// For example, etcd-795649v9kq in default namesapce will have DNS name
 			// `etcd-795649v9kq.etcd.default.svc`.
