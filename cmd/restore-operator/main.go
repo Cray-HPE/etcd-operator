@@ -1,3 +1,28 @@
+/*
+ *
+ *  MIT License
+ *
+ *  (C) Copyright 2022 Hewlett Packard Enterprise Development LP
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a
+ *  copy of this software and associated documentation files (the "Software"),
+ *  to deal in the Software without restriction, including without limitation
+ *  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ *  and/or sell copies of the Software, and to permit persons to whom the
+ *  Software is furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included
+ *  in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ *  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ *  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ *  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *  OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
 // Copyright 2017 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +66,7 @@ var (
 	namespace   string
 	createCRD   bool
 	clusterWide bool
+	curlImage   string
 )
 
 const (
@@ -51,6 +77,7 @@ const (
 func init() {
 	flag.BoolVar(&createCRD, "create-crd", true, "The restore operator will not create the EtcdRestore CRD when this flag is set to false.")
 	flag.BoolVar(&clusterWide, "cluster-wide", false, "Enable operator to watch clusters in all namespaces")
+	flag.StringVar(&curlImage, "curl-image", "curlimages/curl:latest", "The curl docker image to use during restores")
 	flag.Parse()
 }
 
@@ -72,6 +99,7 @@ func main() {
 	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
 	logrus.Infof("etcd-restore-operator Version: %v", version.Version)
 	logrus.Infof("Git SHA: %s", version.GitSHA)
+	logrus.Infof("Curl image version: %s", curlImage)
 
 	kubecli := k8sutil.MustNewKubeClient()
 
@@ -135,6 +163,7 @@ func newControllerConfig() controller.Config {
 		ClusterWide: clusterWide,
 		CreateCRD:   createCRD,
 		MySvcAddr:   fmt.Sprintf("%s.%s:%d", serviceNameForMyself, namespace, servicePortForMyself),
+		CurlImage:   curlImage,
 	}
 
 	return cfg
