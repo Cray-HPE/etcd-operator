@@ -320,8 +320,17 @@ func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
 func NewSeedMemberPod(kubecli kubernetes.Interface, clusterName, clusterNamespace string, ms etcdutil.MemberSet, m *etcdutil.Member, cs api.ClusterSpec, owner metav1.OwnerReference, backupURL *url.URL, curlImage string) (*v1.Pod, error) {
 	token := uuid.New()
 	pod, err := newEtcdPod(kubecli, m, ms.PeerURLPairs(), clusterName, clusterNamespace, "new", token, cs)
-	// TODO: PVC datadir support for restore process
-	AddEtcdVolumeToPod(pod, nil, cs.Pod.Tmpfs)
+
+        if cs.Pod != nil && cs.Pod.PersistentVolumeClaimSpec != nil {
+		pvc := NewEtcdPodPVC(m, *cs.Pod.PersistentVolumeClaimSpec, clusterName, clusterNamespace, owner)
+		_, err := kubecli.CoreV1().PersistentVolumeClaims(clusterNamespace).Create(pvc)
+		if err != nil {
+			return fmt.Errorf("failed to create PVC for member (%s): %v", m.Name, err)
+		}
+		AddEtcdVolumeToPod(pod, pvc, false)
+	} else {
+		AddEtcdVolumeToPod(pod, nil, cs.Pod.Tmpfs)
+	}
 	if backupURL != nil {
 		addRecoveryToPod(pod, token, m, cs, backupURL, curlImage)
 	}
