@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd-operator Authors
+// Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package framework
+package k8sutil
 
 import (
-	"context"
-	"os"
-	"testing"
-
-	"github.com/sirupsen/logrus"
+	"k8s.io/api/core/v1"
+	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 )
 
-func MainEntry(m *testing.M) {
-	if err := setup(context.Background()); err != nil {
-		logrus.Errorf("fail to setup framework: %v", err)
-		os.Exit(1)
+func applyServicePolicy(service *v1.Service, policy *api.ServicePolicy) {
+	if policy == nil {
+		return
 	}
 
-	code := m.Run()
-
-	if err := teardown(context.Background()); err != nil {
-		logrus.Errorf("fail to teardown framework: %v", err)
-		os.Exit(1)
+	if len(policy.Selector) != 0 {
+		service.Spec.Selector = policy.Selector
 	}
-	os.Exit(code)
+
+	for key, value := range policy.Annotations {
+		service.ObjectMeta.Annotations[key] = value
+	}
 }
