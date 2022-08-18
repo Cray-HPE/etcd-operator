@@ -1,3 +1,28 @@
+/*
+ *
+ *  MIT License
+ *
+ *  (C) Copyright 2022 Hewlett Packard Enterprise Development LP
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a
+ *  copy of this software and associated documentation files (the "Software"),
+ *  to deal in the Software without restriction, including without limitation
+ *  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ *  and/or sell copies of the Software, and to permit persons to whom the
+ *  Software is furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included
+ *  in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ *  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ *  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ *  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *  OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
 // Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -593,9 +618,9 @@ func UniqueMemberName(clusterName string) string {
 	return clusterName + "-" + suffix
 }
 
-func AttemptRestoreFromBackup(ctx context.Context, namespace string, kubecli kubernetes.Interface, cluster *api.EtcdCluster, logger *logrus.Entry) error {
+func AttemptRestoreFromBackup(ctx context.Context, namespace string, kubecli kubernetes.Interface, etcdclient versioned.Interface, cluster *api.EtcdCluster, logger *logrus.Entry) error {
 
-	latestBackup, err := getLatestBackup(ctx, namespace, kubecli, cluster, logger)
+	latestBackup, err := getLatestBackup(ctx, namespace, kubecli, cluster, etcdclient, logger)
 	if err != nil {
 		return fmt.Errorf("getting latest backup failed : %v", err)
 	}
@@ -634,7 +659,7 @@ func getBackupPodName(ctx context.Context, kubecli kubernetes.Interface) (string
 	return "", fmt.Errorf("failed to get backup pod")
 }
 
-func getLatestBackup(ctx context.Context, namespace string, kubecli kubernetes.Interface, cluster *api.EtcdCluster, logger *logrus.Entry) (string, error) {
+func getLatestBackup(ctx context.Context, namespace string, kubecli kubernetes.Interface, cluster *api.EtcdCluster, etcdclient versioned.Interface, logger *logrus.Entry) (string, error) {
 
 	command := []string{"list_backups", getBackupProjectName(cluster.Name)}
 	output, err := execIntoBackupPod(ctx, namespace, kubecli, cluster, "boto3", command, logger)
@@ -642,21 +667,37 @@ func getLatestBackup(ctx context.Context, namespace string, kubecli kubernetes.I
 		return "", fmt.Errorf("failed execing into backup pod: %v", err)
 	}
 
-	const timeLayout = "2006-01-02-15:04:05"
 	var latestBackup string
+	var latestTs time.Time
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
 		split := strings.Split(scanner.Text(), "/")
 		thisBackup := split[1]
-		thisTsStr := parseBackupTimeStamp(thisBackup)
+		var thisTs time.Time
+		if strings.Contains(thisBackup, "etcd.backup_v") {
+			//
+			// This is a periodic backup
+			//
+			thisTs, err = parsePeriodicBackupTimeStamp(thisBackup)
+			if err != nil {
+				return "", fmt.Errorf("parsing periodic backup timestamp from %s failed: %v", thisBackup, err)
+			}
+		} else {
+			//
+			// This is a manual backup
+			//
+			thisTs, err = getManualBackupTimestamp(ctx, etcdclient, cluster.Name, namespace, thisBackup, logger)
+			if err != nil {
+				return "", fmt.Errorf("parsing manual backup timestamp from %s failed: %v", thisBackup, err)
+			}
+		}
 		if latestBackup == "" {
 			latestBackup = thisBackup
+			latestTs = thisTs
 		} else {
-			thisTs, _ := time.Parse(timeLayout, thisTsStr)
-			latestTsStr := parseBackupTimeStamp(latestBackup)
-			latestTs, _ := time.Parse(timeLayout, latestTsStr)
 			if thisTs.After(latestTs) {
 				latestBackup = thisBackup
+				latestTs = thisTs
 			}
 		}
 	}
@@ -673,13 +714,19 @@ func getBackupProjectName(clusterName string) string {
 	return strings.Join(parts, "-")
 }
 
-func parseBackupTimeStamp(backupName string) string {
+func parsePeriodicBackupTimeStamp(backupName string) (time.Time, error) {
 	//
 	// Grab 2022-06-18-19:00:01 from etcd.backup_v10612_2022-06-18-19:00:01
 	//
+	const timeLayout = "2006-01-02-15:04:05"
 	parts := strings.Split(backupName, "_")
 	parts = parts[2:]
-	return strings.Join(parts, "_")
+	thisTsStr := strings.Join(parts, "_")
+	thisTs, err := time.Parse(timeLayout, thisTsStr)
+	if err != nil {
+		return thisTs, fmt.Errorf("parsing timestamp from %s failed: %v", thisTsStr, err)
+	}
+	return thisTs, nil
 }
 
 func execIntoBackupPod(ctx context.Context, namespace string, kubecli kubernetes.Interface, cluster *api.EtcdCluster, container string, command []string, logger *logrus.Entry) (string, error) {
@@ -749,9 +796,32 @@ func CleanupCompletedEtcdRestore(ctx context.Context, client versioned.Interface
 	if er.Status.Succeeded {
 		if err := client.EtcdV1beta2().EtcdRestores(namespace).Delete(ctx, er.Name, metav1.DeleteOptions{}); err != nil {
 			logger.Fatalf("failed to delete etcd restore cr: %v", err)
+			return err
 		}
 		return nil
 	}
 
 	return nil
+}
+
+func getManualBackupTimestamp(ctx context.Context, client versioned.Interface, clusterName string, namespace string, backupName string, logger *logrus.Entry) (time.Time, error) {
+
+	var thisTs time.Time
+	backupsList, err := client.EtcdV1beta2().EtcdBackups(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return thisTs, fmt.Errorf("failed to list backups CRs: %v", err)
+	}
+	for i := range backupsList.Items {
+		backup := &backupsList.Items[i]
+		if !backup.Status.Succeeded {
+			continue
+		}
+		fullBackupName := fmt.Sprintf("etcd-backup/%s/%s", getBackupProjectName(clusterName), backupName)
+		if backup.Spec.S3.Path == fullBackupName {
+			thisTs = backup.Status.LastSuccessDate.Time
+			break
+		}
+	}
+
+	return thisTs, nil
 }
