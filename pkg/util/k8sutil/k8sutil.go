@@ -811,8 +811,7 @@ func getManualBackupTimestamp(ctx context.Context, client versioned.Interface, c
 	if err != nil {
 		return thisTs, fmt.Errorf("failed to list backups CRs: %v", err)
 	}
-	for i := range backupsList.Items {
-		backup := &backupsList.Items[i]
+	for _, backup := range backupsList.Items {
 		if !backup.Status.Succeeded {
 			continue
 		}
