@@ -21,8 +21,10 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
+	"github.com/coreos/etcd-operator/pkg/backup/metrics"
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -41,11 +43,11 @@ const (
 )
 
 func (b *Backup) runWorker() {
-	for b.processNextItem() {
+	for b.processNextItem(context.TODO()) {
 	}
 }
 
-func (b *Backup) processNextItem() bool {
+func (b *Backup) processNextItem(ctx context.Context) bool {
 	// Wait until there is a new item in the working queue
 	key, quit := b.queue.Get()
 	if quit {
@@ -55,13 +57,13 @@ func (b *Backup) processNextItem() bool {
 	// This allows safe parallel processing because two pods with the same key are never processed in
 	// parallel.
 	defer b.queue.Done(key)
-	err := b.processItem(key.(string))
+	err := b.processItem(ctx, key.(string))
 	// Handle the error if something went wrong during the execution of the business logic
 	b.handleErr(err, key)
 	return true
 }
 
-func (b *Backup) processItem(key string) error {
+func (b *Backup) processItem(ctx context.Context, key string) error {
 	obj, exists, err := b.indexer.GetByKey(key)
 	if err != nil {
 		return err
@@ -74,7 +76,7 @@ func (b *Backup) processItem(key string) error {
 
 	if eb.DeletionTimestamp != nil {
 		b.deletePeriodicBackupRunner(eb.ObjectMeta.UID)
-		return b.removeFinalizerOfPeriodicBackup(eb)
+		return b.removeFinalizerOfPeriodicBackup(ctx, eb)
 	}
 	isPeriodic := isPeriodicBackup(&eb.Spec)
 
@@ -89,7 +91,7 @@ func (b *Backup) processItem(key string) error {
 		b.deletePeriodicBackupRunner(eb.ObjectMeta.UID)
 
 		// Add finalizer if need
-		eb, err = b.addFinalizerOfPeriodicBackupIfNeed(eb)
+		eb, err = b.addFinalizerOfPeriodicBackupIfNeed(ctx, eb)
 		if err != nil {
 			return err
 		}
@@ -136,10 +138,15 @@ func (b *Backup) processItem(key string) error {
 		b.backupRunnerStore.Store(eb.ObjectMeta.UID, BackupRunner{eb.Spec, cancel})
 
 	} else if !isPeriodic {
+		metrics.BackupsAttemptedTotal.With(prometheus.Labels(prometheus.Labels{
+			"namespace": eb.ObjectMeta.Namespace,
+			"name":      eb.ObjectMeta.Name,
+		})).Inc()
+
 		// Perform backup
 		bs, err := b.handleBackup(nil, &eb.Spec, false, eb.Namespace)
 		// Report backup status
-		b.reportBackupStatus(bs, err, eb)
+		b.reportBackupStatus(ctx, bs, err, eb)
 	}
 	return err
 }
@@ -163,7 +170,7 @@ func (b *Backup) deletePeriodicBackupRunner(uid types.UID) bool {
 	return false
 }
 
-func (b *Backup) addFinalizerOfPeriodicBackupIfNeed(eb *api.EtcdBackup) (*api.EtcdBackup, error) {
+func (b *Backup) addFinalizerOfPeriodicBackupIfNeed(ctx context.Context, eb *api.EtcdBackup) (*api.EtcdBackup, error) {
 	ebNew := eb.DeepCopyObject()
 	metadata, err := meta.Accessor(ebNew)
 	if err != nil {
@@ -171,7 +178,7 @@ func (b *Backup) addFinalizerOfPeriodicBackupIfNeed(eb *api.EtcdBackup) (*api.Et
 	}
 	if !containsString(metadata.GetFinalizers(), "backup-operator-periodic") {
 		metadata.SetFinalizers(append(metadata.GetFinalizers(), "backup-operator-periodic"))
-		_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.ObjectMeta.Namespace).Update(ebNew.(*api.EtcdBackup))
+		_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.ObjectMeta.Namespace).Update(ctx, ebNew.(*api.EtcdBackup), metav1.UpdateOptions{})
 		if err != nil {
 			return eb, err
 		}
@@ -180,7 +187,7 @@ func (b *Backup) addFinalizerOfPeriodicBackupIfNeed(eb *api.EtcdBackup) (*api.Et
 	return eb, nil
 }
 
-func (b *Backup) removeFinalizerOfPeriodicBackup(eb *api.EtcdBackup) error {
+func (b *Backup) removeFinalizerOfPeriodicBackup(ctx context.Context, eb *api.EtcdBackup) error {
 	ebNew := eb.DeepCopyObject()
 	metadata, err := meta.Accessor(ebNew)
 	if err != nil {
@@ -194,7 +201,7 @@ func (b *Backup) removeFinalizerOfPeriodicBackup(eb *api.EtcdBackup) error {
 		finalizers = append(finalizers, finalizer)
 	}
 	metadata.SetFinalizers(finalizers)
-	_, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Update(ebNew.(*api.EtcdBackup))
+	_, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Update(ctx, ebNew.(*api.EtcdBackup), metav1.UpdateOptions{})
 	return err
 }
 
@@ -212,7 +219,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 			var err error
 			retryLimit := 5
 			for i := 1; i < retryLimit+1; i++ {
-				latestEb, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Get(eb.Name, metav1.GetOptions{})
+				latestEb, err = b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Get(ctx, eb.Name, metav1.GetOptions{})
 				if err != nil {
 					if apierrors.IsNotFound(err) {
 						b.logger.Infof("Could not find EtcdBackup. Stopping periodic backup for EtcdBackup CR %v",
@@ -227,12 +234,17 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 				break
 			}
 			if err == nil {
+				metrics.BackupsAttemptedTotal.With(prometheus.Labels{
+					"namespace": eb.ObjectMeta.Namespace,
+					"name":      eb.ObjectMeta.Name,
+				}).Inc()
+
 				// Perform backup
 				bs, err = b.handleBackup(&ctx, &latestEb.Spec, true, latestEb.Namespace)
 			}
 
 			// Report backup status
-			b.reportBackupStatus(bs, err, latestEb)
+			b.reportBackupStatus(ctx, bs, err, latestEb)
 
 			// If current duration of timer doesn't match expected duration that means we have to revert time to its old state
 			if currentDuration != latestEb.Spec.BackupPolicy.BackupIntervalInSecond {
@@ -248,7 +260,7 @@ func (b *Backup) periodicRunnerFunc(ctx context.Context, t *time.Ticker, eb *api
 	}
 }
 
-func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.EtcdBackup) {
+func (b *Backup) reportBackupStatus(ctx context.Context, bs *api.BackupStatus, berr error, eb *api.EtcdBackup) {
 	if berr != nil {
 		eb.Status.Succeeded = false
 		eb.Status.LastExecutionDate = metav1.Now()
@@ -260,8 +272,17 @@ func (b *Backup) reportBackupStatus(bs *api.BackupStatus, berr error, eb *api.Et
 		eb.Status.EtcdVersion = bs.EtcdVersion
 		eb.Status.LastSuccessDate = bs.LastSuccessDate
 		eb.Status.LastExecutionDate = bs.LastSuccessDate
+
+		metrics.BackupsSuccessTotal.With(prometheus.Labels{
+			"namespace": eb.ObjectMeta.Namespace,
+			"name":      eb.ObjectMeta.Name,
+		}).Inc()
+		metrics.BackupsLastSuccess.With(prometheus.Labels{
+			"namespace": eb.ObjectMeta.Namespace,
+			"name":      eb.ObjectMeta.Name,
+		}).Set(float64(time.Now().Unix()))
 	}
-	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Update(eb)
+	_, err := b.backupCRCli.EtcdV1beta2().EtcdBackups(eb.Namespace).Update(ctx, eb, metav1.UpdateOptions{})
 	if err != nil {
 		b.logger.Warningf("failed to update status of backup CR %v : (%v)", eb.Name, err)
 	}

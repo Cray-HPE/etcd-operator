@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultRepository  = "quay.io/coreos/etcd"
-	DefaultEtcdVersion = "3.2.13"
+	DefaultEtcdVersion = "v3.2.13"
 )
 
 var (
@@ -86,7 +86,7 @@ type ClusterSpec struct {
 	// The version must follow the [semver]( http://semver.org) format, for example "3.2.13".
 	// Only etcd released versions are supported: https://github.com/coreos/etcd/releases
 	//
-	// If version is not set, default is "3.2.13".
+	// If version is not set, default is "v3.2.13".
 	Version string `json:"version,omitempty"`
 
 	// Paused is to pause the control of the operator for the etcd cluster.
@@ -96,6 +96,9 @@ type ClusterSpec struct {
 	//
 	// Updating Pod does not take effect on any existing etcd pods.
 	Pod *PodPolicy `json:"pod,omitempty"`
+
+	// Service defines the policy to create etcd services
+	Service *ServicePolicy `json:"service,omitempty"`
 
 	// etcd cluster TLS configuration
 	TLS *TLSPolicy `json:"TLS,omitempty"`
@@ -167,9 +170,23 @@ type PodPolicy struct {
 	// The default is to not use memory as the storage medium
 	// No effect if persistent volume is used
 	Tmpfs bool `json:"tmpfs,omitempty"`
+}
 
-	// Sets the priorityClassName for etcd pods
-	PriorityClassName string `json:"priorityClassName,omitempty"`
+// ServicePolicy defines the policy to create pod for the etcd container.
+type ServicePolicy struct {
+	// Annotations specifies the annotations to attach to services the operator creates for the
+	// etcd cluster.
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Overrides the name of the service created
+	// +optional
+	Name string `json:"name,omitempty"`
+
+	// Overrides the routing service traffic to pods with label keys and
+	// values matching this selector.
+	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
+	// +optional
+	Selector map[string]string `json:"selector,omitempty"`
 }
 
 // TODO: move this to initializer
@@ -201,8 +218,6 @@ func (e *EtcdCluster) SetDefaults() {
 	if len(c.Version) == 0 {
 		c.Version = DefaultEtcdVersion
 	}
-
-	c.Version = strings.TrimLeft(c.Version, "v")
 
 	// convert PodPolicy.AntiAffinity to Pod.Affinity.PodAntiAffinity
 	// TODO: Remove this once PodPolicy.AntiAffinity is removed
