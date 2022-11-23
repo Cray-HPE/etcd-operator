@@ -40,8 +40,6 @@
 package k8sutil
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -53,16 +51,13 @@ import (
 	"time"
 
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
-	"github.com/coreos/etcd-operator/pkg/generated/clientset/versioned"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 	"github.com/pborman/uuid"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/scheme"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -73,7 +68,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // for gcp auth
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/remotecommand"
 )
 
 const (
@@ -95,7 +89,8 @@ const (
 	// k8s object name has a maximum length
 	MaxNameLength = 63 - randomSuffixLength - 1
 
-	defaultBusyboxImage = "busybox:1.28.0-glibc"
+	//defaultBusyboxImage = "busybox:1.28.0-glibc"
+	defaultBusyboxImage = "hub.docker.hpecorp.net/nvgrid/busybox:1.28.0-glibc"
 
 	// AnnotationScope annotation name for defining instance scope. Used for specifying cluster wide clusters.
 	AnnotationScope = "etcd.database.coreos.com/scope"
@@ -185,7 +180,7 @@ func PodWithNodeSelector(p *v1.Pod, ns map[string]string) *v1.Pod {
 	return p
 }
 
-func CreateClientService(ctx context.Context, kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference, tls bool, policy *api.ServicePolicy) error {
+func CreateClientService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference, tls bool) error {
 
 	var EtcdClientPortName string
 	if tls {
@@ -200,17 +195,14 @@ func CreateClientService(ctx context.Context, kubecli kubernetes.Interface, clus
 		TargetPort: intstr.FromInt(EtcdClientPort),
 		Protocol:   v1.ProtocolTCP,
 	}}
-	return createService(ctx, kubecli, ClientServiceName(clusterName, policy), clusterName, ns, "", ports, owner, false, policy)
+	return createService(kubecli, ClientServiceName(clusterName), clusterName, ns, "", ports, owner, false)
 }
 
-func ClientServiceName(clusterName string, policy *api.ServicePolicy) string {
-	if policy != nil && len(policy.Name) > 0 {
-		return policy.Name
-	}
+func ClientServiceName(clusterName string) string {
 	return clusterName + "-client"
 }
 
-func CreatePeerService(ctx context.Context, kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference, tls bool, policy *api.ServicePolicy) error {
+func CreatePeerService(kubecli kubernetes.Interface, clusterName, ns string, owner metav1.OwnerReference, tls bool) error {
 
 	var EtcdClientPortName string
 	if tls {
@@ -231,15 +223,15 @@ func CreatePeerService(ctx context.Context, kubecli kubernetes.Interface, cluste
 		Protocol:   v1.ProtocolTCP,
 	}}
 
-	return createService(ctx, kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, ports, owner, true, nil)
+	return createService(kubecli, clusterName, clusterName, ns, v1.ClusterIPNone, ports, owner, true)
 }
 
-func createService(ctx context.Context, kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, ports []v1.ServicePort, owner metav1.OwnerReference, publishNotReadyAddresses bool, policy *api.ServicePolicy) error {
+func createService(kubecli kubernetes.Interface, svcName, clusterName, ns, clusterIP string, ports []v1.ServicePort, owner metav1.OwnerReference, publishNotReadyAddresses bool) error {
 	svc := newEtcdServiceManifest(svcName, clusterName, clusterIP, ports, publishNotReadyAddresses)
-
-	applyServicePolicy(svc, policy)
 	addOwnerRefToObject(svc.GetObjectMeta(), owner)
-	_, err := kubecli.CoreV1().Services(ns).Create(ctx, svc, metav1.CreateOptions{})
+	cxt := context.TODO()
+	var opts metav1.CreateOptions
+	_, err := kubecli.CoreV1().Services(ns).Create(cxt, svc, opts)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
@@ -247,8 +239,10 @@ func createService(ctx context.Context, kubecli kubernetes.Interface, svcName, c
 }
 
 // CreateAndWaitPod creates a pod and waits until it is running
-func CreateAndWaitPod(ctx context.Context, kubecli kubernetes.Interface, ns string, pod *v1.Pod, timeout time.Duration) (*v1.Pod, error) {
-	_, err := kubecli.CoreV1().Pods(ns).Create(ctx, pod, metav1.CreateOptions{})
+func CreateAndWaitPod(kubecli kubernetes.Interface, ns string, pod *v1.Pod, timeout time.Duration) (*v1.Pod, error) {
+	cxt := context.TODO()
+	var opts metav1.CreateOptions
+	_, err := kubecli.CoreV1().Pods(ns).Create(cxt, pod, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +250,8 @@ func CreateAndWaitPod(ctx context.Context, kubecli kubernetes.Interface, ns stri
 	interval := 5 * time.Second
 	var retPod *v1.Pod
 	err = retryutil.Retry(interval, int(timeout/(interval)), func() (bool, error) {
-		retPod, err = kubecli.CoreV1().Pods(ns).Get(ctx, pod.Name, metav1.GetOptions{})
+		cxt := context.TODO()
+		retPod, err = kubecli.CoreV1().Pods(ns).Get(cxt, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -295,6 +290,7 @@ func newEtcdServiceManifest(svcName, clusterName, clusterIP string, ports []v1.S
 			Selector:  labels,
 			ClusterIP: clusterIP,
 			// PublishNotReadyAddresses: publishNotReadyAddresses, // TODO(ckoehn): Activate once TolerateUnreadyEndpointsAnnotation is deprecated.
+			PublishNotReadyAddresses: true,
 		},
 	}
 	return svc
@@ -330,19 +326,11 @@ func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {
 
 // NewSeedMemberPod returns a Pod manifest for a seed member.
 // It's special that it has new token, and might need recovery init containers
-func NewSeedMemberPod(ctx context.Context, kubecli kubernetes.Interface, clusterName, clusterNamespace string, ms etcdutil.MemberSet, m *etcdutil.Member, cs api.ClusterSpec, owner metav1.OwnerReference, backupURL *url.URL, curlImage string) (*v1.Pod, error) {
+func NewSeedMemberPod(kubecli kubernetes.Interface, clusterName, clusterNamespace string, ms etcdutil.MemberSet, m *etcdutil.Member, cs api.ClusterSpec, owner metav1.OwnerReference, backupURL *url.URL, curlImage string) (*v1.Pod, error) {
 	token := uuid.New()
-	pod, err := newEtcdPod(ctx, kubecli, m, ms.PeerURLPairs(), clusterName, clusterNamespace, "new", token, cs)
-	if cs.Pod != nil && cs.Pod.PersistentVolumeClaimSpec != nil {
-		pvc := NewEtcdPodPVC(m, *cs.Pod.PersistentVolumeClaimSpec, clusterName, clusterNamespace, owner)
-		_, err := kubecli.CoreV1().PersistentVolumeClaims(clusterNamespace).Create(ctx, pvc, metav1.CreateOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create PVC for member (%s): %v", m.Name, err)
-		}
-		AddEtcdVolumeToPod(pod, pvc, false)
-	} else {
-		AddEtcdVolumeToPod(pod, nil, cs.Pod.Tmpfs)
-	}
+	pod, err := newEtcdPod(kubecli, m, ms, clusterName, clusterNamespace, "new", token, cs)
+	// TODO: PVC datadir support for restore process
+	AddEtcdVolumeToPod(pod, nil, cs.Pod.Tmpfs)
 	if backupURL != nil {
 		addRecoveryToPod(pod, token, m, cs, backupURL, curlImage)
 	}
@@ -365,13 +353,14 @@ func NewEtcdPodPVC(m *etcdutil.Member, pvcSpec v1.PersistentVolumeClaimSpec, clu
 	return pvc
 }
 
-func newEtcdPod(ctx context.Context, kubecli kubernetes.Interface, m *etcdutil.Member, initialCluster []string, clusterName, clusterNamespace, state, token string, cs api.ClusterSpec) (*v1.Pod, error) {
+func newEtcdPod(kubecli kubernetes.Interface, m *etcdutil.Member, ms etcdutil.MemberSet, clusterName, clusterNamespace, state, token string, cs api.ClusterSpec) (*v1.Pod, error) {
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=%s --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
-		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientURL(), strings.Join(initialCluster, ","), state)
+		dataDir, m.Name, m.PeerURL(), m.ListenPeerURL(), m.ListenClientURL(), m.ClientURL(), strings.Join(ms.PeerURLPairs(), ","), state)
 	if m.SecurePeer {
-		secret, err := kubecli.CoreV1().Secrets(clusterNamespace).Get(ctx, cs.TLS.Static.Member.PeerSecret, metav1.GetOptions{})
+		cxt := context.TODO()
+		secret, err := kubecli.CoreV1().Secrets(clusterNamespace).Get(cxt, cs.TLS.Static.Member.PeerSecret, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -382,7 +371,8 @@ func newEtcdPod(ctx context.Context, kubecli kubernetes.Interface, m *etcdutil.M
 		}
 	}
 	if m.SecureClient {
-		secret, err := kubecli.CoreV1().Secrets(clusterNamespace).Get(ctx, cs.TLS.Static.Member.ServerSecret, metav1.GetOptions{})
+		cxt := context.TODO()
+		secret, err := kubecli.CoreV1().Secrets(clusterNamespace).Get(cxt, cs.TLS.Static.Member.ServerSecret, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -404,7 +394,8 @@ func newEtcdPod(ctx context.Context, kubecli kubernetes.Interface, m *etcdutil.M
 
 	isTLSSecret := false
 	if cs.TLS.IsSecureClient() {
-		secret, err := kubecli.CoreV1().Secrets(clusterNamespace).Get(ctx, cs.TLS.Static.OperatorSecret, metav1.GetOptions{})
+		cxt := context.TODO()
+		secret, err := kubecli.CoreV1().Secrets(clusterNamespace).Get(cxt, cs.TLS.Static.OperatorSecret, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -422,6 +413,9 @@ func newEtcdPod(ctx context.Context, kubecli kubernetes.Interface, m *etcdutil.M
 		etcdContainer(strings.Split(commands, " "), cs.Repository, cs.Version),
 		livenessProbe,
 		readinessProbe)
+
+	logrus.Info("ETCD CMD: ", commands)
+	container = etcdContainer(strings.Split(commands, " "), cs.Repository, cs.Version)
 
 	volumes := []v1.Volume{}
 
@@ -449,10 +443,6 @@ func newEtcdPod(ctx context.Context, kubecli kubernetes.Interface, m *etcdutil.M
 		}})
 	}
 
-	DNSTimeout := defaultDNSTimeout
-	if cs.Pod != nil {
-		DNSTimeout = cs.Pod.DNSTimeoutInSecond
-	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        m.Name,
@@ -460,32 +450,11 @@ func newEtcdPod(ctx context.Context, kubecli kubernetes.Interface, m *etcdutil.M
 			Annotations: map[string]string{},
 		},
 		Spec: v1.PodSpec{
-			InitContainers: []v1.Container{{
-				// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
-				// More info: https://github.com/docker-library/busybox/issues/27
-				//Image default: "busybox:1.28.0-glibc",
-				Image: imageNameBusybox(cs.Pod),
-				Name:  "check-dns",
-				// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
-				// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
-				// In some cases the DNS is not created correctly so we need to time out after a given period.
-				Command: []string{"/bin/sh", "-c", fmt.Sprintf(`
-					TIMEOUT_READY=%d
-					while ( ! nslookup %s )
-					do
-						# If TIMEOUT_READY is 0 we should never time out and exit
-						TIMEOUT_READY=$(( TIMEOUT_READY-1 ))
-                        if [ $TIMEOUT_READY -eq 0 ];
-				        then
-				            echo "Timed out waiting for DNS entry"
-				            exit 1
-				        fi
-						sleep 1
-					done`, DNSTimeout, m.Addr())},
-			}},
 			Containers:    []v1.Container{container},
 			RestartPolicy: v1.RestartPolicyNever,
-			Volumes:       volumes,
+			//PriorityClassName: cs.Pod.PriorityClassName,
+			//PriorityClassName: "podPriorityClassName",
+			Volumes: volumes,
 			// DNS A record: `[m.Name].[clusterName].Namespace.svc`
 			// For example, etcd-795649v9kq in default namesapce will have DNS name
 			// `etcd-795649v9kq.etcd.default.svc`.
@@ -495,6 +464,32 @@ func newEtcdPod(ctx context.Context, kubecli kubernetes.Interface, m *etcdutil.M
 			SecurityContext:              podSecurityContext(cs.Pod),
 		},
 	}
+
+	dnsCommands := make([]string, 0)
+	for _, member := range ms {
+		if member.Name != m.Name {
+			dnsCommands = append(dnsCommands, member.Addr())
+		}
+	}
+
+	init_commandArr := []string{"/usr/local/bin/etcd-dns-checker"}
+	for _, member := range ms {
+		init_commandArr = append(init_commandArr, member.Addr())
+	}
+
+	pod.Spec.InitContainers = []v1.Container{{
+		// busybox:latest uses uclibc which contains a bug that sometimes prevents name resolution
+		// More info: https://github.com/docker-library/busybox/issues/27
+		//Image default: "busybox:1.28.0-glibc",
+		//Image: imageNameBusybox(cs.Pod),
+		Image: "hub.docker.hpecorp.net/jeonggoo/etcd-dns-checker:0.1.1", // TODO: make it configurable
+		Name:  "dns-check",
+		// In etcd 3.2, TLS listener will do a reverse-DNS lookup for pod IP -> hostname.
+		// If DNS entry is not warmed up, it will return empty result and peer connection will be rejected.
+		// In some cases the DNS is not created correctly so we need to time out after a given period.
+		Command: init_commandArr,
+	}}
+
 	SetEtcdVersion(pod, cs.Version)
 	return pod, nil
 }
@@ -506,8 +501,8 @@ func podSecurityContext(podPolicy *api.PodPolicy) *v1.PodSecurityContext {
 	return podPolicy.SecurityContext
 }
 
-func NewEtcdPod(ctx context.Context, kubecli kubernetes.Interface, m *etcdutil.Member, initialCluster []string, clusterName, clusterNamespace, state, token string, cs api.ClusterSpec, owner metav1.OwnerReference) (*v1.Pod, error) {
-	pod, err := newEtcdPod(ctx, kubecli, m, initialCluster, clusterName, clusterNamespace, state, token, cs)
+func NewEtcdPod(kubecli kubernetes.Interface, m *etcdutil.Member, ms etcdutil.MemberSet, clusterName, clusterNamespace, state, token string, cs api.ClusterSpec, owner metav1.OwnerReference) (*v1.Pod, error) {
+	pod, err := newEtcdPod(kubecli, m, ms, clusterName, clusterNamespace, state, token, cs)
 	applyPodPolicy(clusterName, pod, cs.Pod)
 	addOwnerRefToObject(pod.GetObjectMeta(), owner)
 	return pod, err
@@ -575,8 +570,9 @@ func CreatePatch(o, n, datastruct interface{}) ([]byte, error) {
 	return strategicpatch.CreateTwoWayMergePatch(oldData, newData, datastruct)
 }
 
-func PatchDeployment(ctx context.Context, kubecli kubernetes.Interface, namespace, name string, updateFunc func(*appsv1beta1.Deployment)) error {
-	od, err := kubecli.AppsV1beta1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+func PatchDeployment(kubecli kubernetes.Interface, namespace, name string, updateFunc func(*appsv1beta1.Deployment)) error {
+	cxt := context.TODO()
+	od, err := kubecli.AppsV1beta1().Deployments(namespace).Get(cxt, name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -586,7 +582,9 @@ func PatchDeployment(ctx context.Context, kubecli kubernetes.Interface, namespac
 	if err != nil {
 		return err
 	}
-	_, err = kubecli.AppsV1beta1().Deployments(namespace).Patch(ctx, name, types.StrategicMergePatchType, patchData, metav1.PatchOptions{})
+	cxt_2 := context.TODO()
+	var patchOption metav1.PatchOptions
+	_, err = kubecli.AppsV1beta1().Deployments(namespace).Patch(cxt_2, name, types.StrategicMergePatchType, patchData, patchOption)
 	return err
 }
 
@@ -616,211 +614,4 @@ func UniqueMemberName(clusterName string) string {
 		clusterName = clusterName[:MaxNameLength]
 	}
 	return clusterName + "-" + suffix
-}
-
-func AttemptRestoreFromBackup(ctx context.Context, namespace string, kubecli kubernetes.Interface, etcdclient versioned.Interface, cluster *api.EtcdCluster, logger *logrus.Entry) error {
-
-	latestBackup, err := getLatestBackup(ctx, namespace, kubecli, cluster, etcdclient, logger)
-	if err != nil {
-		return fmt.Errorf("getting latest backup failed : %v", err)
-	}
-
-	logger.Infof("attempting restore from backup : %s", latestBackup)
-	command := []string{"restore_from_backup", getBackupProjectName(cluster.Name), latestBackup}
-	output, err := execIntoBackupPod(ctx, namespace, kubecli, cluster, "util", command, logger)
-	if err != nil {
-		return fmt.Errorf("failed execing into backup pod: %v", err)
-	}
-
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	for scanner.Scan() {
-		logger.Infof("stdout from restore: %s", scanner.Text())
-	}
-
-	return nil
-}
-
-func getBackupPodName(ctx context.Context, kubecli kubernetes.Interface) (string, error) {
-
-	options := metav1.ListOptions{
-		LabelSelector: "app.kubernetes.io/name=cray-etcd-backup",
-	}
-	podList, err := kubecli.CoreV1().Pods("operators").List(ctx, options)
-
-	if err != nil {
-		return "", err
-	}
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-		if pod.Status.Phase == v1.PodRunning {
-			return pod.Name, nil
-		}
-	}
-	return "", fmt.Errorf("failed to get backup pod")
-}
-
-func getLatestBackup(ctx context.Context, namespace string, kubecli kubernetes.Interface, cluster *api.EtcdCluster, etcdclient versioned.Interface, logger *logrus.Entry) (string, error) {
-
-	command := []string{"list_backups", getBackupProjectName(cluster.Name)}
-	output, err := execIntoBackupPod(ctx, namespace, kubecli, cluster, "boto3", command, logger)
-	if err != nil {
-		return "", fmt.Errorf("failed execing into backup pod: %v", err)
-	}
-
-	var latestBackup string
-	var latestTs time.Time
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	for scanner.Scan() {
-		split := strings.Split(scanner.Text(), "/")
-		thisBackup := split[1]
-		var thisTs time.Time
-		if strings.Contains(thisBackup, "etcd.backup_v") {
-			//
-			// This is a periodic backup
-			//
-			thisTs, err = parsePeriodicBackupTimeStamp(thisBackup)
-			if err != nil {
-				return "", fmt.Errorf("parsing periodic backup timestamp from %s failed: %v", thisBackup, err)
-			}
-		} else {
-			//
-			// This is a manual backup
-			//
-			thisTs, err = getManualBackupTimestamp(ctx, etcdclient, cluster.Name, namespace, thisBackup, logger)
-			if err != nil {
-				return "", fmt.Errorf("parsing manual backup timestamp from %s failed: %v", thisBackup, err)
-			}
-		}
-		if latestBackup == "" {
-			latestBackup = thisBackup
-			latestTs = thisTs
-		} else {
-			if thisTs.After(latestTs) {
-				latestBackup = thisBackup
-				latestTs = thisTs
-			}
-		}
-	}
-
-	return latestBackup, nil
-}
-
-func getBackupProjectName(clusterName string) string {
-	//
-	// Convert cray-bss-etcd to cray-bss (backup project name)
-	//
-	parts := strings.Split(clusterName, "-")
-	parts = parts[0 : len(parts)-1]
-	return strings.Join(parts, "-")
-}
-
-func parsePeriodicBackupTimeStamp(backupName string) (time.Time, error) {
-	//
-	// Grab 2022-06-18-19:00:01 from etcd.backup_v10612_2022-06-18-19:00:01
-	//
-	const timeLayout = "2006-01-02-15:04:05"
-	parts := strings.Split(backupName, "_")
-	parts = parts[2:]
-	thisTsStr := strings.Join(parts, "_")
-	thisTs, err := time.Parse(timeLayout, thisTsStr)
-	if err != nil {
-		return thisTs, fmt.Errorf("parsing timestamp from %s failed: %v", thisTsStr, err)
-	}
-	return thisTs, nil
-}
-
-func execIntoBackupPod(ctx context.Context, namespace string, kubecli kubernetes.Interface, cluster *api.EtcdCluster, container string, command []string, logger *logrus.Entry) (string, error) {
-	podName, err := getBackupPodName(ctx, kubecli)
-	if err != nil {
-		return "", fmt.Errorf("getting backup pod name failed : %v", err)
-	}
-
-	logger.Infof("execing into pod %s to restore", podName)
-
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		return "", fmt.Errorf("getting rest cluster config failed : %v", err)
-	}
-	client, err := corev1client.NewForConfig(cfg)
-	if err != nil {
-		return "", fmt.Errorf("getting rest client failed : %v", err)
-	}
-	req := client.RESTClient().
-		Post().
-		Namespace("operators").
-		Resource("pods").
-		Name(podName).
-		SubResource("exec").
-		VersionedParams(&v1.PodExecOptions{
-			Container: container,
-			Command:   command,
-			Stdout:    true,
-			Stderr:    true,
-			TTY:       true,
-		}, scheme.ParameterCodec)
-
-	exec, err := remotecommand.NewSPDYExecutor(cfg, "POST", req.URL())
-	if err != nil {
-		return "", fmt.Errorf("getting remote rest command failed : %v", err)
-	}
-
-	var b bytes.Buffer
-	var berr bytes.Buffer
-	err = exec.Stream(remotecommand.StreamOptions{
-		Stdout: &b,
-		Stderr: &berr,
-		Tty:    true,
-	})
-
-	if err != nil {
-		if b.String() == "Error from server (Forbidden)" {
-			return "", fmt.Errorf("etcdrestore needs to be deleted")
-		}
-		return "", fmt.Errorf("execing into backup pod failed: err[%v]: stdout [%v]: stderr [%v]", err, b.String(), berr.String())
-	}
-	return b.String(), nil
-}
-
-func CleanupCompletedEtcdRestore(ctx context.Context, client versioned.Interface, clusterName string, namespace string, logger *logrus.Entry) error {
-
-	logger.Info("Checking for existing restore that needs to be cleaned up.")
-
-	er, err := client.EtcdV1beta2().EtcdRestores(namespace).Get(ctx, clusterName, metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			logger.Infof("No existing etcdrestore to cleanup for %s", clusterName)
-			return nil
-		}
-		return fmt.Errorf("failed to retrieve restore CR: %v", err)
-	}
-	if er.Status.Succeeded {
-		if err := client.EtcdV1beta2().EtcdRestores(namespace).Delete(ctx, er.Name, metav1.DeleteOptions{}); err != nil {
-			logger.Fatalf("failed to delete etcd restore cr: %v", err)
-			return err
-		}
-		return nil
-	}
-
-	return nil
-}
-
-func getManualBackupTimestamp(ctx context.Context, client versioned.Interface, clusterName string, namespace string, backupName string, logger *logrus.Entry) (time.Time, error) {
-
-	var thisTs time.Time
-	backupsList, err := client.EtcdV1beta2().EtcdBackups(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return thisTs, fmt.Errorf("failed to list backups CRs: %v", err)
-	}
-	for _, backup := range backupsList.Items {
-		if !backup.Status.Succeeded {
-			continue
-		}
-		fullBackupName := fmt.Sprintf("etcd-backup/%s/%s", getBackupProjectName(clusterName), backupName)
-		if backup.Spec.S3.Path == fullBackupName {
-			thisTs = backup.Status.LastSuccessDate.Time
-			break
-		}
-	}
-
-	return thisTs, nil
 }

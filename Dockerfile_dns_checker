@@ -1,0 +1,5 @@
+FROM artifactory.algol60.net/docker.io/library/alpine:latest
+
+RUN apk add --no-cache ca-certificates
+
+ADD _output/bin/etcd-dns-checker /usr/local/bin/etcd-dns-checker

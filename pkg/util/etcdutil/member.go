@@ -20,6 +20,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Member struct {
@@ -40,6 +42,7 @@ type Member struct {
 
 func (m *Member) Addr() string {
 	return fmt.Sprintf("%s.%s.%s.svc%s", m.Name, clusterNameFromMemberName(m.Name), m.Namespace, m.ClusterDomain)
+	//return fmt.Sprintf("%s.%s.svc%s", clusterNameFromMemberName(m.Name), m.Namespace, m.ClusterDomain)
 }
 
 // ClientURL is the client URL for this member
@@ -146,6 +149,7 @@ func (ms MemberSet) Remove(name string) {
 func (ms MemberSet) ClientURLs() []string {
 	endpoints := make([]string, 0, len(ms))
 	for _, m := range ms {
+		logrus.Info("Client URLs: ", m.ClientURL())
 		endpoints = append(endpoints, m.ClientURL())
 	}
 	return endpoints

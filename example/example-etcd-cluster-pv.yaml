@@ -10,3 +10,12 @@ spec:
   size: 3
   version: "3.5.2"
   repository: "hub.docker.hpecorp.net/nvgrid/etcd"
+  pod:
+    ClusterDomain: ".cluster.local"
+    persistentVolumeClaimSpec:
+      storageClassName: "example-storage-class"
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi

@@ -23,10 +23,12 @@ import (
 	api "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/coreos/etcd-operator/pkg/util/retryutil"
 
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+
+	"github.com/sirupsen/logrus"
 )
 
 // TODO: replace this package with Operator client
@@ -35,8 +37,9 @@ import (
 // updating a Cluster CR.
 type EtcdClusterCRUpdateFunc func(*api.EtcdCluster)
 
-func GetClusterList(ctx context.Context, restcli rest.Interface, ns string) (*api.EtcdClusterList, error) {
-	b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw(ctx)
+func GetClusterList(restcli rest.Interface, ns string) (*api.EtcdClusterList, error) {
+	cxt := context.TODO()
+	b, err := restcli.Get().RequestURI(listClustersURI(ns)).DoRaw(cxt)
 	if err != nil {
 		return nil, err
 	}
@@ -52,16 +55,51 @@ func listClustersURI(ns string) string {
 	return fmt.Sprintf("/apis/%s/namespaces/%s/%s", api.SchemeGroupVersion.String(), ns, api.EtcdClusterResourcePlural)
 }
 
+func float64Ptr(f float64) *float64 {
+	return &f
+}
+
 func CreateCRD(ctx context.Context, clientset apiextensionsclient.Interface, crdName, rkind, rplural, shortName string) error {
-	crd := &apiextensionsv1beta1.CustomResourceDefinition{
+
+	validationSchema := &apiextensionsv1.JSONSchemaProps{
+		Type:     "object",
+		Required: []string{"spec"},
+		Properties: map[string]apiextensionsv1.JSONSchemaProps{
+			"spec": {
+				Type:     "object",
+				Required: []string{"size", "version"},
+				Properties: map[string]apiextensionsv1.JSONSchemaProps{
+					"size": {
+						Description: "Number of etcd nodes in the cluster",
+						Type:        "number",
+					},
+					"repository": {
+						Description: "Name of the repository for the etcd container images",
+						Type:        "string",
+					},
+					"version": {
+						Description: "Etcd version",
+						Type:        "string",
+					},
+				},
+			},
+		},
+	}
+
+	versions := []apiextensionsv1.CustomResourceDefinitionVersion{{Name: api.SchemeGroupVersion.Version, Storage: true, Served: true, Schema: &apiextensionsv1.CustomResourceValidation{
+		OpenAPIV3Schema: validationSchema,
+	}}}
+
+	crd := &apiextensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: crdName,
 		},
-		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-			Group:   api.SchemeGroupVersion.Group,
-			Version: api.SchemeGroupVersion.Version,
-			Scope:   apiextensionsv1beta1.NamespaceScoped,
-			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+		Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+			Group: api.SchemeGroupVersion.Group,
+			//Version: api.SchemeGroupVersion.Version,
+			Versions: versions,
+			Scope:    apiextensionsv1.NamespaceScoped,
+			Names: apiextensionsv1.CustomResourceDefinitionNames{
 				Plural: rplural,
 				Kind:   rkind,
 			},
@@ -70,7 +108,9 @@ func CreateCRD(ctx context.Context, clientset apiextensionsclient.Interface, crd
 	if len(shortName) != 0 {
 		crd.Spec.Names.ShortNames = []string{shortName}
 	}
-	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(ctx, crd, metav1.CreateOptions{})
+	var opts metav1.CreateOptions
+	logrus.Infof("Creating CRD - name: %s, kind: %s, plural_name: %s, short_name: %s", crdName, rkind, rplural, shortName)
+	_, err := clientset.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, crd, opts)
 	if err != nil && !IsKubernetesResourceAlreadyExistError(err) {
 		return err
 	}
@@ -79,18 +119,19 @@ func CreateCRD(ctx context.Context, clientset apiextensionsclient.Interface, crd
 
 func WaitCRDReady(ctx context.Context, clientset apiextensionsclient.Interface, crdName string) error {
 	err := retryutil.Retry(5*time.Second, 20, func() (bool, error) {
-		crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+		cxt := context.TODO()
+		crd, err := clientset.ApiextensionsV1().CustomResourceDefinitions().Get(cxt, crdName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
 		for _, cond := range crd.Status.Conditions {
 			switch cond.Type {
-			case apiextensionsv1beta1.Established:
-				if cond.Status == apiextensionsv1beta1.ConditionTrue {
+			case apiextensionsv1.Established:
+				if cond.Status == apiextensionsv1.ConditionTrue {
 					return true, nil
 				}
-			case apiextensionsv1beta1.NamesAccepted:
-				if cond.Status == apiextensionsv1beta1.ConditionFalse {
+			case apiextensionsv1.NamesAccepted:
+				if cond.Status == apiextensionsv1.ConditionFalse {
 					return false, fmt.Errorf("Name conflict: %v", cond.Reason)
 				}
 			}
@@ -100,6 +141,7 @@ func WaitCRDReady(ctx context.Context, clientset apiextensionsclient.Interface, 
 	if err != nil {
 		return fmt.Errorf("wait CRD created failed: %v", err)
 	}
+	logrus.Info("CRD creation confired - name: %s", crdName)
 	return nil
 }
 

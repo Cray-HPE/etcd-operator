@@ -8,6 +8,14 @@ Set up basic [RBAC rules][rbac-rules] for etcd operator:
 $ example/rbac/create_role.sh
 ```
 
+## Set up CRD
+
+Set up CRD for EtcdCluster
+
+```bash
+$ kubectl create -f etcd.database.coreos.com_etcdclusters.yaml
+```
+
 ## Install etcd operator
 
 Create a deployment for etcd operator:
@@ -16,12 +24,12 @@ Create a deployment for etcd operator:
 $ kubectl create -f example/deployment.yaml
 ```
 
-etcd operator will automatically create a Kubernetes Custom Resource Definition (CRD):
+## Create an etcd cluster
+
+Create an example etcd cluster
 
 ```bash
-$ kubectl get customresourcedefinitions
-NAME                                    KIND
-etcdclusters.etcd.database.coreos.com   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
+$ kubectl create -f example/example-etcd-cluster.yaml
 ```
 
 ## Uninstall etcd operator

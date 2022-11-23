@@ -1,28 +1,3 @@
-/*
- *
- *  MIT License
- *
- *  (C) Copyright 2022 Hewlett Packard Enterprise Development LP
- *
- *  Permission is hereby granted, free of charge, to any person obtaining a
- *  copy of this software and associated documentation files (the "Software"),
- *  to deal in the Software without restriction, including without limitation
- *  the rights to use, copy, modify, merge, publish, distribute, sublicense,
- *  and/or sell copies of the Software, and to permit persons to whom the
- *  Software is furnished to do so, subject to the following conditions:
- *
- *  The above copyright notice and this permission notice shall be included
- *  in all copies or substantial portions of the Software.
- *
- *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
- *  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
- *  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- *  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- *  OTHER DEALINGS IN THE SOFTWARE.
- *
- */
 // Copyright 2016 The etcd-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,11 +22,12 @@ import (
 	"github.com/coreos/etcd-operator/pkg/util/constants"
 	"github.com/coreos/etcd-operator/pkg/util/etcdutil"
 	"github.com/coreos/etcd-operator/pkg/util/k8sutil"
+	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ErrLostQuorum indicates that the etcd cluster lost its quorum.
@@ -60,7 +36,7 @@ var ErrLostQuorum = newFatalError("lost quorum")
 // reconcile reconciles cluster current state to desired state specified by spec.
 // - it tries to reconcile the cluster to desired size.
 // - if the cluster needs for upgrade, it tries to upgrade old member one by one.
-func (c *Cluster) reconcile(ctx context.Context, pods []*v1.Pod) error {
+func (c *Cluster) reconcile(pods []*v1.Pod) error {
 	c.logger.Infoln("Start reconciling")
 	defer c.logger.Infoln("Finish reconciling")
 
@@ -71,7 +47,7 @@ func (c *Cluster) reconcile(ctx context.Context, pods []*v1.Pod) error {
 	sp := c.cluster.Spec
 	running := podsToMemberSet(pods, c.isSecureClient())
 	if !running.IsEqual(c.members) || c.members.Size() != sp.Size {
-		return c.reconcileMembers(ctx, running)
+		return c.reconcileMembers(running)
 	}
 	c.status.ClearCondition(api.ClusterConditionScaling)
 
@@ -79,7 +55,7 @@ func (c *Cluster) reconcile(ctx context.Context, pods []*v1.Pod) error {
 		c.status.UpgradeVersionTo(sp.Version)
 
 		m := pickOneOldMember(pods, sp.Version)
-		return c.upgradeOneMember(ctx, m.Name)
+		return c.upgradeOneMember(m.Name)
 	}
 	c.status.ClearCondition(api.ClusterConditionUpgrading)
 
@@ -98,7 +74,7 @@ func (c *Cluster) reconcile(ctx context.Context, pods []*v1.Pod) error {
 // 3. If L = members, the current state matches the membership state. END.
 // 4. If len(L) < len(members)/2 + 1, return quorum lost error.
 // 5. Add one missing member. END.
-func (c *Cluster) reconcileMembers(ctx context.Context, running etcdutil.MemberSet) error {
+func (c *Cluster) reconcileMembers(running etcdutil.MemberSet) error {
 	c.logger.Infof("running members: %s", running)
 	c.logger.Infof("cluster membership: %s", c.members)
 
@@ -106,7 +82,7 @@ func (c *Cluster) reconcileMembers(ctx context.Context, running etcdutil.MemberS
 	if unknownMembers.Size() > 0 {
 		c.logger.Infof("removing unexpected pods: %v", unknownMembers)
 		for _, m := range unknownMembers {
-			if err := c.removePod(ctx, m.Name); err != nil {
+			if err := c.removePod(m.Name); err != nil {
 				return err
 			}
 		}
@@ -114,40 +90,32 @@ func (c *Cluster) reconcileMembers(ctx context.Context, running etcdutil.MemberS
 	L := running.Diff(unknownMembers)
 
 	if L.Size() == c.members.Size() {
-		return c.resize(ctx)
+		return c.resize()
 	}
 
 	if L.Size() < c.members.Size()/2+1 {
-		c.logger.Infof("cluster '%s' lost quorum, attempting to restore from backup", c.cluster.Name)
-		err := k8sutil.CleanupCompletedEtcdRestore(ctx, c.config.EtcdCRCli, c.cluster.Name, c.cluster.Namespace, c.logger)
-		if err != nil {
-			return err
-		}
-		err = k8sutil.AttemptRestoreFromBackup(ctx, c.cluster.Namespace, c.config.KubeCli, c.config.EtcdCRCli, c.cluster, c.logger)
-		if err != nil {
-			return err
-		}
 		return ErrLostQuorum
 	}
 
 	c.logger.Infof("removing one dead member")
 	// remove dead members that doesn't have any running pods before doing resizing.
-	return c.removeDeadMember(ctx, c.members.Diff(L).PickOne())
+	return c.removeDeadMember(c.members.Diff(L).PickOne())
 }
 
-func (c *Cluster) resize(ctx context.Context) error {
+func (c *Cluster) resize() error {
 	if c.members.Size() == c.cluster.Spec.Size {
 		return nil
 	}
 
 	if c.members.Size() < c.cluster.Spec.Size {
-		return c.addOneMember(ctx)
+		return c.addOneMember()
 	}
 
-	return c.removeOneMember(ctx)
+	return c.removeOneMember()
 }
 
-func (c *Cluster) addOneMember(ctx context.Context) error {
+func (c *Cluster) addOneMember() error {
+	logrus.Info("Add one member...")
 	c.status.SetScalingUpCondition(c.members.Size(), c.cluster.Spec.Size)
 
 	cfg := clientv3.Config{
@@ -162,8 +130,8 @@ func (c *Cluster) addOneMember(ctx context.Context) error {
 	defer etcdcli.Close()
 
 	newMember := c.newMember()
-	memberCtx, cancel := context.WithTimeout(ctx, constants.DefaultRequestTimeout)
-	resp, err := etcdcli.MemberAdd(memberCtx, []string{newMember.PeerURL()})
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultRequestTimeout)
+	resp, err := etcdcli.MemberAdd(ctx, []string{newMember.PeerURL()})
 	cancel()
 	if err != nil {
 		return fmt.Errorf("fail to add new member (%s): %v", newMember.Name, err)
@@ -171,34 +139,38 @@ func (c *Cluster) addOneMember(ctx context.Context) error {
 	newMember.ID = resp.Member.ID
 	c.members.Add(newMember)
 
-	if err := c.createPod(ctx, c.members, newMember, "existing"); err != nil {
+	if err := c.createPod(c.members, newMember, "existing"); err != nil {
 		return fmt.Errorf("fail to create member's pod (%s): %v", newMember.Name, err)
 	}
 	c.logger.Infof("added member (%s)", newMember.Name)
-	_, err = c.eventsCli.Create(ctx, k8sutil.NewMemberAddEvent(newMember.Name, c.cluster), metav1.CreateOptions{})
+	cxt := context.TODO()
+	var opts metav1.CreateOptions
+	_, err = c.eventsCli.Create(cxt, k8sutil.NewMemberAddEvent(newMember.Name, c.cluster), opts)
 	if err != nil {
 		c.logger.Errorf("failed to create new member add event: %v", err)
 	}
 	return nil
 }
 
-func (c *Cluster) removeOneMember(ctx context.Context) error {
+func (c *Cluster) removeOneMember() error {
 	c.status.SetScalingDownCondition(c.members.Size(), c.cluster.Spec.Size)
 
-	return c.removeMember(ctx, c.members.PickOne())
+	return c.removeMember(c.members.PickOne())
 }
 
-func (c *Cluster) removeDeadMember(ctx context.Context, toRemove *etcdutil.Member) error {
+func (c *Cluster) removeDeadMember(toRemove *etcdutil.Member) error {
 	c.logger.Infof("removing dead member %q", toRemove.Name)
-	_, err := c.eventsCli.Create(ctx, k8sutil.ReplacingDeadMemberEvent(toRemove.Name, c.cluster), metav1.CreateOptions{})
+	cxt := context.TODO()
+	var opts metav1.CreateOptions
+	_, err := c.eventsCli.Create(cxt, k8sutil.ReplacingDeadMemberEvent(toRemove.Name, c.cluster), opts)
 	if err != nil {
 		c.logger.Errorf("failed to create replacing dead member event: %v", err)
 	}
 
-	return c.removeMember(ctx, toRemove)
+	return c.removeMember(toRemove)
 }
 
-func (c *Cluster) removeMember(ctx context.Context, toRemove *etcdutil.Member) (err error) {
+func (c *Cluster) removeMember(toRemove *etcdutil.Member) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("remove member (%s) failed: %v", toRemove.Name, err)
@@ -215,15 +187,17 @@ func (c *Cluster) removeMember(ctx context.Context, toRemove *etcdutil.Member) (
 		}
 	}
 	c.members.Remove(toRemove.Name)
-	_, err = c.eventsCli.Create(ctx, k8sutil.MemberRemoveEvent(toRemove.Name, c.cluster), metav1.CreateOptions{})
+	cxt := context.TODO()
+	var opts metav1.CreateOptions
+	_, err = c.eventsCli.Create(cxt, k8sutil.MemberRemoveEvent(toRemove.Name, c.cluster), opts)
 	if err != nil {
 		c.logger.Errorf("failed to create remove member event: %v", err)
 	}
-	if err := c.removePod(ctx, toRemove.Name); err != nil {
+	if err := c.removePod(toRemove.Name); err != nil {
 		return err
 	}
 	if c.isPodPVEnabled() {
-		err = c.removePVC(ctx, k8sutil.PVCNameFromMember(toRemove.Name))
+		err = c.removePVC(k8sutil.PVCNameFromMember(toRemove.Name))
 		if err != nil {
 			return err
 		}
@@ -232,8 +206,10 @@ func (c *Cluster) removeMember(ctx context.Context, toRemove *etcdutil.Member) (
 	return nil
 }
 
-func (c *Cluster) removePVC(ctx context.Context, pvcName string) error {
-	err := c.config.KubeCli.CoreV1().PersistentVolumeClaims(c.cluster.Namespace).Delete(ctx, pvcName, *metav1.NewDeleteOptions(0))
+func (c *Cluster) removePVC(pvcName string) error {
+	cxt := context.TODO()
+	var opts metav1.DeleteOptions
+	err := c.config.KubeCli.CoreV1().PersistentVolumeClaims(c.cluster.Namespace).Delete(cxt, pvcName, opts)
 	if err != nil && !k8sutil.IsKubernetesResourceNotFoundError(err) {
 		return fmt.Errorf("remove pvc (%s) failed: %v", pvcName, err)
 	}

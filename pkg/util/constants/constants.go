@@ -19,6 +19,8 @@ import "time"
 const (
 	DefaultDialTimeout    = 5 * time.Second
 	DefaultRequestTimeout = 5 * time.Second
+	DefaultDnsInterval    = 5 * time.Second
+
 	// DefaultBackupTimeout is the default maximal allowed time of the entire backup process.
 	DefaultBackupTimeout    = 1 * time.Minute
 	DefaultSnapshotInterval = 1800 * time.Second
@@ -30,4 +32,5 @@ const (
 
 	EnvOperatorPodName      = "MY_POD_NAME"
 	EnvOperatorPodNamespace = "MY_POD_NAMESPACE"
+	EnvDnsLookupInterval    = "DNS_LOOKUP_INTERVAL"
 )
